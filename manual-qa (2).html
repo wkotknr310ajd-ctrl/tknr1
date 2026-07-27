@@ -20,7 +20,7 @@
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useMemo } = React;
+const { useState, useMemo, useEffect, useRef } = React;
 
 /* ============================================================
    マニュアル知識ベース（利用者・ご家族の個人情報は含みません）
@@ -276,6 +276,39 @@ const TROUBLE_SCENARIOS = [
   },
 ];
 
+/* ============================================================
+   職員登録Q&A（この端末のブラウザに保存されます）
+   検索で答えが見つからなかった内容を、答えと資料つきで
+   その場で追加できるようにするための仕組み。
+============================================================ */
+const STORAGE_KEY = "yamaya_manual_custom_entries_v1";
+
+function loadCustomEntries() {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveCustomEntries(entries) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  } catch (e) {
+    /* 保存に失敗してもアプリは使い続けられるようにする */
+  }
+}
+
+function makeId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function isUrl(text) {
+  return /^https?:\/\/\S+$/i.test(text.trim());
+}
+
 function highlight(text, terms) {
   if (!terms.length) return text;
   const pattern = new RegExp("(" + terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "gi");
@@ -284,11 +317,15 @@ function highlight(text, terms) {
     ? <mark key={i}>{part}</mark> : part);
 }
 
-function search(query) {
+function search(query, customEntries) {
   const terms = query.trim().split(/\s+/).filter(Boolean);
   if (terms.length === 0) return [];
-  return SECTIONS.map((s) => {
-    const haystack = (s.title + " " + s.body).toLowerCase();
+  const customAsSections = customEntries.map((e) => ({
+    title: e.title, body: e.body, material: e.material, isCustom: true, id: e.id,
+  }));
+  const all = [...customAsSections, ...SECTIONS];
+  return all.map((s) => {
+    const haystack = (s.title + " " + s.body + " " + (s.material || "")).toLowerCase();
     let score = 0;
     terms.forEach((t) => {
       const tl = t.toLowerCase();
@@ -298,6 +335,27 @@ function search(query) {
     });
     return { ...s, score };
   }).filter((s) => s.score > 0).sort((a, b) => b.score - a.score);
+}
+
+function ResultCard({ item, terms }) {
+  const material = (item.material || "").trim();
+  return (
+    <div style={styles.resultCard} className="fade">
+      {item.isCustom && <div style={styles.customBadge}>職員登録</div>}
+      <div style={styles.resultTitle}>{highlight(item.title, terms)}</div>
+      <div style={styles.resultBody}>{highlight(item.body, terms)}</div>
+      {item.isCustom && material && (
+        <div style={styles.materialBlock}>
+          <div style={styles.materialLabel}>資料・参照先</div>
+          {isUrl(material) ? (
+            <a href={material} target="_blank" rel="noreferrer" style={styles.materialLink}>{material}</a>
+          ) : (
+            <div style={styles.materialText}>{highlight(material, terms)}</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function TroubleDetail({ scenario }) {
@@ -347,15 +405,187 @@ function TroublePanel() {
   );
 }
 
+function RegisterPanel({ customEntries, onAdd, onUpdate, onDelete, onImport, prefillTitle }) {
+  const [title, setTitle] = useState(prefillTitle || "");
+  const [body, setBody] = useState("");
+  const [material, setMaterial] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const resetForm = () => {
+    setTitle("");
+    setBody("");
+    setMaterial("");
+    setEditingId(null);
+  };
+
+  const handleSubmit = () => {
+    if (!title.trim() || !body.trim()) return;
+    if (editingId) {
+      onUpdate(editingId, { title: title.trim(), body: body.trim(), material: material.trim() });
+    } else {
+      onAdd({ title: title.trim(), body: body.trim(), material: material.trim() });
+    }
+    resetForm();
+  };
+
+  const startEdit = (entry) => {
+    setEditingId(entry.id);
+    setTitle(entry.title);
+    setBody(entry.body);
+    setMaterial(entry.material || "");
+  };
+
+  const handleExport = () => {
+    const blob = new Blob([JSON.stringify(customEntries, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "manual-custom-entries.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        if (Array.isArray(parsed)) onImport(parsed);
+      } catch (err) {
+        window.alert("読み込みに失敗しました。書き出したJSONファイルを選んでください。");
+      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+    reader.readAsText(file);
+  };
+
+  return (
+    <div>
+      <p style={styles.hintText}>検索や「困った時は」で見つからなかった内容は、ここから答えと資料を登録できます。登録した内容は次回からキーワード検索でも見つかるようになります（この端末のブラウザに保存されます）。</p>
+
+      <div style={styles.formCard}>
+        <label style={styles.formLabel}>質問・場面</label>
+        <input
+          style={styles.formInput}
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="例：夜間に利用者が発熱した場合は？"
+        />
+
+        <label style={styles.formLabel}>答え・手順</label>
+        <textarea
+          style={styles.formTextarea}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="対応の流れや手順を書いてください"
+          rows={4}
+        />
+
+        <label style={styles.formLabel}>資料・参照先（任意）</label>
+        <textarea
+          style={styles.formTextarea}
+          value={material}
+          onChange={(e) => setMaterial(e.target.value)}
+          placeholder="関連マニュアルの保管場所やリンクなど"
+          rows={2}
+        />
+
+        <div style={styles.formBtnRow}>
+          <button style={styles.searchBtn} onClick={handleSubmit}>{editingId ? "更新する" : "登録する"}</button>
+          {editingId && <button style={styles.cancelBtn} onClick={resetForm}>キャンセル</button>}
+        </div>
+      </div>
+
+      <div style={styles.entryListHeader}>
+        <span>登録済み（{customEntries.length}件）</span>
+        <div style={styles.entryListActions}>
+          <button style={styles.smallBtn} onClick={handleExport} disabled={customEntries.length === 0}>書き出す</button>
+          <button style={styles.smallBtn} onClick={() => fileInputRef.current && fileInputRef.current.click()}>読み込む</button>
+          <input ref={fileInputRef} type="file" accept="application/json" style={{ display: "none" }} onChange={handleImportFile} />
+        </div>
+      </div>
+
+      <div style={styles.resultsArea}>
+        {customEntries.length === 0 && <p style={styles.hintText}>まだ登録された内容はありません。</p>}
+        {customEntries.slice().reverse().map((entry) => (
+          <div key={entry.id} style={styles.resultCard} className="fade">
+            <div style={styles.customBadge}>職員登録</div>
+            <div style={styles.resultTitle}>{entry.title}</div>
+            <div style={styles.resultBody}>{entry.body}</div>
+            {entry.material && (
+              <div style={styles.materialBlock}>
+                <div style={styles.materialLabel}>資料・参照先</div>
+                {isUrl(entry.material) ? (
+                  <a href={entry.material.trim()} target="_blank" rel="noreferrer" style={styles.materialLink}>{entry.material.trim()}</a>
+                ) : (
+                  <div style={styles.materialText}>{entry.material}</div>
+                )}
+              </div>
+            )}
+            <div style={styles.entryBtnRow}>
+              <button style={styles.smallBtn} onClick={() => startEdit(entry)}>編集</button>
+              <button style={styles.smallBtnDanger} onClick={() => onDelete(entry.id)}>削除</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ManualSearch() {
-  const [mode, setMode] = useState("search"); // "search" | "trouble"
+  const [mode, setMode] = useState("search"); // "search" | "trouble" | "register"
   const [query, setQuery] = useState("");
   const [submitted, setSubmitted] = useState("");
-  const results = useMemo(() => search(submitted), [submitted]);
+  const [customEntries, setCustomEntries] = useState(() => loadCustomEntries());
+  const [prefillTitle, setPrefillTitle] = useState("");
+  const [prefillKey, setPrefillKey] = useState(0);
+
+  useEffect(() => {
+    saveCustomEntries(customEntries);
+  }, [customEntries]);
+
+  const results = useMemo(() => search(submitted, customEntries), [submitted, customEntries]);
   const terms = submitted.trim().split(/\s+/).filter(Boolean);
 
   const doSearch = () => setSubmitted(query);
   const handleKeyDown = (e) => { if (e.key === "Enter") doSearch(); };
+
+  const goToRegisterWithQuery = (q) => {
+    setPrefillTitle(q);
+    setPrefillKey((k) => k + 1);
+    setMode("register");
+  };
+
+  const addEntry = (entry) => {
+    setCustomEntries((prev) => [...prev, { id: makeId(), createdAt: Date.now(), ...entry }]);
+  };
+  const updateEntry = (id, updates) => {
+    setCustomEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...updates } : e)));
+  };
+  const deleteEntry = (id) => {
+    if (!window.confirm("この登録内容を削除しますか？")) return;
+    setCustomEntries((prev) => prev.filter((e) => e.id !== id));
+  };
+  const importEntries = (importedArray) => {
+    setCustomEntries((prev) => {
+      const existingIds = new Set(prev.map((e) => e.id));
+      const additions = importedArray
+        .filter((e) => e && e.title && e.body)
+        .map((e) => ({
+          id: e.id && !existingIds.has(e.id) ? e.id : makeId(),
+          title: e.title,
+          body: e.body,
+          material: e.material || "",
+          createdAt: e.createdAt || Date.now(),
+        }));
+      return [...prev, ...additions];
+    });
+  };
 
   return (
     <div style={styles.page}>
@@ -378,6 +608,12 @@ function ManualSearch() {
             onClick={() => setMode("trouble")}
           >
             困った時は
+          </button>
+          <button
+            style={{ ...styles.tabBtn, ...(mode === "register" ? styles.tabBtnActive : {}) }}
+            onClick={() => setMode("register")}
+          >
+            登録する
           </button>
         </div>
 
@@ -406,13 +642,13 @@ function ManualSearch() {
                 <p style={styles.hintText}>係名や業務名で検索してください。上のよく検索されるキーワードから選ぶこともできます。</p>
               )}
               {submitted !== "" && results.length === 0 && (
-                <p style={styles.hintText}>「{submitted}」に一致する内容は見つかりませんでした。「困った時は」タブや原本のマニュアルもあわせてご確認ください。</p>
+                <div style={styles.noResultBox}>
+                  <p style={styles.hintText}>「{submitted}」に一致する内容は見つかりませんでした。「困った時は」タブや原本のマニュアルもあわせてご確認ください。</p>
+                  <button style={styles.searchBtn} onClick={() => goToRegisterWithQuery(submitted)}>この内容を登録する</button>
+                </div>
               )}
               {results.map((r, i) => (
-                <div key={i} style={styles.resultCard} className="fade">
-                  <div style={styles.resultTitle}>{highlight(r.title, terms)}</div>
-                  <div style={styles.resultBody}>{highlight(r.body, terms)}</div>
-                </div>
+                <ResultCard key={r.isCustom ? r.id : "kb-" + i} item={r} terms={terms} />
               ))}
             </div>
           </React.Fragment>
@@ -420,8 +656,20 @@ function ManualSearch() {
 
         {mode === "trouble" && <TroublePanel />}
 
+        {mode === "register" && (
+          <RegisterPanel
+            key={prefillKey}
+            customEntries={customEntries}
+            onAdd={addEntry}
+            onUpdate={updateEntry}
+            onDelete={deleteEntry}
+            onImport={importEntries}
+            prefillTitle={prefillTitle}
+          />
+        )}
+
         <div style={styles.footNote}>
-          ※ このアプリが答えられるのは、これまでの会話で確認したマニュアルの範囲内のみです。載っていない内容は検索結果に出てきません。正確な手順は、必ず原本のマニュアルもあわせてご確認ください。
+          ※ このアプリが答えられるのは、これまでの会話で確認したマニュアルと「登録する」で追加した内容の範囲内のみです。載っていない内容は検索結果に出てきません。正確な手順は、必ず原本のマニュアルもあわせてご確認ください。登録内容はこの端末のブラウザにのみ保存されるため、他の職員と共有したい場合は「登録する」タブの書き出し・読み込みをご利用ください。
         </div>
       </div>
     </div>
@@ -461,6 +709,23 @@ const styles = {
   troubleNote: { fontSize: 12.5, lineHeight: 1.8, color: "#5E7350", background: "#F4F5EE", borderRadius: 10, padding: "10px 12px", marginTop: 12 },
   contactRow: { fontSize: 13, color: "#24371F", marginTop: 12 },
   footNote: { fontSize: 11.5, color: "#8CA37E", lineHeight: 1.8, marginTop: 24, textAlign: "center" },
+  noResultBox: { display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "12px 0" },
+  customBadge: { display: "inline-block", fontSize: 11, fontWeight: 700, color: "#8A5A2B", background: "#F3E3BC", padding: "3px 10px", borderRadius: 999, marginBottom: 8 },
+  materialBlock: { marginTop: 12, background: "#F4F5EE", borderRadius: 10, padding: "10px 12px" },
+  materialLabel: { fontSize: 11, fontWeight: 700, color: "#5E7350", marginBottom: 4 },
+  materialLink: { fontSize: 13, color: "#2F5233", wordBreak: "break-all" },
+  materialText: { fontSize: 13, lineHeight: 1.8, color: "#33422C", whiteSpace: "pre-wrap" },
+  formCard: { background: "#FFFFFF", border: "1px solid #DCE5CE", borderRadius: 14, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 },
+  formLabel: { fontSize: 12, fontWeight: 700, color: "#5E7350", marginTop: 10 },
+  formInput: { fontFamily: sans, fontSize: 14, padding: "10px 12px", border: "1.5px solid #DCE5CE", borderRadius: 10, background: "#FFFFFF", color: "#24371F" },
+  formTextarea: { fontFamily: sans, fontSize: 14, padding: "10px 12px", border: "1.5px solid #DCE5CE", borderRadius: 10, background: "#FFFFFF", color: "#24371F", resize: "vertical" },
+  formBtnRow: { display: "flex", gap: 8, marginTop: 14 },
+  cancelBtn: { fontFamily: sans, fontWeight: 700, fontSize: 14, color: "#5E7350", background: "#FFFFFF", border: "1px solid #C3D2AE", borderRadius: 12, padding: "0 22px", cursor: "pointer" },
+  entryListHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5, color: "#5E7350", fontWeight: 700, marginBottom: 10 },
+  entryListActions: { display: "flex", gap: 8 },
+  smallBtn: { fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#5E7350", background: "#FFFFFF", border: "1px solid #C3D2AE", borderRadius: 999, padding: "5px 12px", cursor: "pointer" },
+  smallBtnDanger: { fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#B24545", background: "#FFFFFF", border: "1px solid #E3B8B8", borderRadius: 999, padding: "5px 12px", cursor: "pointer" },
+  entryBtnRow: { display: "flex", gap: 8, marginTop: 12 },
 };
 
 ReactDOM.createRoot(document.getElementById("root")).render(<ManualSearch />);
