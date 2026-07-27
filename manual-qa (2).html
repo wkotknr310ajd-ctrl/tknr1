@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>やまやの里 マニュアル検索</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" />
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Zen Kaku Gothic New', sans-serif; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity:1; transform:translateY(0);} }
+  .fade { animation: fadeIn 0.3s ease; }
+  input:focus { outline: none; border-color: #2F5233 !important; }
+  mark { background: #F3E3BC; color: #24371F; border-radius: 3px; padding: 0 2px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo, useEffect, useRef } = React;
+
+/* ============================================================
+   マニュアル知識ベース（利用者・ご家族の個人情報は含みません）
+   ■見出し で1セクション、次の■までがその内容として検索対象になります
+============================================================ */
+const KB_TEXT = `
+■支援課全般
+事業運営全般、入退所に関する書類提出、苦情受付、各種申請書・報告書、事故報告書の提出、職員研修の年間計画、介護給付費及び利用料の請求・受領、事業計画作成、ケース検討及び研究活動、支援課会議、支援課職員の業務分担、利用契約書、生活支援員の勤務表作成。
+
+■サービス管理
+サービス内容の作成・見直し、個別支援計画の適正運営、サービス調整会議・ケア会議、アセスメント及びモニタリング評価、生活支援員の支援技術の向上・指導、設置基準・サービス基準、支援経過その他の記録の整理と保管、他機関との連絡調整、受給者証及び連絡調整。
+
+■棟運営
+生活支援業務の総括、利用者の個別支援計画及び実施、男女合同会議・支援課会議・棟会議、利用者のサービス向上に関すること及び提案、利用者の外泊・外出、各担当者との連絡調整、業務マニュアルの見直し・整理・検討、居住棟内の保守点検修繕、利用者の預り金の適正管理、保護者等の連携、生活支援員の研修参加、日課の見直し・整備。日々の業務における職員からの相談対応。
+
+■短期中期入所
+短期入所に関すること、日中一時支援に関すること、請求に関すること、日誌・ケース記録の管理、個別支援計画・ケア会議等。
+
+■医務・給食（支援課）
+保健計画及び指導、治療・服薬・通院及び入退院、医務室・静養室の整理整頓、身体測定・健康診断、感染症対策、嘱託医・協力病院との連携、福祉用具の申請、保険証・診察券、医療費、給食委員会、行事食。
+通院マニュアルは病院別（村上総合病院、鈴木医院、たなか皮ふ科、はまなす病院、佐々木整形外科等）と救急外来ごとに①〜⑭の手順がある。流れ：通院カレンダー確認→ポーチ・財布・配車の準備→受付〜診察〜処方箋のFAX手配→医療日誌入力→看護師へ報告。
+精神科検診・相談・受診マニュアルがある（相談〜受診の流れ）。
+感染症マニュアルは現場対応の資料があるが画像ベースで詳細未確認。
+静養室の使い方：使用前の準備物リスト、使用後の消毒・清掃チェックリストがある。
+緊急情報シート・サマリーは医務係が年1回、担当職員を割り振って更新する（例年2月末頃締切）。
+治療簿・治療ポーチ・服薬チェック簿の更新は「必要なデータを開き、氏名や内容・月を変更して印刷して使用する」という運用。
+医療費請求マニュアル（自己負担分）の流れ：①各病院・薬局の請求書を医療費自己負担集計表に入力→②他職員とダブルチェック→③一覧を提示し抜き取り日を記載→④金庫内の医療費ポーチから集金しチェック→⑤病院・薬局ごとに緑のクリアケースへ入れ園長へ提出→⑥支払い完了後、領収書が返却される→⑦領収書を縮小コピー（8in1）→⑧各担当職員のレターケースへ配布→⑨原本は課長へ提出。
+緊急搬送付き添い後の職員の帰園方法：タクシー利用時は請求書払い（車椅子対応は事前連絡）、電車利用時は立て替えて領収書を庶務課に提出し精算。
+通院時の付き添いは気を配る場面が多い対応。
+
+■物品・清掃
+日用品・介護用品の購入・在庫、共用物品の整備管理、リネンに関すること、清掃計画・清掃用具の管理、理美容室・洗濯室・乾燥室の管理保全、居住棟内の環境整備・保守点検修繕。
+エアコン清掃：基本水曜日に2〜3名で実施。清掃箇所の月間割り振りは行事視聴覚係が勤務表を見て担当。
+リネンマニュアル：外部業者「みどりの家」と契約。月・水・金の定期交換、汚れ物の仕分け・表示ルール、季節ごと（タオルケット・毛布・中掛け）の入れ替えスケジュールあり。
+水野産業への発注（日用品・介護用品）：専用発注システム「EDI*WEB」にログインして商品選択〜注文確定。IDパスワードの管理場所は特定のPCに限定。
+大型洗濯機の洗剤発注：業者へ電話発注（短縮ダイヤル）、月1回ペース、空容器回収の注意点あり。
+理容マニュアル：2つの理容店と契約（奇数月・偶数月で交代）。予約チェック表の掲示、料金請求のタイミング、支払い時の領収書確認まで手順化。
+
+■自治会
+自治会の育成支援、活動・行事、奉仕活動、売店運営。
+さくら会マニュアル：売店・ジュース代・誕生会・金銭出納帳・イオン黄色いレシート等を網羅。
+入金・集金は必ずダブルチェックすること。金庫の鍵はキャップと園長による二重管理。
+担当利用者ごとの金銭出納帳の記入・管理は、係業務ではなく職員一人ひとりが担当利用者について個別に行う業務。
+
+■行事
+年間行事計画の立案及び実施計画の検討・調整、行事予算及び決算の記録整備、行事の記録及び写真等の整理保管、視聴覚機器の整備保管、社会見学・昼食会・買物外出・ドライブ外出の計画実施、クラブ活動計画及び実施・調整、活動用具の管理保全、地域行事への参加、市町村社協及び関係団体との連絡調整、ボランティア等の受入れ及び活動計画。
+行事視聴覚マニュアル：ボランティア受入（転倒予防体操の受け入れ調整等）、地域行事（計画案作成・備品準備の係内振り分け）、物品庫（ペン・画用紙等）や医務室リュック備品の管理を含む。
+
+■人権
+情報の収集及び関係機関との連絡調整、人権尊重・職員倫理・行動規範、身体拘束のあり方（見直し）、生活講座、日々の振り返りチェックシート、権利擁護・虐待防止委員会。
+職員一人ひとりの月ごとの目標設定（面談等）、権利擁護に関する研修の企画・実施、日々の支援における問題点の汲み取り・提示。
+
+■リスク管理
+事故や安全面における情報収集及び情報提供、個別リスクマネジメントシートの作成、事故防止マニュアル、事故・ヒヤリハットの分析及び防止、事故・ヒヤリハットのKYTトレーニング、事故後の対応。
+事故・ヒヤリハット・無届外出が発生した場合の流れ：問題発生→その場での対応・記録→保護者への報告→当日中にリスク検討会議を開催（当事者職員＋上司・主任・リスク管理係、最低3名）→日誌に「リスク検討会議：」と明記して記録→主任以上が報告書を作成し日誌展開→支援課会議等で再検討。
+報告書のシステム入力は「福祉の森」ケース記録システムで行う。件名・概要・加害者/被害者名の扱いにルールがある。
+月次のルーティン：日誌確認→毎月16日頃にヒヤリハットを前期・後期でまとめる→集計表作成→係内分析→支援課会議で報告→決裁。
+事故かヒヤリハットかの判断基準が種別ごとに詳細に定められている（例：服薬ミスは5分以内なら飲み直してヒヤリハット、30分以内は看護師確認の上ヒヤリハット。転倒・熱傷・誤嚥・異食・粗暴行為・自傷・溺水・無届外出などそれぞれに基準あり）。
+避難訓練は毎月実施。年間計画があり、担当は支援員2〜3名。避難訓練の年間計画立案、当日の放送・誘導・初期対応も係業務に含まれる。
+
+■保護者会
+保護者会総会・役員会に関すること、施設行事の協力に関すること、保護者会主催の行事、保護者研修。
+
+■ホームページ・広報
+広報紙の発行及び編集、広報誌関係の整理保管、保護者との連絡調整、ホームページ管理。
+マンスリー作成：共有フォルダの写真データを、Excel上のマンスリー原稿に月ごとに差し替える。
+ホームページ更新：管理画面にログイン→投稿追加→タイトル・画像・文章入力→公開。ID・パスワードを知っている職員は限定。
+広報誌「あがきた」：法人本部と連携する年1回のフロー。本部から依頼・締切/構成の相談→表紙・行事写真の選定→レイアウトを業者に依頼→本部確認・訂正を2往復→完成品を送付。
+
+■作業・日中活動
+日中活動の計画・実施、日中活動使用棟の整理整頓、リサイクル作業、運動及び機能訓練、レクリエーション、日中活動班の連絡調整、各種イベントの出店準備、強度行動障害を有する利用者の支援計画および実施、強度行動障害についての理解。利用者の日中活動プログラムの構築、利用者の機能訓練プログラムの実施・構築。
+
+■第三者評価
+利用者アンケートの実施・活用、職員アンケートの実施・活用、利用者説明会の計画・実施、係の活動計画・活動報告の管理と補助、福祉サービス第三者評価の自己評価、福祉サービス第三者評価受審結果の検討。
+
+■研修・育成
+新任職員研修の実施やOJTを活用した育成計画、新任職員を指導する職員のサポート、新任職員と希望する職員の定期面談、施設実習生の受入れ計画及び指導、学校や関係団体との連絡調整、施設体験学習。
+
+■相談
+指定特定相談・指定一般相談・一般的な相談、障害サービス提供事業者・関係機関との連絡調整、家庭訪問・ケア会議・カンファレンス、村上・岩船地域自立支援協議会運営、障害支援区分認定調査、サービス等利用計画の作成・モニタリング、他機関との連絡調整、福祉サービスや制度についての情報提供、文書ケース記録の管理・保管。
+
+■書類データ管理
+点呼簿など定型書類の更新作業、コピー代・勤務表代の集計と徴収、年度末ファイルラベル（テプラ）の一括作成、担当引き継ぎ書の取りまとめ。
+コピー代マニュアル：Excel上の金額表・領収書シートへ入力し、20日締めで徴収したお金を管理担当者へ引き渡す。
+ファイル作成マニュアル：テプラで年度更新用ラベルを作成。専用データ原本を印刷して確認→専用PC限定のテプラ本体で印刷。
+点呼簿マニュアル：避難訓練・乗り物利用時の点呼簿を、変更シートで更新→各シートに反映確認→印刷。
+担当引き継ぎ書マニュアル：1月中旬に周知→3月15日締切→提出物チェック（受給者証と照合）→入所主任・サビ管への回覧→決裁→ファイル保管・周知、という年間サイクル。
+勤務表マニュアルは、雇用形態が絡むため書類データ管理係だけでは作成できないとされている（支援課全般側の管理業務）。
+
+■庶務課全般
+服務及び研修、予算の企画調整、物品の取得管理及び処分、指導監査等の資料作成、個人情報に関すること、各種調査、職員の福利厚生・健康診断、後援会、保護者会費、行政からの通知に関すること。
+
+■経理・管理
+予算の執行事務、経理及び決算、給与及び旅費、社会保険及び労働保険、支援費及び利用料の収納、寄付金・寄付物品等の管理、利用者の預り金（預金払戻等）、小口現金の出納事務。
+
+■施設管理
+文書等の収受発送及び整理保管、施設の維持管理及び保全、燃料の管理、公用車の運行及び整備、危険物の取扱い及び機械等の維持管理、環境整備、防災及び安全管理、消防防災計画。利用者の送迎（公用車の運転等）。
+
+■給食管理
+栄養ケアマネジメント、給食運営全般、献立表の作成及び栄養管理、給食委託業者に関すること、行政機関に提出する諸調査・統計、給食費の徴収等、保健・給食会議、非常食の備蓄、厨房内の衛生管理。管理栄養士が主担当。
+
+■法人事業方針（令和8年度）
+重点目標として、人材の確保（採用・育成・定着）、働きがいのある職場づくり、人権擁護と虐待防止の徹底、より良いサービスの提供、防災対策と事故防止対策、地域との連携・交流の推進が挙げられている。国家資格（社会福祉士・精神保健福祉士・介護福祉士）の有資格者確保と、資格を持たない職員の資格取得支援にも取り組む方針。
+`;
+
+function parseSections(text) {
+  const parts = text.split(/\n(?=■)/).map((s) => s.trim()).filter(Boolean);
+  return parts.map((p) => {
+    const lines = p.split("\n");
+    const title = lines[0].replace(/^■/, "").trim();
+    const body = lines.slice(1).join("\n").trim();
+    return { title, body };
+  });
+}
+const SECTIONS = parseSections(KB_TEXT);
+
+/* ============================================================
+   困った時シナリオ集
+   マニュアル本文に書かれている「流れ・手順」を、
+   実際に困る場面ごとに引き出しやすくまとめたもの。
+============================================================ */
+const TROUBLE_SCENARIOS = [
+  {
+    category: "事故・安全",
+    title: "事故やヒヤリハット、無届外出が起きた",
+    steps: [
+      "その場で対応し、状況を記録する",
+      "保護者へ報告する",
+      "当日中にリスク検討会議を開く（当事者職員＋上司・主任・リスク管理係、最低3名）",
+      "日誌に「リスク検討会議：」と明記して記録する",
+      "主任以上が報告書を作成し、日誌に展開する",
+      "支援課会議等で再検討する",
+    ],
+    note: "報告書は「福祉の森」ケース記録システムに入力する。件名・概要・加害者/被害者名の扱いにはルールがあるので確認すること。",
+    contact: "上司・主任・リスク管理係",
+  },
+  {
+    category: "事故・安全",
+    title: "服薬ミスをしてしまい、事故かヒヤリハットか判断に迷う",
+    steps: [
+      "気づいてから5分以内なら、飲み直してヒヤリハットとして扱う",
+      "気づいてから30分以内なら、看護師に確認のうえヒヤリハットとして扱う",
+      "それを超える場合や状況が異なる場合は事故として扱われることがある",
+      "自己判断せず、まず看護師・上司に確認する",
+    ],
+    note: "転倒・熱傷・誤嚥・異食・粗暴行為・自傷・溺水・無届外出にも、それぞれ事故／ヒヤリハットの判断基準がある。",
+    contact: "看護師・上司・主任",
+  },
+  {
+    category: "医療・通院",
+    title: "利用者を病院に連れて行くことになった（通院対応）",
+    steps: [
+      "通院カレンダーを確認する",
+      "ポーチ・財布・配車を準備する",
+      "受付〜診察を行う",
+      "処方箋をFAXで手配する",
+      "医療日誌に入力する",
+      "看護師へ報告する",
+    ],
+    note: "病院ごと（村上総合病院、鈴木医院、たなか皮ふ科、はまなす病院、佐々木整形外科等）と救急外来ごとに①〜⑭の詳しい手順がある。精神科の検診・相談・受診は別マニュアルを確認する。",
+    contact: "医務係・看護師",
+  },
+  {
+    category: "医療・通院",
+    title: "緊急搬送に付き添った後、どう帰ればいいかわからない",
+    steps: [
+      "タクシー利用の場合：請求書払いにする（車椅子対応が必要な時は事前連絡する）",
+      "電車利用の場合：一旦立て替えて、領収書を庶務課に提出し精算する",
+    ],
+    note: "",
+    contact: "庶務課",
+  },
+  {
+    category: "医療・通院",
+    title: "医療費（自己負担分）の請求処理がわからない",
+    steps: [
+      "各病院・薬局の請求書を医療費自己負担集計表に入力する",
+      "他職員とダブルチェックする",
+      "一覧を提示し、抜き取り日を記載する",
+      "金庫内の医療費ポーチから集金しチェックする",
+      "病院・薬局ごとに緑のクリアケースへ入れ、園長へ提出する",
+      "支払い完了後、返却された領収書を縮小コピー（8in1）する",
+      "各担当職員のレターケースへ配布する",
+      "原本は課長へ提出する",
+    ],
+    note: "",
+    contact: "医務係",
+  },
+  {
+    category: "医療・通院",
+    title: "静養室を使うことになった",
+    steps: [
+      "使用前に準備物リストに沿って必要な物を揃える",
+      "使用後は消毒・清掃チェックリストに沿って清掃する",
+    ],
+    note: "",
+    contact: "医務係",
+  },
+  {
+    category: "安全・訓練",
+    title: "避難訓練の準備・進め方がわからない",
+    steps: [
+      "年間計画を確認する（毎月実施）",
+      "担当支援員2〜3名で分担する",
+      "当日は放送・誘導・初期対応を行う",
+    ],
+    note: "点呼簿は避難訓練・乗り物利用時に変更シートで更新し、各シートに反映確認してから印刷する。",
+    contact: "リスク管理係",
+  },
+  {
+    category: "お金の管理",
+    title: "利用者の預り金・集金でお金を扱うことになった",
+    steps: [
+      "入金・集金は必ずダブルチェックする",
+      "金庫の鍵はキャップと園長による二重管理なので、単独で開けない",
+      "担当利用者の金銭出納帳は、係業務ではなく職員個人が担当利用者ごとに記入・管理する",
+    ],
+    note: "さくら会（売店・ジュース代・誕生会等）のお金も同様にダブルチェックする。",
+    contact: "上司・園長",
+  },
+  {
+    category: "物品・発注",
+    title: "備品・日用品を発注したいが手順がわからない",
+    steps: [
+      "水野産業（日用品・介護用品）：専用発注システム「EDI*WEB」にログインし、商品選択〜注文確定を行う（ID・パスワードは特定のPCに限定）",
+      "大型洗濯機の洗剤：業者へ電話発注する（短縮ダイヤル、月1回ペース）。空容器の回収忘れに注意する",
+    ],
+    note: "",
+    contact: "物品・清掃係",
+  },
+  {
+    category: "広報",
+    title: "ホームページや広報誌を更新したいが手順がわからない",
+    steps: [
+      "マンスリー：共有フォルダの写真データを、Excel上のマンスリー原稿に月ごとに差し替える",
+      "ホームページ更新：管理画面にログイン→投稿追加→タイトル・画像・文章入力→公開",
+      "広報誌「あがきた」：本部から依頼・締切/構成の相談→表紙・行事写真の選定→レイアウトを業者に依頼→本部確認・訂正を2往復→完成品を送付（年1回）",
+    ],
+    note: "ホームページのID・パスワードを知っている職員は限定されている。",
+    contact: "ホームページ・広報係",
+  },
+  {
+    category: "その他",
+    title: "ここに載っている場面に当てはまらない／判断に迷う",
+    steps: [
+      "まず上司・主任に相談する",
+      "緊急性が高い、または安全に関わる場合は、ためらわずリスク管理係・看護師へ連絡する",
+      "対応内容は必ず日誌に記録として残す",
+      "上のキーワード検索でも関連するマニュアルが見つからないか確認する",
+    ],
+    note: "このアプリに載っているのは、これまで確認したマニュアルの範囲内のみ。載っていない内容は必ず原本のマニュアルもあわせて確認すること。",
+    contact: "上司・主任",
+  },
+];
+
+/* ============================================================
+   職員登録Q&A（この端末のブラウザに保存されます）
+   検索で答えが見つからなかった内容を、答えと資料つきで
+   その場で追加できるようにするための仕組み。
+============================================================ */
+const STORAGE_KEY = "yamaya_manual_custom_entries_v1";
+
+function loadCustomEntries() {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveCustomEntries(entries) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  } catch (e) {
+    /* 保存に失敗してもアプリは使い続けられるようにする */
+  }
+}
+
+function makeId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function isUrl(text) {
+  return /^https?:\/\/\S+$/i.test(text.trim());
+}
+
+/* ============================================================
+   共有フォルダ同期（File System Access API・対応ブラウザのみ）
+   Googleドライブ等の同期フォルダに置いたJSONファイルへ直接
+   読み書きし、端末間で職員登録Q&Aを共有するための仕組み。
+   削除は「deleted」フラグを立てて更新日時で同期させる
+   （トゥームストーン方式）。
+============================================================ */
+const FSAPI_SUPPORTED = typeof window !== "undefined" && typeof window.showOpenFilePicker === "function";
+const IDB_NAME = "yamaya_manual_db";
+const IDB_STORE = "handles";
+const SHARED_HANDLE_KEY = "sharedFileHandle";
+
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    const req = window.indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore(IDB_STORE); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbSet(key, value) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function idbGet(key) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readonly");
+    const req = tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function mergeEntries(localList, incomingList) {
+  const map = new Map();
+  localList.forEach((e) => map.set(e.id, e));
+  (incomingList || []).forEach((raw) => {
+    if (!raw || !raw.id || !raw.title) return;
+    const e = {
+      deleted: false,
+      createdAt: raw.createdAt || raw.updatedAt || Date.now(),
+      updatedAt: raw.updatedAt || raw.createdAt || 0,
+      ...raw,
+    };
+    const existing = map.get(e.id);
+    if (!existing || (e.updatedAt || 0) >= (existing.updatedAt || 0)) {
+      map.set(e.id, e);
+    }
+  });
+  return Array.from(map.values()).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+}
+
+function highlight(text, terms) {
+  if (!terms.length) return text;
+  const pattern = new RegExp("(" + terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "gi");
+  const parts = text.split(pattern);
+  return parts.map((part, i) => terms.some((t) => part.toLowerCase() === t.toLowerCase())
+    ? <mark key={i}>{part}</mark> : part);
+}
+
+function search(query, customEntries) {
+  const terms = query.trim().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return [];
+  const customAsSections = customEntries.filter((e) => !e.deleted).map((e) => ({
+    title: e.title, body: e.body, material: e.material, isCustom: true, id: e.id,
+  }));
+  const all = [...customAsSections, ...SECTIONS];
+  return all.map((s) => {
+    const haystack = (s.title + " " + s.body + " " + (s.material || "")).toLowerCase();
+    let score = 0;
+    terms.forEach((t) => {
+      const tl = t.toLowerCase();
+      const titleHits = (s.title.toLowerCase().split(tl).length - 1) * 3;
+      const bodyHits = haystack.split(tl).length - 1;
+      score += titleHits + bodyHits;
+    });
+    return { ...s, score };
+  }).filter((s) => s.score > 0).sort((a, b) => b.score - a.score);
+}
+
+function ResultCard({ item, terms }) {
+  const material = (item.material || "").trim();
+  return (
+    <div style={styles.resultCard} className="fade">
+      {item.isCustom && <div style={styles.customBadge}>職員登録</div>}
+      <div style={styles.resultTitle}>{highlight(item.title, terms)}</div>
+      <div style={styles.resultBody}>{highlight(item.body, terms)}</div>
+      {item.isCustom && material && (
+        <div style={styles.materialBlock}>
+          <div style={styles.materialLabel}>資料・参照先</div>
+          {isUrl(material) ? (
+            <a href={material} target="_blank" rel="noreferrer" style={styles.materialLink}>{material}</a>
+          ) : (
+            <div style={styles.materialText}>{highlight(material, terms)}</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TroubleDetail({ scenario }) {
+  return (
+    <div style={styles.resultCard} className="fade">
+      <div style={styles.troubleCategory}>{scenario.category}</div>
+      <div style={styles.resultTitle}>{scenario.title}</div>
+      <ol style={styles.stepList}>
+        {scenario.steps.map((step, i) => (
+          <li key={i} style={styles.stepItem}>{step}</li>
+        ))}
+      </ol>
+      {scenario.note && <div style={styles.troubleNote}>{scenario.note}</div>}
+      <div style={styles.contactRow}>相談・連絡先：<strong>{scenario.contact}</strong></div>
+    </div>
+  );
+}
+
+function TroublePanel() {
+  const [selectedIndex, setSelectedIndex] = useState(null);
+  const selected = selectedIndex === null ? null : TROUBLE_SCENARIOS[selectedIndex];
+
+  return (
+    <div>
+      <p style={styles.hintText}>今困っている場面に近いものを選んでください。手順と相談先がすぐに出てきます。</p>
+      <div style={styles.troubleGrid}>
+        {TROUBLE_SCENARIOS.map((s, i) => (
+          <button
+            key={i}
+            style={{
+              ...styles.troubleChip,
+              ...(selectedIndex === i ? styles.troubleChipActive : {}),
+            }}
+            onClick={() => setSelectedIndex(i)}
+          >
+            <span style={styles.troubleChipCategory}>{s.category}</span>
+            <span>{s.title}</span>
+          </button>
+        ))}
+      </div>
+      {selected && (
+        <div style={styles.resultsArea}>
+          <TroubleDetail scenario={selected} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function syncStatusLabel(status, sharedHandle, lastSyncedAt) {
+  if (!sharedHandle) return "共有ファイル：未接続";
+  if (status === "connecting") return "共有ファイルに接続中…";
+  if (status === "syncing") return "同期中…";
+  if (status === "permission-needed") return "共有ファイル：" + sharedHandle.name + "（権限の確認が必要です）";
+  if (status === "error") return "共有ファイル：" + sharedHandle.name + "（同期に失敗しました）";
+  const timeText = lastSyncedAt
+    ? lastSyncedAt.getHours().toString().padStart(2, "0") + ":" + lastSyncedAt.getMinutes().toString().padStart(2, "0")
+    : "";
+  return "共有ファイル：" + sharedHandle.name + (timeText ? "（" + timeText + " に同期済み）" : "");
+}
+
+function SharedSyncBox({ fsapiSupported, sharedHandle, syncStatus, lastSyncedAt, onConnect, onReconnect, onSyncNow }) {
+  return (
+    <div style={styles.syncBox}>
+      <div style={styles.syncStatusRow}>
+        <span style={{ ...styles.syncDot, ...(syncStatus === "synced" ? styles.syncDotOk : syncStatus === "error" || syncStatus === "permission-needed" ? styles.syncDotWarn : {}) }} />
+        <span>{syncStatusLabel(syncStatus, sharedHandle, lastSyncedAt)}</span>
+      </div>
+      {!fsapiSupported && (
+        <p style={styles.syncNote}>このブラウザは共有ファイルとの自動同期に対応していません（Google Chrome または Microsoft Edge でご利用ください）。下の「書き出す・読み込む」で手動共有してください。</p>
+      )}
+      {fsapiSupported && (
+        <div style={styles.syncBtnRow}>
+          {!sharedHandle && (
+            <React.Fragment>
+              <button style={styles.smallBtn} onClick={() => onConnect(false)}>共有フォルダのファイルを選ぶ</button>
+              <button style={styles.smallBtn} onClick={() => onConnect(true)}>共有フォルダに新しく作る</button>
+            </React.Fragment>
+          )}
+          {sharedHandle && syncStatus === "permission-needed" && (
+            <button style={styles.smallBtn} onClick={onReconnect}>同期を再開する</button>
+          )}
+          {sharedHandle && syncStatus !== "permission-needed" && (
+            <button style={styles.smallBtn} onClick={onSyncNow} disabled={syncStatus === "syncing"}>今すぐ同期</button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RegisterPanel({
+  customEntries, onAdd, onUpdate, onDelete, onImport, prefillTitle,
+  fsapiSupported, sharedHandle, syncStatus, lastSyncedAt, onConnect, onReconnect, onSyncNow,
+}) {
+  const [title, setTitle] = useState(prefillTitle || "");
+  const [body, setBody] = useState("");
+  const [material, setMaterial] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const resetForm = () => {
+    setTitle("");
+    setBody("");
+    setMaterial("");
+    setEditingId(null);
+  };
+
+  const handleSubmit = () => {
+    if (!title.trim() || !body.trim()) return;
+    if (editingId) {
+      onUpdate(editingId, { title: title.trim(), body: body.trim(), material: material.trim() });
+    } else {
+      onAdd({ title: title.trim(), body: body.trim(), material: material.trim() });
+    }
+    resetForm();
+  };
+
+  const startEdit = (entry) => {
+    setEditingId(entry.id);
+    setTitle(entry.title);
+    setBody(entry.body);
+    setMaterial(entry.material || "");
+  };
+
+  const handleExport = () => {
+    const blob = new Blob([JSON.stringify(customEntries, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "manual-custom-entries.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        if (Array.isArray(parsed)) onImport(parsed);
+      } catch (err) {
+        window.alert("読み込みに失敗しました。書き出したJSONファイルを選んでください。");
+      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+    reader.readAsText(file);
+  };
+
+  const visibleEntries = customEntries.filter((e) => !e.deleted);
+
+  return (
+    <div>
+      <p style={styles.hintText}>検索や「困った時は」で見つからなかった内容は、ここから答えと資料を登録できます。登録した内容は次回からキーワード検索でも見つかるようになります。</p>
+
+      <SharedSyncBox
+        fsapiSupported={fsapiSupported}
+        sharedHandle={sharedHandle}
+        syncStatus={syncStatus}
+        lastSyncedAt={lastSyncedAt}
+        onConnect={onConnect}
+        onReconnect={onReconnect}
+        onSyncNow={onSyncNow}
+      />
+
+      <div style={styles.formCard}>
+        <label style={styles.formLabel}>質問・場面</label>
+        <input
+          style={styles.formInput}
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="例：夜間に利用者が発熱した場合は？"
+        />
+
+        <label style={styles.formLabel}>答え・手順</label>
+        <textarea
+          style={styles.formTextarea}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="対応の流れや手順を書いてください"
+          rows={4}
+        />
+
+        <label style={styles.formLabel}>資料・参照先（任意）</label>
+        <textarea
+          style={styles.formTextarea}
+          value={material}
+          onChange={(e) => setMaterial(e.target.value)}
+          placeholder="関連マニュアルの保管場所やリンクなど"
+          rows={2}
+        />
+
+        <div style={styles.formBtnRow}>
+          <button style={styles.searchBtn} onClick={handleSubmit}>{editingId ? "更新する" : "登録する"}</button>
+          {editingId && <button style={styles.cancelBtn} onClick={resetForm}>キャンセル</button>}
+        </div>
+      </div>
+
+      <div style={styles.entryListHeader}>
+        <span>登録済み（{visibleEntries.length}件）</span>
+        <div style={styles.entryListActions}>
+          <button style={styles.smallBtn} onClick={handleExport} disabled={customEntries.length === 0}>書き出す</button>
+          <button style={styles.smallBtn} onClick={() => fileInputRef.current && fileInputRef.current.click()}>読み込む</button>
+          <input ref={fileInputRef} type="file" accept="application/json" style={{ display: "none" }} onChange={handleImportFile} />
+        </div>
+      </div>
+
+      <div style={styles.resultsArea}>
+        {visibleEntries.length === 0 && <p style={styles.hintText}>まだ登録された内容はありません。</p>}
+        {visibleEntries.slice().reverse().map((entry) => (
+          <div key={entry.id} style={styles.resultCard} className="fade">
+            <div style={styles.customBadge}>職員登録</div>
+            <div style={styles.resultTitle}>{entry.title}</div>
+            <div style={styles.resultBody}>{entry.body}</div>
+            {entry.material && (
+              <div style={styles.materialBlock}>
+                <div style={styles.materialLabel}>資料・参照先</div>
+                {isUrl(entry.material) ? (
+                  <a href={entry.material.trim()} target="_blank" rel="noreferrer" style={styles.materialLink}>{entry.material.trim()}</a>
+                ) : (
+                  <div style={styles.materialText}>{entry.material}</div>
+                )}
+              </div>
+            )}
+            <div style={styles.entryBtnRow}>
+              <button style={styles.smallBtn} onClick={() => startEdit(entry)}>編集</button>
+              <button style={styles.smallBtnDanger} onClick={() => onDelete(entry.id)}>削除</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ManualSearch() {
+  const [mode, setMode] = useState("search"); // "search" | "trouble" | "register"
+  const [query, setQuery] = useState("");
+  const [submitted, setSubmitted] = useState("");
+  const [customEntries, setCustomEntries] = useState(() => loadCustomEntries());
+  const [prefillTitle, setPrefillTitle] = useState("");
+  const [prefillKey, setPrefillKey] = useState(0);
+  const [sharedHandle, setSharedHandle] = useState(null);
+  const [syncStatus, setSyncStatus] = useState("disconnected");
+  const [lastSyncedAt, setLastSyncedAt] = useState(null);
+  const lastSyncSignatureRef = useRef(null);
+
+  useEffect(() => {
+    saveCustomEntries(customEntries);
+  }, [customEntries]);
+
+  const runSync = async (handle, currentList) => {
+    setSyncStatus("syncing");
+    try {
+      const perm = await handle.requestPermission({ mode: "readwrite" });
+      if (perm !== "granted") {
+        setSyncStatus("permission-needed");
+        return;
+      }
+      const file = await handle.getFile();
+      const text = await file.text();
+      let fileList = [];
+      try {
+        const parsed = JSON.parse(text || "[]");
+        if (Array.isArray(parsed)) fileList = parsed;
+      } catch (e) {
+        fileList = [];
+      }
+      const merged = mergeEntries(currentList, fileList);
+      const mergedSignature = JSON.stringify(merged);
+      const writable = await handle.createWritable();
+      await writable.write(mergedSignature);
+      await writable.close();
+      lastSyncSignatureRef.current = mergedSignature;
+      setCustomEntries(merged);
+      setSyncStatus("synced");
+      setLastSyncedAt(new Date());
+    } catch (e) {
+      setSyncStatus("error");
+    }
+  };
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const handle = await idbGet(SHARED_HANDLE_KEY);
+        if (!handle) return;
+        setSharedHandle(handle);
+        const perm = await handle.queryPermission({ mode: "readwrite" });
+        if (perm === "granted") {
+          await runSync(handle, loadCustomEntries());
+        } else {
+          setSyncStatus("permission-needed");
+        }
+      } catch (e) {
+        /* 共有ファイルの復元に失敗しても、ローカルの内容だけで使い続けられるようにする */
+      }
+    })();
+    // eslint-disable-next-line
+  }, []);
+
+  useEffect(() => {
+    if (!sharedHandle || syncStatus === "permission-needed" || syncStatus === "connecting") return;
+    const signature = JSON.stringify(customEntries);
+    if (signature === lastSyncSignatureRef.current) return;
+    runSync(sharedHandle, customEntries);
+    // eslint-disable-next-line
+  }, [customEntries, sharedHandle]);
+
+  const connectSharedFile = async (createNew) => {
+    if (!FSAPI_SUPPORTED) return;
+    setSyncStatus("connecting");
+    try {
+      let handle;
+      if (createNew) {
+        handle = await window.showSaveFilePicker({
+          suggestedName: "manual-shared-entries.json",
+          types: [{ description: "JSON", accept: { "application/json": [".json"] } }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(JSON.stringify(customEntries, null, 2));
+        await writable.close();
+      } else {
+        const handles = await window.showOpenFilePicker({
+          types: [{ description: "JSON", accept: { "application/json": [".json"] } }],
+        });
+        handle = handles[0];
+      }
+      try {
+        await idbSet(SHARED_HANDLE_KEY, handle);
+      } catch (idbErr) {
+        /* 次回起動時の自動復元はできなくても、今回のセッションの同期は続ける */
+      }
+      setSharedHandle(handle);
+      await runSync(handle, customEntries);
+    } catch (e) {
+      setSyncStatus((s) => (s === "connecting" ? "disconnected" : s));
+    }
+  };
+
+  const reconnectSharedFile = () => {
+    if (sharedHandle) runSync(sharedHandle, customEntries);
+  };
+
+  const syncSharedFileNow = () => {
+    if (sharedHandle) runSync(sharedHandle, customEntries);
+  };
+
+  const results = useMemo(() => search(submitted, customEntries), [submitted, customEntries]);
+  const terms = submitted.trim().split(/\s+/).filter(Boolean);
+
+  const doSearch = () => setSubmitted(query);
+  const handleKeyDown = (e) => { if (e.key === "Enter") doSearch(); };
+
+  const goToRegisterWithQuery = (q) => {
+    setPrefillTitle(q);
+    setPrefillKey((k) => k + 1);
+    setMode("register");
+  };
+
+  const addEntry = (entry) => {
+    const now = Date.now();
+    setCustomEntries((prev) => [...prev, { id: makeId(), createdAt: now, updatedAt: now, deleted: false, ...entry }]);
+  };
+  const updateEntry = (id, updates) => {
+    setCustomEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...updates, updatedAt: Date.now() } : e)));
+  };
+  const deleteEntry = (id) => {
+    if (!window.confirm("この登録内容を削除しますか？")) return;
+    setCustomEntries((prev) => prev.map((e) => (e.id === id ? { ...e, deleted: true, updatedAt: Date.now() } : e)));
+  };
+  const importEntries = (importedArray) => {
+    setCustomEntries((prev) => mergeEntries(prev, importedArray));
+  };
+
+  return (
+    <div style={styles.page}>
+      <div style={styles.container}>
+        <div style={styles.header}>
+          <div style={styles.badge}>やまやの里 職員向け</div>
+          <h1 style={styles.h1}>マニュアル検索</h1>
+          <p style={styles.subText}>キーワードでこれまで確認した係マニュアルの内容を探せます（AIは使わず、この端末だけで完結して検索します）。利用者様の個人情報は含めていません。</p>
+        </div>
+
+        <div style={styles.tabRow}>
+          <button
+            style={{ ...styles.tabBtn, ...(mode === "search" ? styles.tabBtnActive : {}) }}
+            onClick={() => setMode("search")}
+          >
+            キーワードで探す
+          </button>
+          <button
+            style={{ ...styles.tabBtn, ...(mode === "trouble" ? styles.tabBtnActive : {}) }}
+            onClick={() => setMode("trouble")}
+          >
+            困った時は
+          </button>
+          <button
+            style={{ ...styles.tabBtn, ...(mode === "register" ? styles.tabBtnActive : {}) }}
+            onClick={() => setMode("register")}
+          >
+            登録する
+          </button>
+        </div>
+
+        {mode === "search" && (
+          <React.Fragment>
+            <div style={styles.searchRow}>
+              <input
+                style={styles.searchInput}
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="例：医療費請求　エアコン清掃　避難訓練"
+              />
+              <button style={styles.searchBtn} onClick={doSearch}>検索</button>
+            </div>
+
+            <div style={styles.quickRow}>
+              {["リスク管理", "医療費請求", "通院", "エアコン清掃", "リネン", "自治会", "広報", "点呼簿", "避難訓練"].map((k) => (
+                <button key={k} style={styles.quickChip} onClick={() => { setQuery(k); setSubmitted(k); }}>{k}</button>
+              ))}
+            </div>
+
+            <div style={styles.resultsArea}>
+              {submitted === "" && (
+                <p style={styles.hintText}>係名や業務名で検索してください。上のよく検索されるキーワードから選ぶこともできます。</p>
+              )}
+              {submitted !== "" && results.length === 0 && (
+                <div style={styles.noResultBox}>
+                  <p style={styles.hintText}>「{submitted}」に一致する内容は見つかりませんでした。「困った時は」タブや原本のマニュアルもあわせてご確認ください。</p>
+                  <button style={styles.searchBtn} onClick={() => goToRegisterWithQuery(submitted)}>この内容を登録する</button>
+                </div>
+              )}
+              {results.map((r, i) => (
+                <ResultCard key={r.isCustom ? r.id : "kb-" + i} item={r} terms={terms} />
+              ))}
+            </div>
+          </React.Fragment>
+        )}
+
+        {mode === "trouble" && <TroublePanel />}
+
+        {mode === "register" && (
+          <RegisterPanel
+            key={prefillKey}
+            customEntries={customEntries}
+            onAdd={addEntry}
+            onUpdate={updateEntry}
+            onDelete={deleteEntry}
+            onImport={importEntries}
+            prefillTitle={prefillTitle}
+            fsapiSupported={FSAPI_SUPPORTED}
+            sharedHandle={sharedHandle}
+            syncStatus={syncStatus}
+            lastSyncedAt={lastSyncedAt}
+            onConnect={connectSharedFile}
+            onReconnect={reconnectSharedFile}
+            onSyncNow={syncSharedFileNow}
+          />
+        )}
+
+        <div style={styles.footNote}>
+          ※ このアプリが答えられるのは、これまでの会話で確認したマニュアルと「登録する」で追加した内容の範囲内のみです。載っていない内容は検索結果に出てきません。正確な手順は、必ず原本のマニュアルもあわせてご確認ください。登録内容はこの端末に保存されます。他の職員と共有するには、「登録する」タブで共有フォルダ内のファイルに接続するか、書き出し・読み込みをご利用ください。
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const serif = "'Shippori Mincho B1', serif";
+const sans = "'Zen Kaku Gothic New', sans-serif";
+
+const styles = {
+  page: { minHeight: "100vh", background: "linear-gradient(180deg, #EEF2E5 0%, #E6ECDC 100%)", fontFamily: sans, color: "#1F2E22", padding: "28px 16px 40px", display: "flex", justifyContent: "center" },
+  container: { width: "100%", maxWidth: 680, display: "flex", flexDirection: "column" },
+  header: { textAlign: "center", marginBottom: 20 },
+  badge: { display: "inline-block", fontSize: 12, letterSpacing: "0.1em", color: "#5E7350", background: "#DDE6CE", padding: "5px 14px", borderRadius: 999, marginBottom: 12, border: "1px solid #C3D2AE" },
+  h1: { fontFamily: serif, fontWeight: 700, fontSize: 26, margin: "0 0 8px", color: "#24371F" },
+  subText: { fontSize: 13, color: "#4B5A44", lineHeight: 1.7 },
+  tabRow: { display: "flex", gap: 8, marginBottom: 18, background: "#DDE6CE", padding: 5, borderRadius: 14, border: "1px solid #C3D2AE" },
+  tabBtn: { flex: 1, fontFamily: sans, fontWeight: 700, fontSize: 13.5, color: "#5E7350", background: "transparent", border: "none", borderRadius: 10, padding: "10px 0", cursor: "pointer" },
+  tabBtnActive: { background: "#2F5233", color: "#F4F5EE" },
+  searchRow: { display: "flex", gap: 8, marginBottom: 12 },
+  searchInput: { flex: 1, fontFamily: sans, fontSize: 15, padding: "13px 16px", border: "1.5px solid #DCE5CE", borderRadius: 12, background: "#FFFFFF", color: "#24371F" },
+  searchBtn: { fontFamily: sans, fontWeight: 700, fontSize: 14, color: "#F4F5EE", background: "#2F5233", border: "none", borderRadius: 12, padding: "0 26px", cursor: "pointer" },
+  quickRow: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 26 },
+  quickChip: { fontFamily: sans, fontSize: 12.5, padding: "6px 14px", borderRadius: 999, border: "1px solid #C3D2AE", background: "#FFFFFF", color: "#5E7350", cursor: "pointer" },
+  troubleGrid: { display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 },
+  troubleChip: { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3, fontFamily: sans, fontSize: 14, textAlign: "left", padding: "12px 16px", borderRadius: 12, border: "1px solid #C3D2AE", background: "#FFFFFF", color: "#24371F", cursor: "pointer" },
+  troubleChipActive: { border: "1.5px solid #2F5233", background: "#EEF2E5" },
+  troubleChipCategory: { fontSize: 11, color: "#5E7350", fontWeight: 700, letterSpacing: "0.04em" },
+  resultsArea: { display: "flex", flexDirection: "column", gap: 12 },
+  hintText: { fontSize: 13.5, color: "#7C8A74", textAlign: "center", padding: "20px 0" },
+  resultCard: { background: "#FFFFFF", border: "1px solid #DCE5CE", borderRadius: 14, padding: "16px 20px" },
+  resultTitle: { fontFamily: serif, fontWeight: 700, fontSize: 16, color: "#24371F", marginBottom: 8 },
+  resultBody: { fontSize: 13.5, lineHeight: 1.9, color: "#33422C", whiteSpace: "pre-wrap" },
+  troubleCategory: { display: "inline-block", fontSize: 11, fontWeight: 700, color: "#5E7350", background: "#DDE6CE", padding: "3px 10px", borderRadius: 999, marginBottom: 8 },
+  stepList: { margin: "10px 0 0 20px", display: "flex", flexDirection: "column", gap: 6 },
+  stepItem: { fontSize: 13.5, lineHeight: 1.8, color: "#33422C" },
+  troubleNote: { fontSize: 12.5, lineHeight: 1.8, color: "#5E7350", background: "#F4F5EE", borderRadius: 10, padding: "10px 12px", marginTop: 12 },
+  contactRow: { fontSize: 13, color: "#24371F", marginTop: 12 },
+  footNote: { fontSize: 11.5, color: "#8CA37E", lineHeight: 1.8, marginTop: 24, textAlign: "center" },
+  noResultBox: { display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "12px 0" },
+  customBadge: { display: "inline-block", fontSize: 11, fontWeight: 700, color: "#8A5A2B", background: "#F3E3BC", padding: "3px 10px", borderRadius: 999, marginBottom: 8 },
+  materialBlock: { marginTop: 12, background: "#F4F5EE", borderRadius: 10, padding: "10px 12px" },
+  materialLabel: { fontSize: 11, fontWeight: 700, color: "#5E7350", marginBottom: 4 },
+  materialLink: { fontSize: 13, color: "#2F5233", wordBreak: "break-all" },
+  materialText: { fontSize: 13, lineHeight: 1.8, color: "#33422C", whiteSpace: "pre-wrap" },
+  formCard: { background: "#FFFFFF", border: "1px solid #DCE5CE", borderRadius: 14, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 },
+  formLabel: { fontSize: 12, fontWeight: 700, color: "#5E7350", marginTop: 10 },
+  formInput: { fontFamily: sans, fontSize: 14, padding: "10px 12px", border: "1.5px solid #DCE5CE", borderRadius: 10, background: "#FFFFFF", color: "#24371F" },
+  formTextarea: { fontFamily: sans, fontSize: 14, padding: "10px 12px", border: "1.5px solid #DCE5CE", borderRadius: 10, background: "#FFFFFF", color: "#24371F", resize: "vertical" },
+  formBtnRow: { display: "flex", gap: 8, marginTop: 14 },
+  cancelBtn: { fontFamily: sans, fontWeight: 700, fontSize: 14, color: "#5E7350", background: "#FFFFFF", border: "1px solid #C3D2AE", borderRadius: 12, padding: "0 22px", cursor: "pointer" },
+  entryListHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5, color: "#5E7350", fontWeight: 700, marginBottom: 10 },
+  entryListActions: { display: "flex", gap: 8 },
+  smallBtn: { fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#5E7350", background: "#FFFFFF", border: "1px solid #C3D2AE", borderRadius: 999, padding: "5px 12px", cursor: "pointer" },
+  smallBtnDanger: { fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#B24545", background: "#FFFFFF", border: "1px solid #E3B8B8", borderRadius: 999, padding: "5px 12px", cursor: "pointer" },
+  entryBtnRow: { display: "flex", gap: 8, marginTop: 12 },
+  syncBox: { background: "#F4F5EE", border: "1px solid #DCE5CE", borderRadius: 14, padding: "14px 16px", marginBottom: 20 },
+  syncStatusRow: { display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "#33422C", fontWeight: 700 },
+  syncDot: { display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#B7C4A6" },
+  syncDotOk: { background: "#3E7A44" },
+  syncDotWarn: { background: "#C98A3E" },
+  syncNote: { fontSize: 12, lineHeight: 1.8, color: "#5E7350", marginTop: 8 },
+  syncBtnRow: { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 },
+};
+
+ReactDOM.createRoot(document.getElementById("root")).render(<ManualSearch />);
+</script>
+</body>
+</html>
