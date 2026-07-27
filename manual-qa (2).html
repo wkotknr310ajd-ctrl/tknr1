@@ -309,6 +309,66 @@ function isUrl(text) {
   return /^https?:\/\/\S+$/i.test(text.trim());
 }
 
+/* ============================================================
+   共有フォルダ同期（File System Access API・対応ブラウザのみ）
+   Googleドライブ等の同期フォルダに置いたJSONファイルへ直接
+   読み書きし、端末間で職員登録Q&Aを共有するための仕組み。
+   削除は「deleted」フラグを立てて更新日時で同期させる
+   （トゥームストーン方式）。
+============================================================ */
+const FSAPI_SUPPORTED = typeof window !== "undefined" && typeof window.showOpenFilePicker === "function";
+const IDB_NAME = "yamaya_manual_db";
+const IDB_STORE = "handles";
+const SHARED_HANDLE_KEY = "sharedFileHandle";
+
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    const req = window.indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore(IDB_STORE); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbSet(key, value) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function idbGet(key) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readonly");
+    const req = tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function mergeEntries(localList, incomingList) {
+  const map = new Map();
+  localList.forEach((e) => map.set(e.id, e));
+  (incomingList || []).forEach((raw) => {
+    if (!raw || !raw.id || !raw.title) return;
+    const e = {
+      deleted: false,
+      createdAt: raw.createdAt || raw.updatedAt || Date.now(),
+      updatedAt: raw.updatedAt || raw.createdAt || 0,
+      ...raw,
+    };
+    const existing = map.get(e.id);
+    if (!existing || (e.updatedAt || 0) >= (existing.updatedAt || 0)) {
+      map.set(e.id, e);
+    }
+  });
+  return Array.from(map.values()).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+}
+
 function highlight(text, terms) {
   if (!terms.length) return text;
   const pattern = new RegExp("(" + terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "gi");
@@ -320,7 +380,7 @@ function highlight(text, terms) {
 function search(query, customEntries) {
   const terms = query.trim().split(/\s+/).filter(Boolean);
   if (terms.length === 0) return [];
-  const customAsSections = customEntries.map((e) => ({
+  const customAsSections = customEntries.filter((e) => !e.deleted).map((e) => ({
     title: e.title, body: e.body, material: e.material, isCustom: true, id: e.id,
   }));
   const all = [...customAsSections, ...SECTIONS];
@@ -405,7 +465,52 @@ function TroublePanel() {
   );
 }
 
-function RegisterPanel({ customEntries, onAdd, onUpdate, onDelete, onImport, prefillTitle }) {
+function syncStatusLabel(status, sharedHandle, lastSyncedAt) {
+  if (!sharedHandle) return "共有ファイル：未接続";
+  if (status === "connecting") return "共有ファイルに接続中…";
+  if (status === "syncing") return "同期中…";
+  if (status === "permission-needed") return "共有ファイル：" + sharedHandle.name + "（権限の確認が必要です）";
+  if (status === "error") return "共有ファイル：" + sharedHandle.name + "（同期に失敗しました）";
+  const timeText = lastSyncedAt
+    ? lastSyncedAt.getHours().toString().padStart(2, "0") + ":" + lastSyncedAt.getMinutes().toString().padStart(2, "0")
+    : "";
+  return "共有ファイル：" + sharedHandle.name + (timeText ? "（" + timeText + " に同期済み）" : "");
+}
+
+function SharedSyncBox({ fsapiSupported, sharedHandle, syncStatus, lastSyncedAt, onConnect, onReconnect, onSyncNow }) {
+  return (
+    <div style={styles.syncBox}>
+      <div style={styles.syncStatusRow}>
+        <span style={{ ...styles.syncDot, ...(syncStatus === "synced" ? styles.syncDotOk : syncStatus === "error" || syncStatus === "permission-needed" ? styles.syncDotWarn : {}) }} />
+        <span>{syncStatusLabel(syncStatus, sharedHandle, lastSyncedAt)}</span>
+      </div>
+      {!fsapiSupported && (
+        <p style={styles.syncNote}>このブラウザは共有ファイルとの自動同期に対応していません（Google Chrome または Microsoft Edge でご利用ください）。下の「書き出す・読み込む」で手動共有してください。</p>
+      )}
+      {fsapiSupported && (
+        <div style={styles.syncBtnRow}>
+          {!sharedHandle && (
+            <React.Fragment>
+              <button style={styles.smallBtn} onClick={() => onConnect(false)}>共有フォルダのファイルを選ぶ</button>
+              <button style={styles.smallBtn} onClick={() => onConnect(true)}>共有フォルダに新しく作る</button>
+            </React.Fragment>
+          )}
+          {sharedHandle && syncStatus === "permission-needed" && (
+            <button style={styles.smallBtn} onClick={onReconnect}>同期を再開する</button>
+          )}
+          {sharedHandle && syncStatus !== "permission-needed" && (
+            <button style={styles.smallBtn} onClick={onSyncNow} disabled={syncStatus === "syncing"}>今すぐ同期</button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RegisterPanel({
+  customEntries, onAdd, onUpdate, onDelete, onImport, prefillTitle,
+  fsapiSupported, sharedHandle, syncStatus, lastSyncedAt, onConnect, onReconnect, onSyncNow,
+}) {
   const [title, setTitle] = useState(prefillTitle || "");
   const [body, setBody] = useState("");
   const [material, setMaterial] = useState("");
@@ -462,9 +567,21 @@ function RegisterPanel({ customEntries, onAdd, onUpdate, onDelete, onImport, pre
     reader.readAsText(file);
   };
 
+  const visibleEntries = customEntries.filter((e) => !e.deleted);
+
   return (
     <div>
-      <p style={styles.hintText}>検索や「困った時は」で見つからなかった内容は、ここから答えと資料を登録できます。登録した内容は次回からキーワード検索でも見つかるようになります（この端末のブラウザに保存されます）。</p>
+      <p style={styles.hintText}>検索や「困った時は」で見つからなかった内容は、ここから答えと資料を登録できます。登録した内容は次回からキーワード検索でも見つかるようになります。</p>
+
+      <SharedSyncBox
+        fsapiSupported={fsapiSupported}
+        sharedHandle={sharedHandle}
+        syncStatus={syncStatus}
+        lastSyncedAt={lastSyncedAt}
+        onConnect={onConnect}
+        onReconnect={onReconnect}
+        onSyncNow={onSyncNow}
+      />
 
       <div style={styles.formCard}>
         <label style={styles.formLabel}>質問・場面</label>
@@ -501,7 +618,7 @@ function RegisterPanel({ customEntries, onAdd, onUpdate, onDelete, onImport, pre
       </div>
 
       <div style={styles.entryListHeader}>
-        <span>登録済み（{customEntries.length}件）</span>
+        <span>登録済み（{visibleEntries.length}件）</span>
         <div style={styles.entryListActions}>
           <button style={styles.smallBtn} onClick={handleExport} disabled={customEntries.length === 0}>書き出す</button>
           <button style={styles.smallBtn} onClick={() => fileInputRef.current && fileInputRef.current.click()}>読み込む</button>
@@ -510,8 +627,8 @@ function RegisterPanel({ customEntries, onAdd, onUpdate, onDelete, onImport, pre
       </div>
 
       <div style={styles.resultsArea}>
-        {customEntries.length === 0 && <p style={styles.hintText}>まだ登録された内容はありません。</p>}
-        {customEntries.slice().reverse().map((entry) => (
+        {visibleEntries.length === 0 && <p style={styles.hintText}>まだ登録された内容はありません。</p>}
+        {visibleEntries.slice().reverse().map((entry) => (
           <div key={entry.id} style={styles.resultCard} className="fade">
             <div style={styles.customBadge}>職員登録</div>
             <div style={styles.resultTitle}>{entry.title}</div>
@@ -544,10 +661,111 @@ function ManualSearch() {
   const [customEntries, setCustomEntries] = useState(() => loadCustomEntries());
   const [prefillTitle, setPrefillTitle] = useState("");
   const [prefillKey, setPrefillKey] = useState(0);
+  const [sharedHandle, setSharedHandle] = useState(null);
+  const [syncStatus, setSyncStatus] = useState("disconnected");
+  const [lastSyncedAt, setLastSyncedAt] = useState(null);
+  const lastSyncSignatureRef = useRef(null);
 
   useEffect(() => {
     saveCustomEntries(customEntries);
   }, [customEntries]);
+
+  const runSync = async (handle, currentList) => {
+    setSyncStatus("syncing");
+    try {
+      const perm = await handle.requestPermission({ mode: "readwrite" });
+      if (perm !== "granted") {
+        setSyncStatus("permission-needed");
+        return;
+      }
+      const file = await handle.getFile();
+      const text = await file.text();
+      let fileList = [];
+      try {
+        const parsed = JSON.parse(text || "[]");
+        if (Array.isArray(parsed)) fileList = parsed;
+      } catch (e) {
+        fileList = [];
+      }
+      const merged = mergeEntries(currentList, fileList);
+      const mergedSignature = JSON.stringify(merged);
+      const writable = await handle.createWritable();
+      await writable.write(mergedSignature);
+      await writable.close();
+      lastSyncSignatureRef.current = mergedSignature;
+      setCustomEntries(merged);
+      setSyncStatus("synced");
+      setLastSyncedAt(new Date());
+    } catch (e) {
+      setSyncStatus("error");
+    }
+  };
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const handle = await idbGet(SHARED_HANDLE_KEY);
+        if (!handle) return;
+        setSharedHandle(handle);
+        const perm = await handle.queryPermission({ mode: "readwrite" });
+        if (perm === "granted") {
+          await runSync(handle, loadCustomEntries());
+        } else {
+          setSyncStatus("permission-needed");
+        }
+      } catch (e) {
+        /* 共有ファイルの復元に失敗しても、ローカルの内容だけで使い続けられるようにする */
+      }
+    })();
+    // eslint-disable-next-line
+  }, []);
+
+  useEffect(() => {
+    if (!sharedHandle || syncStatus === "permission-needed" || syncStatus === "connecting") return;
+    const signature = JSON.stringify(customEntries);
+    if (signature === lastSyncSignatureRef.current) return;
+    runSync(sharedHandle, customEntries);
+    // eslint-disable-next-line
+  }, [customEntries, sharedHandle]);
+
+  const connectSharedFile = async (createNew) => {
+    if (!FSAPI_SUPPORTED) return;
+    setSyncStatus("connecting");
+    try {
+      let handle;
+      if (createNew) {
+        handle = await window.showSaveFilePicker({
+          suggestedName: "manual-shared-entries.json",
+          types: [{ description: "JSON", accept: { "application/json": [".json"] } }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(JSON.stringify(customEntries, null, 2));
+        await writable.close();
+      } else {
+        const handles = await window.showOpenFilePicker({
+          types: [{ description: "JSON", accept: { "application/json": [".json"] } }],
+        });
+        handle = handles[0];
+      }
+      try {
+        await idbSet(SHARED_HANDLE_KEY, handle);
+      } catch (idbErr) {
+        /* 次回起動時の自動復元はできなくても、今回のセッションの同期は続ける */
+      }
+      setSharedHandle(handle);
+      await runSync(handle, customEntries);
+    } catch (e) {
+      setSyncStatus((s) => (s === "connecting" ? "disconnected" : s));
+    }
+  };
+
+  const reconnectSharedFile = () => {
+    if (sharedHandle) runSync(sharedHandle, customEntries);
+  };
+
+  const syncSharedFileNow = () => {
+    if (sharedHandle) runSync(sharedHandle, customEntries);
+  };
 
   const results = useMemo(() => search(submitted, customEntries), [submitted, customEntries]);
   const terms = submitted.trim().split(/\s+/).filter(Boolean);
@@ -562,29 +780,18 @@ function ManualSearch() {
   };
 
   const addEntry = (entry) => {
-    setCustomEntries((prev) => [...prev, { id: makeId(), createdAt: Date.now(), ...entry }]);
+    const now = Date.now();
+    setCustomEntries((prev) => [...prev, { id: makeId(), createdAt: now, updatedAt: now, deleted: false, ...entry }]);
   };
   const updateEntry = (id, updates) => {
-    setCustomEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...updates } : e)));
+    setCustomEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...updates, updatedAt: Date.now() } : e)));
   };
   const deleteEntry = (id) => {
     if (!window.confirm("この登録内容を削除しますか？")) return;
-    setCustomEntries((prev) => prev.filter((e) => e.id !== id));
+    setCustomEntries((prev) => prev.map((e) => (e.id === id ? { ...e, deleted: true, updatedAt: Date.now() } : e)));
   };
   const importEntries = (importedArray) => {
-    setCustomEntries((prev) => {
-      const existingIds = new Set(prev.map((e) => e.id));
-      const additions = importedArray
-        .filter((e) => e && e.title && e.body)
-        .map((e) => ({
-          id: e.id && !existingIds.has(e.id) ? e.id : makeId(),
-          title: e.title,
-          body: e.body,
-          material: e.material || "",
-          createdAt: e.createdAt || Date.now(),
-        }));
-      return [...prev, ...additions];
-    });
+    setCustomEntries((prev) => mergeEntries(prev, importedArray));
   };
 
   return (
@@ -665,11 +872,18 @@ function ManualSearch() {
             onDelete={deleteEntry}
             onImport={importEntries}
             prefillTitle={prefillTitle}
+            fsapiSupported={FSAPI_SUPPORTED}
+            sharedHandle={sharedHandle}
+            syncStatus={syncStatus}
+            lastSyncedAt={lastSyncedAt}
+            onConnect={connectSharedFile}
+            onReconnect={reconnectSharedFile}
+            onSyncNow={syncSharedFileNow}
           />
         )}
 
         <div style={styles.footNote}>
-          ※ このアプリが答えられるのは、これまでの会話で確認したマニュアルと「登録する」で追加した内容の範囲内のみです。載っていない内容は検索結果に出てきません。正確な手順は、必ず原本のマニュアルもあわせてご確認ください。登録内容はこの端末のブラウザにのみ保存されるため、他の職員と共有したい場合は「登録する」タブの書き出し・読み込みをご利用ください。
+          ※ このアプリが答えられるのは、これまでの会話で確認したマニュアルと「登録する」で追加した内容の範囲内のみです。載っていない内容は検索結果に出てきません。正確な手順は、必ず原本のマニュアルもあわせてご確認ください。登録内容はこの端末に保存されます。他の職員と共有するには、「登録する」タブで共有フォルダ内のファイルに接続するか、書き出し・読み込みをご利用ください。
         </div>
       </div>
     </div>
@@ -726,6 +940,13 @@ const styles = {
   smallBtn: { fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#5E7350", background: "#FFFFFF", border: "1px solid #C3D2AE", borderRadius: 999, padding: "5px 12px", cursor: "pointer" },
   smallBtnDanger: { fontFamily: sans, fontSize: 12, fontWeight: 700, color: "#B24545", background: "#FFFFFF", border: "1px solid #E3B8B8", borderRadius: 999, padding: "5px 12px", cursor: "pointer" },
   entryBtnRow: { display: "flex", gap: 8, marginTop: 12 },
+  syncBox: { background: "#F4F5EE", border: "1px solid #DCE5CE", borderRadius: 14, padding: "14px 16px", marginBottom: 20 },
+  syncStatusRow: { display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "#33422C", fontWeight: 700 },
+  syncDot: { display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#B7C4A6" },
+  syncDotOk: { background: "#3E7A44" },
+  syncDotWarn: { background: "#C98A3E" },
+  syncNote: { fontSize: 12, lineHeight: 1.8, color: "#5E7350", marginTop: 8 },
+  syncBtnRow: { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 },
 };
 
 ReactDOM.createRoot(document.getElementById("root")).render(<ManualSearch />);
