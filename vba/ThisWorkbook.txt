@@ -1,0 +1,16 @@
+' ============================================================
+' このファイルは modXxxx.bas のような「標準モジュール」ではありません。
+' VBAエディタ(Alt+F11)の左側「プロジェクト」ウィンドウで
+' 「Microsoft Excel Objects」→「ThisWorkbook」をダブルクリックして開き、
+' 右側のコード欄に以下の内容をそのまま貼り付けてください。
+' ============================================================
+
+Private Sub Workbook_Open()
+    On Error Resume Next
+    ApplyProtection
+    SetupButtons
+    RefreshStaffValidation
+    RefreshPendingList
+    RefreshApprovedList
+    On Error GoTo 0
+End Sub
