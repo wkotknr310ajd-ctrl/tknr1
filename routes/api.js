@@ -4,6 +4,7 @@ const { search, detectServiceIds } = require("../lib/search");
 const { evaluate } = require("../lib/eligibility");
 const claude = require("../lib/claude");
 const { formatFallbackAnswer } = require("../lib/answerFormatter");
+const { searchSourceArchive } = require("../lib/sourceArchive");
 
 const router = express.Router();
 
@@ -30,6 +31,14 @@ router.get("/search", (req, res) => {
   res.json({ query: q, results });
 });
 
+router.get("/source-search", (req, res) => {
+  const q = (req.query.q || "").toString();
+  if (!q.trim()) return res.status(400).json({ error: "query parameter q is required" });
+  const limit = Math.min(parseInt(req.query.limit, 10) || 3, 10);
+  const results = searchSourceArchive(q, { limit });
+  res.json({ query: q, results });
+});
+
 router.post("/chat", async (req, res) => {
   const message = (req.body && req.body.message ? String(req.body.message) : "").trim();
   if (!message) return res.status(400).json({ error: "message is required" });
@@ -45,11 +54,12 @@ router.post("/chat", async (req, res) => {
     serviceIds = [requestedServiceId];
   }
   const matches = search(message, { serviceIds, limit: 4 });
+  const sourceExcerpts = searchSourceArchive(message, { limit: 3 });
 
   let answer;
   let source = "kb-template";
   try {
-    const llmAnswer = await claude.generateGroundedAnswer(message, matches);
+    const llmAnswer = await claude.generateGroundedAnswer(message, matches, sourceExcerpts);
     if (llmAnswer) {
       answer = llmAnswer;
       source = "llm-grounded";
@@ -59,7 +69,7 @@ router.post("/chat", async (req, res) => {
   }
 
   if (!answer) {
-    answer = formatFallbackAnswer(message, matches);
+    answer = formatFallbackAnswer(message, matches, sourceExcerpts);
   }
 
   res.json({
@@ -73,6 +83,7 @@ router.post("/chat", async (req, res) => {
       name: m.item.name,
       score: Number(m.score.toFixed(3)),
     })),
+    sourceExcerpts: sourceExcerpts.map((s) => ({ file: s.file, score: Number(s.score.toFixed(3)) })),
   });
 });
 

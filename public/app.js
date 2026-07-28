@@ -187,6 +187,12 @@ chatForm.addEventListener("submit", async (e) => {
       meta.textContent = `参照した項目: ${metaLine}${data.source === "llm-grounded" ? " (AI生成)" : " (テンプレート回答)"}`;
       thinking.appendChild(meta);
     }
+    if (data.sourceExcerpts && data.sourceExcerpts.length) {
+      const srcMeta = document.createElement("div");
+      srcMeta.className = "msg-meta";
+      srcMeta.textContent = `原文出典: ${data.sourceExcerpts.map((s) => s.file).join(" / ")}`;
+      thinking.appendChild(srcMeta);
+    }
   } catch (err) {
     thinking.innerHTML = `<p>エラーが発生しました: ${escapeHtml(err.message)}</p>`;
   } finally {
