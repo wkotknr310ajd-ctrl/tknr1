@@ -7,7 +7,8 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "build:standalone": "node standalone/build.js"
   },
   "dependencies": {
     "express": "^4.19.2"

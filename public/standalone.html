@@ -1,0 +1,1874 @@
+<title>障害福祉サービス 加算・減算台帳</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+:root {
+  --paper: #edeef2;
+  --paper-raised: #f8f8fb;
+  --ink: #20242e;
+  --ink-soft: #565d6d;
+  --line: #ccd2dd;
+  --line-soft: #dde1e9;
+  --accent: #1f3a63;
+  --accent-strong: #16294a;
+  --accent-soft: #dbe3f0;
+  --accent-soft-line: #b9c8e0;
+  --seal: #ab3a2e;
+  --ok: #2f7d5b;
+  --ok-soft: #dcefe4;
+  --warn: #92650a;
+  --warn-soft: #f3e6c8;
+  --bad: #ab3a2e;
+  --bad-soft: #f4dfdb;
+  --focus-ring: #4f7cc9;
+  --shadow: 0 1px 2px rgba(32, 36, 46, 0.06), 0 4px 14px rgba(32, 36, 46, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #14161c;
+    --paper-raised: #1b1e26;
+    --ink: #e7e8ee;
+    --ink-soft: #a3a9b8;
+    --line: #333947;
+    --line-soft: #2a2f3a;
+    --accent: #7f9fd6;
+    --accent-strong: #a9c1e8;
+    --accent-soft: #223350;
+    --accent-soft-line: #34486d;
+    --seal: #e0776a;
+    --ok: #7cceaa;
+    --ok-soft: #1d3229;
+    --warn: #e0b45e;
+    --warn-soft: #3a2f16;
+    --bad: #e0776a;
+    --bad-soft: #3a2320;
+    --focus-ring: #7f9fd6;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.35);
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #14161c;
+  --paper-raised: #1b1e26;
+  --ink: #e7e8ee;
+  --ink-soft: #a3a9b8;
+  --line: #333947;
+  --line-soft: #2a2f3a;
+  --accent: #7f9fd6;
+  --accent-strong: #a9c1e8;
+  --accent-soft: #223350;
+  --accent-soft-line: #34486d;
+  --seal: #e0776a;
+  --ok: #7cceaa;
+  --ok-soft: #1d3229;
+  --warn: #e0b45e;
+  --warn-soft: #3a2f16;
+  --bad: #e0776a;
+  --bad-soft: #3a2320;
+  --focus-ring: #7f9fd6;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+:root[data-theme="light"] {
+  --paper: #edeef2;
+  --paper-raised: #f8f8fb;
+  --ink: #20242e;
+  --ink-soft: #565d6d;
+  --line: #ccd2dd;
+  --line-soft: #dde1e9;
+  --accent: #1f3a63;
+  --accent-strong: #16294a;
+  --accent-soft: #dbe3f0;
+  --accent-soft-line: #b9c8e0;
+  --seal: #ab3a2e;
+  --ok: #2f7d5b;
+  --ok-soft: #dcefe4;
+  --warn: #92650a;
+  --warn-soft: #f3e6c8;
+  --bad: #ab3a2e;
+  --bad-soft: #f4dfdb;
+  --focus-ring: #4f7cc9;
+  --shadow: 0 1px 2px rgba(32, 36, 46, 0.06), 0 4px 14px rgba(32, 36, 46, 0.05);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Hiragino Sans", "Yu Gothic Medium", "Yu Gothic", "Noto Sans JP", sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", serif;
+  font-weight: 600;
+  text-wrap: balance;
+  margin: 0;
+}
+
+a { color: var(--accent); }
+
+button {
+  font-family: inherit;
+}
+
+::selection { background: var(--accent-soft); }
+
+.app-shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px 20px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* ---------- Masthead ---------- */
+
+.masthead {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.seal {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2.5px solid var(--seal);
+  color: var(--seal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+  font-size: 26px;
+  font-weight: 700;
+  transform: rotate(-4deg);
+  user-select: none;
+}
+
+.masthead h1 {
+  font-size: 1.5rem;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+}
+
+.masthead .tagline {
+  margin: 6px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  max-width: 62ch;
+}
+
+/* ---------- Service tabs ---------- */
+
+.service-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  appearance: none;
+  border: 1px solid var(--line);
+  border-bottom: none;
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  padding: 9px 16px;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  font-size: 0.86rem;
+  position: relative;
+  top: 1px;
+}
+
+.tab[aria-selected="true"] {
+  color: var(--accent-strong);
+  background: var(--paper);
+  border-color: var(--line);
+  border-bottom: 1px solid var(--paper);
+  font-weight: 600;
+}
+
+.tab:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ---------- Workspace ---------- */
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+
+@media (min-width: 900px) {
+  .workspace {
+    grid-template-columns: 340px minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+/* ---------- Ledger pane ---------- */
+
+.ledger-pane {
+  order: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (min-width: 900px) {
+  .ledger-pane { order: 1; }
+}
+
+.ledger-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#filterInput {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-size: 0.88rem;
+}
+
+.category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  appearance: none;
+  border: 1px solid var(--line-soft);
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  border-radius: 999px;
+  padding: 4px 11px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.chip[aria-pressed="true"] {
+  border-color: var(--accent-soft-line);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.ledger-count {
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+}
+
+.ledger-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: none;
+}
+
+@media (min-width: 900px) {
+  .ledger-list {
+    max-height: calc(100vh - 260px);
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+}
+
+.ledger-card {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.ledger-card-head {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.ledger-card-head .name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  flex: 1;
+}
+
+.ledger-card-head .disclosure {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  transition: transform 0.15s ease;
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.ledger-card[data-open="true"] .disclosure { transform: rotate(90deg); }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.pill-kasan { background: var(--accent-soft); color: var(--accent-strong); }
+.pill-gensan { background: var(--bad-soft); color: var(--bad); }
+.pill-common { background: var(--line-soft); color: var(--ink-soft); }
+
+.ledger-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 0 14px 12px 14px;
+  margin-top: -4px;
+}
+
+.ledger-card-meta .category {
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  align-self: center;
+}
+
+.ledger-card-body {
+  display: none;
+  padding: 0 16px 18px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.ledger-card[data-open="true"] .ledger-card-body { display: block; }
+
+.ledger-card-body .summary {
+  margin: 14px 0;
+  color: var(--ink);
+}
+
+.field-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  margin: 16px 0 8px;
+}
+
+.units-box {
+  background: var(--paper);
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+}
+
+.req-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.req-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 0.84rem;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--line-soft);
+}
+
+.req-row select,
+.req-row input {
+  align-self: stretch;
+}
+
+.req-row:last-child { border-bottom: none; }
+
+.req-row select,
+.req-row input {
+  font-size: 0.82rem;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  min-width: 92px;
+}
+
+.judge-btn {
+  margin-top: 14px;
+  padding: 8px 18px;
+  border-radius: 7px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--paper-raised);
+  font-weight: 600;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.judge-btn:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+
+.verdict {
+  margin-top: 12px;
+  padding: 10px 13px;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  display: none;
+}
+
+.verdict.show { display: block; }
+.verdict.v-ok { background: var(--ok-soft); color: var(--ok); }
+.verdict.v-bad { background: var(--bad-soft); color: var(--bad); }
+.verdict.v-incomplete { background: var(--accent-soft); color: var(--accent-strong); }
+
+.notes-block { font-size: 0.83rem; color: var(--ink-soft); margin-top: 12px; }
+.notes-block b { color: var(--ink); }
+
+.pitfalls {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.citation {
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
+.citation .stamp {
+  display: inline-block;
+  border: 1px solid var(--seal);
+  color: var(--seal);
+  border-radius: 4px;
+  padding: 0 5px;
+  margin-right: 6px;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+  font-size: 0.68rem;
+}
+
+/* ---------- Inquiry pane ---------- */
+
+.inquiry-pane {
+  order: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .inquiry-pane { order: 2; }
+}
+
+.inquiry-form {
+  display: flex;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  background: var(--paper);
+  padding-bottom: 4px;
+  z-index: 2;
+}
+
+#inquiryInput {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 14px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+
+.inquiry-form button {
+  padding: 11px 20px;
+  border-radius: 9px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--paper-raised);
+  font-weight: 600;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.inquiry-form button:hover { background: var(--accent-strong); }
+
+.inquiry-log {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.log-entry {
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-size: 0.88rem;
+  max-width: 100%;
+}
+
+.log-bot {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.log-user {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-soft-line);
+  color: var(--accent-strong);
+  align-self: flex-end;
+  font-weight: 600;
+}
+
+.log-bot .answer-body { white-space: pre-wrap; }
+
+.log-bot .refs {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line-soft);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ref-btn {
+  appearance: none;
+  border: 1px solid var(--accent-soft-line);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border-radius: 999px;
+  padding: 4px 11px;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.example-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+/* ---------- Colophon ---------- */
+
+.colophon {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+}
+
+.colophon p { margin: 0 0 6px; }
+.colophon-meta { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+</style>
+<div class="app-shell">
+  <header class="masthead">
+    <div class="seal" aria-hidden="true">障</div>
+    <div>
+      <h1>障害福祉サービス 加算・減算台帳</h1>
+      <p class="tagline">施設入所支援・生活介護・短期入所・共同生活援助 ―― 加算/減算の要件・単位数の目安・出典を引き、要件チェックまで行える台帳です。</p>
+    </div>
+  </header>
+
+  <nav class="service-tabs" role="tablist" id="serviceTabs" aria-label="サービス種類"></nav>
+
+  <div class="workspace">
+    <main class="inquiry-pane">
+      <form class="inquiry-form" id="inquiryForm" autocomplete="off">
+        <input type="text" id="inquiryInput" placeholder="例: 生活介護の人員配置体制加算の要件は?" aria-label="質問を入力" />
+        <button type="submit">照会</button>
+      </form>
+      <div class="inquiry-log" id="inquiryLog"></div>
+    </main>
+
+    <aside class="ledger-pane">
+      <div class="ledger-controls">
+        <input type="search" id="filterInput" placeholder="項目名で絞り込み" aria-label="項目名で絞り込み" />
+        <div class="category-chips" id="categoryChips"></div>
+        <div class="ledger-count" id="ledgerCount"></div>
+      </div>
+      <div class="ledger-list" id="ledgerList"></div>
+    </aside>
+  </div>
+
+  <footer class="colophon">
+    <p>本ツールは一般的な制度知識と、厚生労働省の報酬改定資料・Q&amp;A(平成18年度〜令和8年度)に基づく参考情報です。単位数・加算率は事業所の規模区分や地域区分により異なります。実際の請求(国保連伝送)にあたっては、必ず最新の報酬告示・留意事項通知、及び管轄の自治体・国保連への確認を行ってください。</p>
+    <p class="colophon-meta">tknr1 / 障害福祉サービス加算・減算AI ―― スタンドアロン版(2026年7月作成)</p>
+  </footer>
+</div>
+
+<script>
+const DATA = {
+  shisetsu: {
+  "serviceId": "shisetsu_nyusho_shien",
+  "serviceName": "施設入所支援",
+  "serviceNameKana": "しせつにゅうしょしえん",
+  "overview": "施設に入所する障害者に対し、主として夜間において、入浴・排せつ・食事の介護、生活相談等を行うサービス。日中は生活介護等の日中活動系サービスと組み合わせて利用されるのが一般的。夜間の支援体制(夜勤職員配置)が加算構造の中心となる。2024年度(R6)報酬改定では、利用定員10人刻みでの基本報酬細分化に加え、地域移行を推進するための加算(地域移行支援体制加算、地域移行促進加算(Ⅱ))や、夜間看護体制加算の拡充、通院支援加算の新設、見守り機器導入による夜勤職員配置体制加算の要件緩和など、地域移行と医療的ケア対応を重視する見直しが行われた。",
+  "additions": [
+    {
+      "id": "yakin_shokuin_haichi_kasan",
+      "name": "夜勤職員配置加算(夜勤職員配置体制加算)",
+      "category": "人員配置系加算",
+      "summary": "夜間及び深夜の時間帯における夜勤職員の配置数を、基準となる配置数よりも手厚くしている場合に評価される加算。2024年度(R6)改定で、入所者の動向を検知できる見守り機器を導入している場合の配置人数要件の緩和措置が新設された。",
+      "units": "配置人数・利用定員規模により設定。見守り機器を入所者数の15%以上に設置している場合、必要夜勤人数を緩和可(例: 前年度平均利用者21〜40人の場合、通常は夜勤2人以上必要なところ夜勤1.9人以上に緩和、41〜60人の場合は3人以上→2.9人以上に緩和)。具体的な単位数は要確認。",
+      "requirements": [
+        { "id": "r1", "text": "夜勤を行う職員(生活支援員等)の数が、利用者数に応じた基準配置数を上回っている(見守り機器を入所者数の15%以上に設置している場合は緩和後の基準を適用可)", "type": "numeric" },
+        { "id": "r2", "text": "夜勤時間帯を通じて必要な人数を継続して配置している(記録により証明可能)", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "夜勤時間帯の定義(概ね22時〜翌5時を含む連続16時間等)に基づき配置実績を計算する。夜勤専従者と宿直者は扱いが異なるため区別して記録する必要がある。見守り機器導入による緩和を適用する場合は、機器の設置実績(台数・対象入所者数)の記録保存が必要。",
+      "commonPitfalls": ["宿直者を夜勤者としてカウントしてしまう誤り", "利用者の定員に対してではなく、当日の在所者数に対して配置基準を誤って計算する"],
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)、報酬告示、指定基準に関する省令、留意事項通知",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt"]
+    },
+    {
+      "id": "yakan_kango_taisei_kasan",
+      "name": "夜間看護体制加算",
+      "category": "医療的ケア系加算",
+      "summary": "夜勤職員配置体制加算が算定されている施設において、生活支援員に代えて看護職員を配置し、入所者の医療的ケアへの対応状況を踏まえた評価を行う加算。2024年度(R6)改定で、看護職員の配置人数に応じた評価に見直された(旧・看護職員配置加算を再編)。",
+      "units": "基本は60単位/日。生活支援員に代えて複数の看護職員を配置した場合、35単位に(看護職員1に加えて配置した人数)を乗じて得た単位数を、基本の所定単位数に加算する。",
+      "requirements": [
+        { "id": "r1", "text": "夜勤職員配置体制加算が算定されている", "type": "boolean" },
+        { "id": "r2", "text": "生活支援員に代えて看護職員を1名以上配置している(都道府県知事に届出済み)", "type": "boolean" },
+        { "id": "r3", "text": "配置した看護職員が日常的な健康管理・医療的ケアに対応している", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "複数名の看護職員を配置するほど加算額が積み増される点が2024年度改定の特徴。配置人数の記録(勤務実績)の保存が必要。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt"]
+    },
+    {
+      "id": "nyuin_taigai_ji_kasan",
+      "name": "入院・外泊時加算",
+      "category": "利用実績系加算",
+      "summary": "利用者が病院等への入院、又は家庭への外泊を行った場合、一定日数を上限に、居室を確保しつつ算定できる加算。平成19年度(2007年度)改正で月の算定上限日数が6日から8日に延長された。",
+      "units": "1日につき320単位(2007年度当時の水準。その後の報酬改定で見直されている可能性があるため最新の告示で要確認)。",
+      "requirements": [
+        { "id": "r1", "text": "利用者が病院・診療所への入院、又は家庭その他への外泊を行っている", "type": "boolean" },
+        { "id": "r2", "text": "退院・帰所後、引き続き同じ居室を使用できるよう体制を確保している", "type": "boolean" },
+        { "id": "r3", "text": "算定日数が1回の入院・外泊につき月8日を限度としている(入院・外泊が連続していなくてもよく、複数回の合算で判定)", "type": "numeric" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "月8日を超えて入院・外泊が続く場合、入院・外泊時加算は算定できなくなるが、代わりに「入院時支援加算」(長期入院者への施設職員による支援を評価)を算定できる場合がある。入院中の空きベッドをショートステイに活用した場合、入院・外泊時加算とショートステイ報酬は同時に算定できない(入院時支援加算とショートステイは併算定可能な場合がある)。",
+      "verifyAgainst": "平成19年度「入院外泊時加算取扱等Q&A」(新旧比較)。最新の単位数・上限日数は必ず現行告示で確認すること。",
+      "sourceFiles": ["2007-04-02_入院外泊時加算取扱等Q&A(新旧比較).txt", "2006-09-22_入院時支援加算等Q&A(旧版).txt"]
+    },
+    {
+      "id": "chiiki_ikou_shien_taisei_kasan",
+      "name": "地域移行支援体制加算(2024年度新設)",
+      "category": "地域移行系加算",
+      "summary": "障害者支援施設から地域へ移行した者がいる場合であって、入所定員を1名以上減らした場合を評価するために2024年度改定で新設された加算。",
+      "units": "利用定員規模と障害支援区分に応じて設定(例: 定員40人以下・区分6で15単位/日、定員81人以上・区分2以下で2単位/日など)。利用定員の減少数を乗じて算定。",
+      "requirements": [
+        { "id": "r1", "text": "前年度に当該施設から退所し、地域生活が6月以上継続している者が1人以上いる", "type": "boolean" },
+        { "id": "r2", "text": "利用定員を減少させたものとして都道府県知事に届け出ている", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "1年間を限度に、1日につき所定単位数に利用定員の減少数を乗じて得た単位数を加算する。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt"]
+    },
+    {
+      "id": "chiiki_ikou_sokushin_kasan_2",
+      "name": "地域移行促進加算(Ⅱ)(2024年度新設)",
+      "category": "地域移行系加算",
+      "summary": "入所者に対して、通所サービスやグループホームの見学・食事体験等、地域生活への移行に向けた動機付け支援を実施した場合を評価するために2024年度改定で新設された加算。",
+      "units": "60単位/日(1月につき3回を限度)",
+      "requirements": [
+        { "id": "r1", "text": "入所者に対し、通所サービス又はグループホームの見学や食事体験等、地域生活への移行に向けた支援を実施している", "type": "boolean" },
+        { "id": "r2", "text": "1月あたりの算定回数が3回以内である", "type": "numeric" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "旧来の「地域生活移行個別支援特別加算」に類する趣旨の加算だが、2024年度改定後の正式名称・要件は「地域移行促進加算(Ⅱ)」。地域移行等意向確認担当者の選任・指針整備(下記の減算対象)とあわせて運用することが想定されている。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt"]
+    },
+    {
+      "id": "tsuin_shien_kasan",
+      "name": "通院支援加算(2024年度新設)",
+      "category": "医療的ケア系加算",
+      "summary": "医療的ケアが必要な者等の通院頻度の高さを踏まえ、通院に係る支援を評価するために2024年度改定で新設された加算。",
+      "units": "17単位/回(1月に2回を限度)",
+      "requirements": [
+        { "id": "r1", "text": "入所者に対し、通院に係る支援を実施している", "type": "boolean" },
+        { "id": "r2", "text": "1月あたりの算定回数が2回以内である", "type": "numeric" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "通院支援の実施記録(同行者・通院先・支援内容)の保存が必要。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt"]
+    },
+    {
+      "id": "shokuji_teikyo_taisei_kasan_shisetsu",
+      "name": "食事提供体制加算",
+      "category": "食事系加算",
+      "summary": "低所得の利用者等に対し、施設内で調理等により食事の提供を行う体制を評価する加算(経過措置は令和9年3月31日まで延長)。",
+      "units": "1日あたり定額。要確認。",
+      "requirements": [
+        { "id": "r1", "text": "利用者が市町村民税非課税世帯等、対象要件に該当する", "type": "boolean" },
+        { "id": "r2", "text": "施設内の調理室で調理し(又は委託先で調理し)、管理栄養士等が献立作成又は確認に関わっている", "type": "boolean" },
+        { "id": "r3", "text": "利用者ごとの摂食量、体重・BMI(概ね6月に1回)を記録している", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "経過措置は令和9年3月31日まで延長されている(2024年度改定時点)。生活介護の食事提供体制加算と同様の見直しが行われている。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt"]
+    }
+  ],
+  "reductions": [
+    {
+      "id": "chiiki_ikou_ikou_kakunin_shishin_mijisshi_gensan",
+      "name": "地域移行等意向確認等に関する指針未作成等の場合の減算(2024年度新設)",
+      "category": "運営基準関連減算",
+      "summary": "全入所者に対する地域移行・施設外日中サービス利用の意向確認を適切に行うための指針を作成していない場合、又は地域移行等意向確認担当者を選任していない場合に適用される減算。令和6年度は努力義務、令和8年度から義務化・減算実施。",
+      "requirements": [
+        { "id": "r1", "text": "地域移行等意向確認等に関する指針を作成している", "type": "boolean" },
+        { "id": "r2", "text": "地域移行等意向確認担当者を選任している", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND(いずれか未実施で減算対象、令和8年度から適用)",
+      "notes": "1日につき5単位を減算(令和8年度から実施)。地域移行促進加算(Ⅱ)や地域移行支援体制加算とあわせて、地域移行推進の一連の運営基準・加算体系として運用されている。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt"]
+    }
+  ]
+},
+  seikatsu: {
+  "serviceId": "seikatsu_kaigo",
+  "serviceName": "生活介護",
+  "serviceNameKana": "せいかつかいご",
+  "overview": "常時介護を必要とする障害者に対し、主として昼間において、入浴・排せつ・食事の介護等を行うとともに、創作的活動又は生産活動の機会を提供するサービス。人員配置体制加算(利用者に対する職員配置の手厚さ)が算定構造の中心となる。2024年度(R6)報酬改定で、基本報酬がサービス提供時間別・利用定員規模別(10人刻み)に細分化され、常勤看護職員等配置加算・人員配置体制加算の見直しや、入浴支援加算・喀痰吸引等実施加算・栄養スクリーニング加算・栄養改善加算の新設など、医療的ケア対応を評価する加算が大きく拡充された。",
+  "additions": [
+    {
+      "id": "jinin_haichi_taisei_kasan",
+      "name": "人員配置体制加算",
+      "category": "人員配置系加算",
+      "summary": "医療的ケアが必要な者など重度の障害者に対する複数職員による手厚い体制を評価する加算。2024年度(R6)改定で単価が引き上げられ、新たに区分(Ⅳ)が追加された。",
+      "units": "利用定員規模別(20人以下/21〜60人/61人以上)に設定。(Ⅰ)常勤換算1.5:1以上: 321/263/245単位/日。(Ⅱ)常勤換算1.7:1以上: 265/212/197単位/日。(Ⅲ)常勤換算2:1以上: 181/136/125単位/日。(Ⅳ)常勤換算2.5:1以上: 51/38/33単位/日(2024年度改定で新設)。",
+      "requirements": [
+        { "id": "r1", "text": "常勤換算による生活支援員等の配置数が、区分(Ⅰ:1.5:1、Ⅱ:1.7:1、Ⅲ:2:1、Ⅳ:2.5:1)に応じた利用者数対職員数の基準を満たしている", "type": "numeric" },
+        { "id": "r2", "text": "配置している職員のうち一定割合以上が常勤である", "type": "boolean" },
+        { "id": "r3", "text": "人員配置基準を実際の勤務実績(タイムカード・勤務表)で証明できる", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND(配置区分は最も手厚い基準を満たす区分で算定)",
+      "notes": "月ごとの平均利用者数と実際の配置人員数から配置比率を算出し、最も有利な区分を確認する必要がある。急な欠員により基準を割り込むと区分変更やサービス提供職員欠如減算のリスクがある。医療的ケアが必要な者に対してたんの吸引等を実施する体制を評価する観点から、利用者要件にたんの吸引等を必要とする者が含まれる(H24年度改定)。",
+      "commonPitfalls": ["利用者数の変動(欠席者の扱い)を考慮せず配置比率を誤算定", "常勤換算の計算誤り(非常勤職員の勤務時間換算ミス)"],
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)、報酬告示 別表",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt", "2012-01-31_H24年度報酬改定の概要.txt"]
+    },
+    {
+      "id": "jouki_kango_shokuin_haichi_kasan",
+      "name": "常勤看護職員等配置加算",
+      "category": "医療的ケア系加算",
+      "summary": "医療的ケアが必要な者に対する体制や、医療的ケア児の成人期への移行にも対応した体制を整備するため、看護職員の配置人数に応じて評価する加算(旧・看護職員配置加算(Ⅰ)(Ⅱ)(Ⅲ)を再編)。2024年度(R6)改定で、利用定員区分を10段階に細分化した上で、常勤換算で算定した看護職員数を乗じる方式に変更された。",
+      "units": "利用定員規模に応じた所定単位数(5人以下32単位/6〜10人30単位/11〜20人28単位/21〜30人24単位/31〜40人19単位/41〜50人15単位/51〜60人11単位/61〜70人10単位/71〜80人8単位/81人以上6単位、いずれも1日あたり)に、常勤換算方法で算定した看護職員の数を乗じて得た単位数。",
+      "requirements": [
+        { "id": "r1", "text": "常勤換算で1名以上の看護職員を専従で配置している", "type": "boolean" },
+        { "id": "r2", "text": "看護職員が利用者の健康状態の管理・医療的ケアに対応する体制を整えている", "type": "boolean" },
+        { "id": "r3", "text": "定員超過利用減算・サービス提供職員欠如減算・サービス管理責任者欠如減算のいずれにも該当していない", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "常勤看護職員等配置加算は、人員配置基準を満たした上で適正なサービス提供を確保していると認められる事業所でのみ算定できる(定員超過利用減算等に該当する場合は算定不可、令和6年度QA VOL.4で明確化)。医療的ケアが必要な利用者数に応じてさらに手厚い評価(喀痰吸引等実施加算等)と併算定可能な場合がある。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)、令和6年度報酬改定QA VOL.4",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt", "2024-06-04_R6年度報酬改定QA_VOL4.txt"]
+    },
+    {
+      "id": "souken_kasan_seikatsu",
+      "name": "送迎加算",
+      "category": "送迎系加算",
+      "summary": "自宅と事業所間の送迎を実施した場合に、片道の実績に応じて評価される加算。2024年度(R6)改定で、障害者支援施設と同一敷地内又は隣接していない生活介護事業所等を利用する施設入所者についても、新たに算定対象に含まれるようになった。",
+      "units": "片道につき所定単位数を加算(往復の場合は2倍)。具体的な単位数は要確認。",
+      "requirements": [
+        { "id": "r1", "text": "自ら又は委託により、利用者の居宅等と事業所との間の送迎を実施している(委託先が別事業者でも算定可能、複数事業所が交通事業者へ共同委託する場合を含む)", "type": "boolean" },
+        { "id": "r2", "text": "運行計画・乗降場所等を記録し、安全運行のための体制(乗降車の見守り等)を確保している", "type": "boolean" },
+        { "id": "r3", "text": "施設入所者の場合、利用する生活介護事業所等が障害者支援施設と同一敷地内又は隣接していない", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "他事業所の利用者を同乗させる場合、送迎範囲が利用者の利便性を損なわず、各事業所の通常の事業実施地域範囲内であれば、事業所間で費用負担・責任の所在等を協議した上で両事業所とも送迎加算を算定できる(令和6年度QA VOL.6)。運転記録・乗車人数の記録保存が必要。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)、令和6年度報酬改定QA VOL.6",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt", "2024-10-11_R6年度報酬改定QA_VOL6.txt"]
+    },
+    {
+      "id": "eiyou_screening_kasan",
+      "name": "栄養スクリーニング加算(2024年度新設)",
+      "category": "栄養系加算",
+      "summary": "生活支援員や管理栄養士等の他職種と連携し、全ての利用者の栄養状態のスクリーニングを行った場合を評価する加算(2024年度改定で新設)。",
+      "units": "5単位/回",
+      "requirements": [
+        { "id": "r1", "text": "利用開始時及び利用中6月ごとに利用者の栄養状態について確認を行っている", "type": "boolean" },
+        { "id": "r2", "text": "確認した栄養状態に関する情報を、当該利用者を担当する相談支援専門員に提供している", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "栄養改善加算(個別的な栄養管理、200単位/回)とは別建て。栄養改善加算の算定には管理栄養士の配置、栄養ケア計画の策定、居宅訪問等を含む4要件をすべて満たす必要がある。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt"]
+    },
+    {
+      "id": "nyuyoku_shien_kasan",
+      "name": "入浴支援加算(2024年度新設)",
+      "category": "医療的ケア系加算",
+      "summary": "医療的ケアが必要な者又は重症心身障害者に対する入浴に係る支援を評価するため、2024年度改定で新設された加算。",
+      "units": "80単位/日",
+      "requirements": [
+        { "id": "r1", "text": "対象利用者(医療的ケアが必要な者又は重症心身障害者)に入浴に係る支援を提供している", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "喀痰吸引等実施加算(30単位/日、喀痰吸引等の研修修了職員が実施した場合に加算)と合わせて、2024年度改定で医療的ケア対応を評価する加算として新設された。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt"]
+    },
+    {
+      "id": "kakutan_kyuuin_jisshi_kasan",
+      "name": "喀痰吸引等実施加算(2024年度新設)",
+      "category": "医療的ケア系加算",
+      "summary": "医療的ケアが必要な者に対して喀痰吸引等を実施する事業所の体制を評価するため、2024年度改定で新設された加算。",
+      "units": "30単位/日",
+      "requirements": [
+        { "id": "r1", "text": "喀痰吸引等を実施するものとして登録した事業所である", "type": "boolean" },
+        { "id": "r2", "text": "喀痰吸引等の実施に必要な知識・技能を修得するための研修を修了した職員が、対象利用者に喀痰吸引等を行っている", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "医療的ケアが必要な者であって喀痰吸引等が必要な者が対象。入浴支援加算と併せて算定可能な場合がある。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt"]
+    },
+    {
+      "id": "shokuji_teikyo_taisei_kasan",
+      "name": "食事提供体制加算",
+      "category": "食事系加算",
+      "summary": "低所得の利用者等に対し、事業所内で調理等により食事の提供を行う体制を評価する加算。2024年度(R6)改定で、令和9年3月31日まで経過措置が延長されるとともに、栄養面での配慮を確認するための要件が追加された。",
+      "units": "30単位/日(通所系)。短期入所・宿泊型自立訓練は48単位/日。",
+      "requirements": [
+        { "id": "r1", "text": "利用者が市町村民税非課税世帯等(生活保護受給世帯、市町村民税非課税世帯、所得割16万円未満)、対象要件に該当する", "type": "boolean" },
+        { "id": "r2", "text": "事業所内の調理室で調理し(又は委託先で調理し)、管理栄養士又は栄養士が献立作成に関わる、又は栄養ケア・ステーション等の管理栄養士等が栄養面について確認した献立で食事を提供している", "type": "boolean" },
+        { "id": "r3", "text": "利用者ごとの摂食量を記録している", "type": "boolean" },
+        { "id": "r4", "text": "利用者ごとの体重やBMIをおおむね6月に1回記録している", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "管理栄養士等は常勤・専従である必要はなく、法人内外(栄養ケア・ステーション、保健所等)の管理栄養士等が献立の作成・確認に関わっていればよい。献立の確認は年1回以上、一定期間の献立(サイクルメニュー)の確認で足りる。経過措置は令和9年3月31日まで延長されている(2024年度改定時点)。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)、令和6年度報酬改定QA VOL.5",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt", "2024-08-29_R6年度報酬改定QA_VOL5.txt"]
+    },
+    {
+      "id": "iryou_renkei_taisei_kasan_seikatsu",
+      "name": "医療連携体制加算",
+      "category": "医療的ケア系加算",
+      "summary": "看護職員を確保し、たんの吸引等の医療的ケアや、看護師による健康管理を必要とする利用者に対応する体制を評価する加算(区分により訪問看護ステーション等との連携による実施も可)。",
+      "units": "対応内容(喀痰吸引等の実施、看護師による対応時間等)の区分に応じて設定。要確認。",
+      "requirements": [
+        { "id": "r1", "text": "看護職員を配置し、又は訪問看護ステーション等と連携し、医療的ケアが必要な利用者に対応している", "type": "boolean" },
+        { "id": "r2", "text": "医師の指示書に基づく医療的ケア(喀痰吸引・経管栄養等)を実施している", "type": "boolean" }
+      ],
+      "judgmentLogic": "OR(区分により要件が異なる)",
+      "notes": "常勤看護職員等配置加算と要件・単位数の体系が異なるため、両者の違いを確認したうえでどちらが対象事業所の体制に合致するか判断する必要がある。",
+      "verifyAgainst": "報酬告示、留意事項通知"
+    },
+    {
+      "id": "jikan_ryouiki_kasan",
+      "name": "延長支援加算",
+      "category": "提供時間系加算",
+      "summary": "生活介護の基本報酬がサービス提供時間で8時間以上9時間未満まで設定されたことに伴い、2024年度(R6)改定で9時間以上の支援を評価する体系に見直された。施設入所者については算定できない。",
+      "units": "所要時間9時間以上10時間未満: 100単位/日。10時間以上11時間未満: 200単位/日。11時間以上12時間未満: 300単位/日。12時間以上: 400単位/日(改定前は延長1時間未満61単位/日・1時間以上92単位/日)。",
+      "requirements": [
+        { "id": "r1", "text": "所要時間が9時間以上に及ぶ支援を行っている", "type": "numeric" },
+        { "id": "r2", "text": "延長支援の実施について個別支援計画に位置付けている、又は必要性を記録している", "type": "boolean" },
+        { "id": "r3", "text": "施設入所者ではない(施設入所者は延長支援加算を算定できない)", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "延長時間の記録(開始・終了時刻)の保存が必須。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt"]
+    }
+  ]
+},
+  tanki: {
+  "serviceId": "tanki_nyusho",
+  "serviceName": "短期入所(ショートステイ)",
+  "serviceNameKana": "たんきにゅうしょ",
+  "overview": "自宅で介護する者が病気等の理由により、施設等への短期間の入所を必要とする障害者に対し、入浴・排せつ・食事の介護等を行うサービス。単独型・併設型・空床利用型で基本報酬体系が異なり、加算もこれに応じて設定される。2024年度(R6)報酬改定で、緊急時の重度障害者受入機能の充実(緊急短期入所受入加算の増額、地域生活支援拠点等加算の上乗せ)、医療的ケア児者の受入体制拡充(医療的ケア対応支援加算・重度障害児/障害者対応支援加算の新設)、福祉型強化短期入所の日中支援サービス類型の創設など、緊急受入・医療的ケア対応を重視する見直しが行われた。",
+  "additions": [
+    {
+      "id": "juusho_kango_taisei_kasan_tanki",
+      "name": "重度障害者支援加算(短期入所)",
+      "category": "重度対応系加算",
+      "summary": "重度の障害者(区分6等)や医療的ケアが必要な利用者を受け入れる体制を評価する加算。",
+      "units": "対象者の状態・体制区分に応じて設定。要確認。",
+      "requirements": [
+        { "id": "r1", "text": "対象利用者の障害支援区分が一定以上(区分6等)である", "type": "boolean" },
+        { "id": "r2", "text": "看護職員の配置等、医療的ケアに対応できる体制を確保している", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "生活介護・施設入所支援と同様、対象者の状態像を証明する記録(医師の意見書・支援区分認定資料等)の整備が必要。",
+      "verifyAgainst": "報酬告示、留意事項通知"
+    },
+    {
+      "id": "chiiki_seikatsu_kyoten_tanki_kasan",
+      "name": "地域生活支援拠点等である場合の加算",
+      "category": "緊急受入系加算",
+      "summary": "地域生活支援拠点等として指定短期入所等を行った場合の加算。2024年度(R6)改定で、平時から市町村・基幹相談支援センター等との連携調整に従事する者を1名以上配置し、医療的ケアが必要な児者・重症心身障害児者・強度行動障害を有する児者を受け入れた場合の上乗せ評価が追加された。",
+      "units": "地域生活支援拠点等としての基本加算: 利用開始日について1日につき100単位。上記に加え、連携調整担当者を配置した上で対象者(医療的ケア児者・重症心身障害児者・強度行動障害児者)を受け入れた場合、利用開始日についてさらに1日につき200単位を加算(2024年度改定で新設)。",
+      "requirements": [
+        { "id": "r1", "text": "地域生活支援拠点等として指定短期入所等を行っている", "type": "boolean" },
+        { "id": "r2", "text": "市町村及び基幹相談支援センター等との連携及び調整に従事する者を1名以上配置している(200単位加算の場合)", "type": "boolean" },
+        { "id": "r3", "text": "受け入れた利用者が医療的ケアが必要な児者、重症心身障害児者、又は強度行動障害を有する児者である(200単位加算の場合)", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND(200単位の上乗せ分は基本の100単位加算に追加して算定)",
+      "notes": "利用を開始した日についてのみ算定される点に注意。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt"]
+    },
+    {
+      "id": "kinkyu_tanki_nyusho_ukeire_kasan",
+      "name": "緊急短期入所受入加算",
+      "category": "緊急受入系加算",
+      "summary": "緊急時の重度障害者の受入れを評価する加算。2024年度(R6)改定で単価が引き上げられた。",
+      "units": "(Ⅰ) 270単位/日(改定前180単位/日)。(Ⅱ) 500単位/日(改定前270単位/日)。",
+      "requirements": [
+        { "id": "r1", "text": "緊急的な事情(家族の疾病等)により短期入所の利用が必要になった利用者を受け入れている", "type": "boolean" },
+        { "id": "r2", "text": "緊急時の受入体制(相談対応・空床確保等)を構築している", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "地域生活支援拠点等である場合の加算と組み合わせて算定されることが多い。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt"]
+    },
+    {
+      "id": "iryouteki_care_taiou_shien_kasan_tanki",
+      "name": "医療的ケア対応支援加算(2024年度新設)",
+      "category": "医療的ケア系加算",
+      "summary": "福祉型短期入所サービスにおいて、必要とされる数以上の看護職員を配置した上で、医療的ケア児者を受け入れて対応する体制を評価するために2024年度改定で新設された加算。",
+      "units": "120単位/日",
+      "requirements": [
+        { "id": "r1", "text": "福祉型短期入所サービス費を算定している", "type": "boolean" },
+        { "id": "r2", "text": "看護職員を必要とされる数以上配置している", "type": "boolean" },
+        { "id": "r3", "text": "医療的ケア児者に対し、指定短期入所等を行っている", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "重度障害児・障害者対応支援加算とは別建てで、両方の要件を満たせば併算定できる場合がある(要確認)。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt"]
+    },
+    {
+      "id": "juudo_shougaiji_shakaiseishin_taio_shien_kasan",
+      "name": "重度障害児・障害者対応支援加算(2024年度新設)",
+      "category": "重度対応系加算",
+      "summary": "区分5・6(障害児は障害児支援区分3)に該当する重度利用者を多く受け入れている福祉型短期入所事業所を評価するために2024年度改定で新設された加算。",
+      "units": "30単位/日",
+      "requirements": [
+        { "id": "r1", "text": "福祉型短期入所サービス費を算定している", "type": "boolean" },
+        { "id": "r2", "text": "区分5・6又は障害児支援区分3に該当する利用者数が、事業所の利用者数の50%以上である", "type": "numeric" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "事業所単位の利用者構成比で判定するため、月ごとの利用者名簿・障害支援区分の記録管理が必要。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt"]
+    },
+    {
+      "id": "iryougata_tanki_nyusho_ukeirezen_shien_kasan",
+      "name": "医療型短期入所受入前支援加算(2024年度新設)",
+      "category": "医療的ケア系加算",
+      "summary": "医療型短期入所サービスの利用を希望する医療的ケア児者に対し、利用前に事前訪問等で医療的ケアの手技等を確認した上で新たに受け入れた場合を評価するために2024年度改定で新設された加算。",
+      "units": "(Ⅰ) 1,000単位/日: 職員が利用前日までに自宅等へ訪問し、医療的ケアの手技等を確認した場合。(Ⅱ) 500単位/日: テレビ電話装置等を活用して利用前日までに医療的ケアの手技等を確認した場合。",
+      "requirements": [
+        { "id": "r1", "text": "医療的ケア児者が、当該医療型短期入所事業所を初めて利用する(新規受入)", "type": "boolean" },
+        { "id": "r2", "text": "利用前日までに、訪問(Ⅰ)又はテレビ電話装置等(Ⅱ)により医療的ケアの手技等を確認している", "type": "choice", "options": ["Ⅰ(訪問)", "Ⅱ(テレビ電話装置等)", "該当なし"] }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "利用開始日についてのみ算定。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt"]
+    },
+    {
+      "id": "iryou_renkei_taisei_kasan_tanki",
+      "name": "医療連携体制加算",
+      "category": "医療的ケア系加算",
+      "summary": "看護師等を確保し、たんの吸引等の医療的ケアが必要な利用者や、重篤な状態にある利用者を受け入れる体制を評価する加算。訪問看護ステーション等との連携により実施する場合を含む。",
+      "units": "対応時間・実施内容の区分に応じて設定。要確認。",
+      "requirements": [
+        { "id": "r1", "text": "看護職員を配置し、又は訪問看護ステーション等と連携している", "type": "boolean" },
+        { "id": "r2", "text": "医師の指示に基づく医療的ケアを実施している、又は看護師による健康管理を行っている", "type": "boolean" }
+      ],
+      "judgmentLogic": "OR",
+      "notes": "短期入所は利用日数が短く入れ替わりが多いため、利用開始時の医療情報の引継ぎ記録が重要。医療的ケア対応支援加算(福祉型)とは要件・単位数の体系が異なる。",
+      "verifyAgainst": "報酬告示、留意事項通知"
+    },
+    {
+      "id": "tanki_shokuji_teikyo_kasan",
+      "name": "食事提供体制加算",
+      "category": "食事系加算",
+      "summary": "低所得の利用者等に対し、施設内で調理等により食事の提供を行う体制を評価する加算。",
+      "units": "48単位/日(短期入所・宿泊型自立訓練の場合。通所系は30単位/日)。経過措置は令和9年3月31日まで延長。",
+      "requirements": [
+        { "id": "r1", "text": "利用者が市町村民税非課税世帯等、対象要件に該当する", "type": "boolean" },
+        { "id": "r2", "text": "施設内の調理室で調理し(又は委託先で調理し)、管理栄養士等が献立作成又は確認に関わっている", "type": "boolean" },
+        { "id": "r3", "text": "利用者ごとの摂食量、体重・BMI(概ね6月に1回)を記録している", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "生活介護と共通の見直し内容(2024年度改定)。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)、令和6年度報酬改定QA VOL.5",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt", "2024-08-29_R6年度報酬改定QA_VOL5.txt"]
+    },
+    {
+      "id": "souken_kasan_tanki",
+      "name": "送迎加算",
+      "category": "送迎系加算",
+      "summary": "利用者の居宅等と事業所間の送迎を実施した場合に評価される加算。",
+      "units": "1回あたり定額。要確認。",
+      "requirements": [
+        { "id": "r1", "text": "自ら又は委託により送迎を実施している(委託先が別事業者でも可)", "type": "boolean" },
+        { "id": "r2", "text": "安全な運行体制(添乗者の確保等)を整えている", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "送迎の実施記録(乗車人数・時刻)の保存が必要。他事業所の利用者との同乗については生活介護の送迎加算と同様の考え方が適用される(令和6年度QA VOL.6)。",
+      "verifyAgainst": "報酬告示、留意事項通知、令和6年度報酬改定QA VOL.6",
+      "sourceFiles": ["2024-10-11_R6年度報酬改定QA_VOL6.txt"]
+    },
+    {
+      "id": "kyodo_seikatsu_taiken_kasan",
+      "name": "体験利用支援加算",
+      "category": "利用促進系加算",
+      "summary": "施設入所支援やグループホームからの地域移行等を目的として、短期入所を体験的に利用する者を受け入れた場合に評価される加算。",
+      "units": "1日あたり定額(算定期間に上限あり)。要確認。",
+      "requirements": [
+        { "id": "r1", "text": "地域移行等を目的とした体験的な利用であることが個別支援計画等で明確である", "type": "boolean" },
+        { "id": "r2", "text": "算定期間の上限(例:1年間で一定日数)を超えていない", "type": "numeric" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "通常の短期入所利用との区別(目的・計画書上の位置づけ)が必要。",
+      "verifyAgainst": "報酬告示、留意事項通知"
+    },
+    {
+      "id": "kubun6_taio_kasan",
+      "name": "強度行動障害児(者)特別支援加算",
+      "category": "重度対応系加算",
+      "summary": "強度行動障害を有する利用者に対し、専門的な支援体制(研修修了者の配置、個別支援計画の作成等)により受け入れを行った場合に評価される加算。2024年度(R6)改定で、状態が悪化した強度行動障害児者への集中的支援を評価する「集中的支援加算」が新設された(短期入所も対象サービスに含まれる)。",
+      "units": "対応日数・体制区分に応じて設定。要確認。集中的支援加算(Ⅱ): 500単位/日(3月以内の期間、他事業所等から集中支援が必要な利用者を受け入れて支援した場合)。",
+      "requirements": [
+        { "id": "r1", "text": "強度行動障害支援者養成研修修了者が支援に関与している", "type": "boolean" },
+        { "id": "r2", "text": "対象者の行動関連項目の点数が基準以上である(基本10点以上、より重度な場合は18点以上)", "type": "numeric" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "短期入所は短期間の受け入れであっても、事前のアセスメント・引継ぎ情報の記録が要件充足の証跡として重要。",
+      "verifyAgainst": "報酬告示、留意事項通知、令和6年度報酬改定の概要(本編)、令和6年度報酬改定QA VOL.2",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt", "2024-04-05_R6年度報酬改定QA_VOL2.txt"]
+    }
+  ]
+},
+  kyodo: {
+  "serviceId": "kyodo_seikatsu_engo",
+  "serviceName": "共同生活援助(グループホーム/旧:共同生活介護)",
+  "serviceNameKana": "きょうどうせいかつえんじょ",
+  "overview": "地域の中で共同生活を営む住居において、主として夜間、相談・入浴・排せつ・食事の介護その他の日常生活上の援助を行うサービス。かつての「共同生活介護(ケアホーム)」は2014年度に「共同生活援助(グループホーム)」に一元化されている。2024年度(R6)報酬改定で、基本報酬区分が世話人配置4:1/5:1/6:1/体験利用の4区分から、6:1(基本)+体験利用の2区分に簡素化され、手厚い配置は新設の「人員配置体制加算(Ⅰ)(Ⅱ)」で評価する体系に再編された。あわせて自立生活支援加算の拡充、退居後共同生活援助サービス費・ピアサポート実施加算の新設など、一人暮らし等への移行支援を重視する見直しが行われた。2026年度(R8)改定では、対象を拡大した「福祉・介護職員等処遇改善加算」に加え、新規指定事業所(令和8年6月以降)に限り基本報酬を1000分の972に引き下げる「応急的な報酬単価の特例」(介護サービス包括型・日中サービス支援型が対象、重度対応や地域配慮を要する事業所は従前単価を維持)が導入されている。",
+  "additions": [
+    {
+      "id": "jinin_haichi_taisei_kasan_gh",
+      "name": "人員配置体制加算(Ⅰ)(Ⅱ)(2024年度新設)",
+      "category": "人員配置系加算",
+      "summary": "基本報酬区分が6:1(基本報酬)+体験利用の2区分に簡素化されたことに伴い、それより手厚い世話人・生活支援員配置を評価するために2024年度改定で新設された加算(旧来の4:1/5:1配置に相当する評価を加算として再編)。",
+      "units": "障害支援区分に応じて設定(具体的な単位数は要確認)。",
+      "requirements": [
+        { "id": "r1", "text": "(Ⅰ)指定共同生活援助事業所に置くべき世話人・生活支援員に加え、特定従業者数換算方法で利用者数を12で除して得た数以上の世話人又は生活支援員を配置している", "type": "boolean" },
+        { "id": "r2", "text": "(Ⅱ)指定共同生活援助事業所に置くべき世話人・生活支援員に加え、特定従業者数換算方法で利用者数を30で除して得た数以上の世話人又は生活支援員を配置している", "type": "boolean" },
+        { "id": "r3", "text": "勤務実績(勤務表・タイムカード等)により配置状況を証明できる", "type": "boolean" }
+      ],
+      "judgmentLogic": "OR((Ⅰ)(Ⅱ)いずれか手厚い方の区分で算定)",
+      "notes": "特定従業者数換算方法とは、従業者の勤務延べ時間数を40時間で除して員数に換算する方法。旧来の「世話人配置等加算」という名称は2024年度改定後は使われておらず、正式名称は「人員配置体制加算」。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt"]
+    },
+    {
+      "id": "jiritsu_seikatsu_shien_kasan_gh",
+      "name": "自立生活支援加算(Ⅰ)(Ⅱ)(Ⅲ)",
+      "category": "地域移行系加算",
+      "summary": "グループホームから一人暮らし等への移行を希望する利用者への支援を評価する加算。2024年度(R6)改定で大幅に拡充され、旧来の単一区分(500単位/回)から3区分に再編された。",
+      "units": "(Ⅰ) 1,000単位/月: 居宅における単身等での生活を本人が希望し可能と見込まれる利用者の退居に向け、個別支援計画を見直した上で支援した場合、6月間に限り算定。居住支援法人等との情報共有(月1回以上)でさらに35単位/月、協議の場への課題報告でさらに500単位/月を加算可。(Ⅱ) 500単位/回: 日中サービス支援型のみ、従来の要件と同一。(Ⅲ) 利用期間に応じ80単位/日(3年以内)、72単位/日(3年超4年以内)、56単位/日(4年超5年以内)、40単位/日(5年超)。",
+      "requirements": [
+        { "id": "r1", "text": "(Ⅰ)(Ⅲ)利用者本人が単身等での生活を希望し、可能と見込まれる", "type": "boolean" },
+        { "id": "r2", "text": "退居に向けて個別支援計画を見直している", "type": "boolean" },
+        { "id": "r3", "text": "(Ⅲ)移行支援住居(定員2〜7人)を1以上有し、専従のサービス管理責任者(社会福祉士又は精神保健福祉士資格保有、7:1以上配置)を配置している", "type": "boolean" },
+        { "id": "r4", "text": "(Ⅲ)入居時に会議を開催し、意向を反映した個別支援計画を作成している", "type": "boolean" },
+        { "id": "r5", "text": "居住支援法人又は居住支援協議会と定期的に情報共有している", "type": "boolean" }
+      ],
+      "judgmentLogic": "区分(Ⅰ)(Ⅱ)(Ⅲ)は要件・対象が異なるため個別に判定。(Ⅰ)(Ⅲ)は同一事業所内でも対象者の状況により使い分ける。",
+      "notes": "退居後は「退居後共同生活援助サービス費」「退居後外部サービス利用型共同生活援助サービス費」(2,000単位/月、自立生活支援加算(Ⅰ)又は(Ⅲ)算定者が対象、退居月から3月間・市町村が認めれば6月間)、「ピアサポート実施加算」「退居後ピアサポート実施加算」(各100単位/月、障害者ピアサポート研修修了者を2名以上配置等が要件)が新設されている。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)、令和6年度報酬改定QA VOL.3",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt", "2024-05-10_R6年度報酬改定QA_VOL3.txt"]
+    },
+    {
+      "id": "nicchu_shien_kasan_2",
+      "name": "日中支援加算(Ⅱ)",
+      "category": "日中活動対応系加算",
+      "summary": "日中活動系サービスを利用できない、又は就労できない利用者に対し、日中の支援を行った場合に評価される加算。2024年度(R6)改定で、支援を行った日から評価する体系に見直され、日中サービス支援型は対象から除外(廃止)された。",
+      "units": "日中支援対象利用者が1人の場合: 区分4〜6は539単位/日、区分3以下は270単位/日。2人以上の場合: 区分4〜6は270単位/日、区分3以下は135単位/日。",
+      "requirements": [
+        { "id": "r1", "text": "利用者が心身の状況等により日中活動サービスを利用できない、又は就労できない状態にある", "type": "boolean" },
+        { "id": "r2", "text": "介護サービス包括型又は外部サービス利用型の指定共同生活援助事業所である(日中サービス支援型は対象外)", "type": "boolean" },
+        { "id": "r3", "text": "日中の時間帯に世話人等による支援を実施している", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "改定前は「支援を行った日が1月につき2日を超える場合、その超えた日から算定」だったが、2024年度改定後は支援を行った初日から算定できるようになった。日中活動サービスを単に休んだだけの場合と、心身の状況により利用できない場合とで取り扱いが異なるため、理由の記録が必要。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt"]
+    },
+    {
+      "id": "tanki_riyou_kasan_gh",
+      "name": "短期利用加算",
+      "category": "利用形態系加算",
+      "summary": "共同生活援助の空き居室等を利用して、短期間(体験的な利用等)の受け入れを行った場合に評価される加算。",
+      "units": "1日あたり定額。要確認。",
+      "requirements": [
+        { "id": "r1", "text": "都道府県への短期利用に係る届出を行っている", "type": "boolean" },
+        { "id": "r2", "text": "利用期間が定められた上限(原則30日以内、やむを得ない事情がある場合は延長可)以内である", "type": "numeric" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "本来の入居者(長期利用者)の定員とは別枠で運用されるため、居室の管理・利用者名簿の整理が必要。",
+      "verifyAgainst": "報酬告示、留意事項通知"
+    },
+    {
+      "id": "juudo_shougaisha_shien_kasan_gh",
+      "name": "重度障害者支援加算(Ⅰ)(Ⅱ)(共同生活援助)",
+      "category": "重度対応系加算",
+      "summary": "強度行動障害を有する者など重度の障害者への個別支援を評価する加算。共同生活援助では障害支援区分と行動関連項目の組み合わせによる2区分が設定されている。",
+      "units": "区分・体制に応じて設定。具体的な単位数は要確認。",
+      "requirements": [
+        { "id": "r1", "text": "(Ⅰ)対象利用者の障害支援区分が6であり、かつ行動関連項目の合計点数が10点以上である", "type": "boolean" },
+        { "id": "r2", "text": "(Ⅱ)対象利用者の障害支援区分が4であり、かつ行動関連項目の合計点数が10点以上である", "type": "boolean" },
+        { "id": "r3", "text": "対象利用者に対して個別支援を行っている", "type": "boolean" }
+      ],
+      "judgmentLogic": "OR((Ⅰ)(Ⅱ)は対象者の区分により使い分け)",
+      "notes": "強度行動障害支援者養成研修修了者による中核的人材の配置等、共通加算の「重度障害者支援加算」の要件と合わせて確認すること。2026年度(R8)の応急的報酬単価特例(新規指定GH対象)では、この加算を算定する利用者に係る基本報酬は配慮措置により従前単価が維持される。",
+      "verifyAgainst": "令和8年度報酬改定における改定事項について(参考:配慮措置の対象)",
+      "sourceFiles": ["2026-02-18_R8年度報酬改定における改定事項について.txt"]
+    },
+    {
+      "id": "iryouteki_care_taiou_shien_kasan_gh",
+      "name": "医療的ケア対応支援加算(共同生活援助)",
+      "category": "医療的ケア系加算",
+      "summary": "指定基準の人員配置に加えて看護職員等を常勤換算1以上配置し、医療的ケアが必要な利用者に個別支援を行った場合に評価される加算。",
+      "units": "要確認。",
+      "requirements": [
+        { "id": "r1", "text": "指定基準の人員配置に加え、看護職員等を常勤換算1以上配置している", "type": "boolean" },
+        { "id": "r2", "text": "医療的ケア判定スコアに記載の医療的ケアを必要とする利用者に個別支援を行っている", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "2026年度(R8)の応急的報酬単価特例の配慮措置対象(重度障害者への配慮)にも位置付けられている。",
+      "verifyAgainst": "令和8年度報酬改定における改定事項について(参考:配慮措置の対象)",
+      "sourceFiles": ["2026-02-18_R8年度報酬改定における改定事項について.txt"]
+    },
+    {
+      "id": "iryou_renkei_taisei_kasan_gh",
+      "name": "医療連携体制加算(Ⅳ含む)",
+      "category": "医療的ケア系加算",
+      "summary": "看護師等を確保し、医療的ケアが必要な利用者や、退院直後で観察を要する利用者を受け入れる体制を評価する加算。医療連携体制加算(Ⅳ)は、看護職員が事業所を訪問して医療的ケアを必要とする利用者に看護を行った場合に算定する区分。",
+      "units": "区分により設定。要確認。",
+      "requirements": [
+        { "id": "r1", "text": "看護職員を配置し、又は訪問看護ステーション等と連携している", "type": "boolean" },
+        { "id": "r2", "text": "(Ⅳ)看護職員が事業所を訪問して、医療的ケアを必要とする利用者に対して看護を行っている", "type": "boolean" }
+      ],
+      "judgmentLogic": "OR",
+      "notes": "グループホームは夜間常時医療職がいないことが多いため、緊急時の連絡体制・往診医との連携体制の記録が重要。医療連携体制加算(Ⅳ)は2026年度(R8)応急的報酬単価特例の配慮措置対象。",
+      "verifyAgainst": "報酬告示、留意事項通知、令和8年度報酬改定における改定事項について",
+      "sourceFiles": ["2026-02-18_R8年度報酬改定における改定事項について.txt"]
+    },
+    {
+      "id": "koujino_kinou_shougai_shien_taisei_kasan_gh",
+      "name": "高次脳機能障害者支援体制加算",
+      "category": "専門的支援体制系加算",
+      "summary": "高次脳機能障害のある利用者を多く受け入れ、専門的な研修を修了した職員を手厚く配置している事業所を評価する加算。",
+      "units": "要確認。",
+      "requirements": [
+        { "id": "r1", "text": "高次脳機能障害のある利用者が全体の30%以上である", "type": "numeric" },
+        { "id": "r2", "text": "高次脳機能障害支援者養成に関する研修を修了した職員を、利用者数に対して50:1以上配置している", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "視覚・聴覚言語障害者支援体制加算と類似の設計思想の加算。2026年度(R8)応急的報酬単価特例の配慮措置対象(この加算を算定する事業所に係る基本報酬は従前単価を維持)。",
+      "verifyAgainst": "令和8年度報酬改定における改定事項について",
+      "sourceFiles": ["2026-02-18_R8年度報酬改定における改定事項について.txt"]
+    },
+    {
+      "id": "yakin_taio_taisei_kasan_gh",
+      "name": "夜間支援等体制加算",
+      "category": "人員配置系加算",
+      "summary": "夜間及び深夜の時間帯に世話人又は生活支援員を配置し、又は防災・緊急通報システム等により対応する体制を評価する加算。",
+      "units": "夜勤配置型・宿直配置型・防災体制型など体制の区分に応じて設定。要確認。",
+      "requirements": [
+        { "id": "r1", "text": "夜間及び深夜の時間帯に世話人等を配置している、又は宿直を配置している、又は緊急通報システムを整備している", "type": "choice", "options": ["夜勤配置", "宿直配置", "防災体制(巡回・通報システム)"] },
+        { "id": "r2", "text": "選択した体制について、必要な設備・人員配置の実態を証明できる", "type": "boolean" }
+      ],
+      "judgmentLogic": "OR(体制の種類ごとに単位数が異なる)",
+      "notes": "共同生活援助における加算の中でも特に算定額が大きく、要件を満たさなくなった場合の変更届出の遅れがよくある指摘事項。",
+      "verifyAgainst": "報酬告示、留意事項通知"
+    }
+  ]
+},
+  commonAdditions: {
+  "id": "common_additions",
+  "title": "共通加算(全サービス種別におおむね共通する代表的な加算)",
+  "note": "以下は施設入所支援・生活介護・短期入所・共同生活援助のいずれにも共通する枠組みで設けられている代表的な加算です。単位数・加算率は事業所の規模区分や地域区分により異なるため、必ず最新の報酬告示・留意事項通知で確認してください。2026年7月時点で厚生労働省の公開資料(令和6年度・令和8年度報酬改定資料等)を取り込み、可能な範囲で実際の数値・出典を明記しています(data/source-archive参照)。",
+  "additions": [
+    {
+      "id": "shoguu_kaizen_kasan",
+      "name": "福祉・介護職員等処遇改善加算",
+      "category": "処遇改善系加算",
+      "summary": "介護・障害福祉人材の賃金改善を目的とした加算。2024年度(R6)報酬改定で、従来の(1)福祉・介護職員処遇改善加算、(2)福祉・介護職員等特定処遇改善加算、(3)福祉・介護職員等ベースアップ等支援加算の3つが「福祉・介護職員等処遇改善加算」に一本化され、加算率に応じてI〜IVの区分が設定された。2026年度(R8)報酬改定では、対象を福祉・介護職員から障害福祉従事者全体に拡大するとともに、生産性向上・協働化に取り組む事業者向けの上乗せ区分(加算Ⅰロ・Ⅱロ)が新設され(令和8年6月施行)、これまで対象外だった計画相談支援・障害児相談支援・地域相談支援にも新設された(一律5.1%)。",
+      "units": "所定単位数(処遇改善加算を除く加減算後の総報酬単位数)に対する加算率(%)。2026年度(R8)改定後の主な加算率(常勤換算職員数に基づき設定): 生活介護 Ⅰイ9.3%/Ⅰロ9.7%/Ⅱイ9.2%/Ⅱロ9.6%/Ⅲ7.9%/Ⅳ6.7%。施設入所支援・短期入所 Ⅰイ18.6%/Ⅰロ19.3%/Ⅲ16.5%/Ⅳ14.2%。共同生活援助(介護サービス包括型・日中サービス支援型) Ⅰイ16.3%/Ⅰロ16.9%/Ⅱイ16.0%/Ⅱロ16.6%/Ⅲ14.4%/Ⅳ12.1%、共同生活援助(外部サービス利用型) Ⅰイ22.7%/Ⅰロ23.3%/Ⅱイ22.4%/Ⅱロ23.0%/Ⅲ20.8%/Ⅳ16.8%。※Ⅰロ・Ⅱロは生産性向上・協働化要件を満たす事業者向けの上乗せ区分(令和8年6月施行の新設区分)。",
+      "requirements": [
+        { "id": "r1", "text": "キャリアパス要件(職位・職責・職務内容に応じた任用要件と賃金体系の整備等、キャリアパス要件I・II)を満たしている", "type": "boolean" },
+        { "id": "r2", "text": "職場環境等要件を満たしている(区分Ⅰ・Ⅱは各区分2つ以上・生産性向上区分3つ以上(⑱必須)+全体から14項目以上、区分Ⅲ・Ⅳは各区分1つ以上(生産性向上は2つ以上)+全体から8項目以上)", "type": "boolean" },
+        { "id": "r3", "text": "月額賃金改善要件(加算の一部を基本給・決まって毎月支払う手当の改善に充てる)を満たしている", "type": "boolean" },
+        { "id": "r4", "text": "処遇改善計画書を都道府県等へ提出している", "type": "boolean" },
+        { "id": "r5", "text": "実績報告書を毎年度提出している", "type": "boolean" },
+        { "id": "r6", "text": "対象の介護・障害福祉職員の賃金改善に加算額全額を充てている(職種間配分ルールの遵守)", "type": "boolean" },
+        { "id": "r7", "text": "(上乗せ区分Ⅰロ・Ⅱロを算定する場合)生産性向上に関する職場環境等要件を5項目以上満たしている、又は社会福祉連携推進法人に所属し加算Ⅱロ相当額の1/2以上を月給賃金で配分している", "type": "boolean" }
+      ],
+      "judgmentLogic": "満たすキャリアパス要件・職場環境等要件の組み合わせにより加算区分(I〜IV、及びイ・ロ)が決定。全区分共通で計画書提出・実績報告・賃金改善への充当が必須。",
+      "notes": "加算区分は毎年度、要件の充足状況に応じて見直しが必要。要件を満たさなくなった場合は速やかに区分変更の届出が必要。賃金改善が計画を下回った場合、翌年度の加算額から精算される。令和8年度中の対応は誓約(実績報告書で対応の実施を確認)でも可とする経過的な取扱いがある項目がある。",
+      "commonPitfalls": [
+        "実績報告書の未提出・提出遅延",
+        "加算額を賃金改善以外(物品購入等)に充当してしまう",
+        "月額賃金改善要件の対象者・充当額の計算誤り",
+        "職場環境等要件の取組が形骸化し記録が残っていない"
+      ],
+      "verifyAgainst": "厚生労働省「令和8年度報酬改定における改定事項について」(令和8年2月18日)、「福祉・介護職員等処遇改善加算等に係る事務処理手順」、処遇改善加算に関するQ&A",
+      "sourceFiles": [
+        "2026-02-18_R8年度報酬改定における改定事項について.txt",
+        "2024-03-29_R6年度報酬改定の概要(本編).txt",
+        "2017-03-28_処遇改善加算等の考え方事務処理手順通知_障障発0328第1号.txt",
+        "2019-02-15_2019年度報酬改定の概要(処遇改善_消費税対応_本編).txt",
+        "2022-07-13_厚労省告示第231号(R4.10.1適用_ベースアップ等支援加算).txt"
+      ]
+    },
+    {
+      "id": "fukushi_senmon_shokuin_kasan",
+      "name": "福祉専門職員配置等加算",
+      "category": "専門職員配置系加算",
+      "summary": "社会福祉士・介護福祉士・精神保健福祉士等の有資格者の配置割合や、常勤職員の割合、勤続年数の長い職員の割合に応じて段階的に評価される加算。生活介護については2024年度(R6)改定で、常勤割合・勤続年数を評価する福祉専門職員配置等加算(Ⅲ)を、資格保有者を評価する(Ⅰ)又は(Ⅱ)と併給できるようになった。",
+      "units": "区分に応じて設定(I)>(II)>(III)。具体的な単位数は要確認。",
+      "requirements": [
+        { "id": "r1", "text": "生活支援員・世話人等のうち社会福祉士・介護福祉士・精神保健福祉士等の資格保有者の割合が一定割合以上(区分により異なる)", "type": "boolean" },
+        { "id": "r2", "text": "生活支援員等の常勤職員の割合が75%以上(常勤要件)", "type": "boolean" },
+        { "id": "r3", "text": "生活支援員等のうち勤続3年以上の者の割合が30%以上", "type": "boolean" }
+      ],
+      "judgmentLogic": "OR(いずれか1要件を満たせば該当区分で算定。生活介護は(Ⅰ)又は(Ⅱ)と(Ⅲ)の併給が可能。他サービスは要確認)",
+      "notes": "資格保有者・常勤・勤続年数のいずれかの切り口で区分(I)〜(III)を選択。人員配置実績の記録(資格証の写し、勤続年数の管理台帳等)が必要。",
+      "verifyAgainst": "報酬告示、留意事項通知",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt", "2015-02-12_H27年度報酬改定の概要.txt"]
+    },
+    {
+      "id": "juudo_shougaisha_shien_kasan",
+      "name": "重度障害者支援加算・重度障害者等支援体制加算",
+      "category": "重度対応系加算",
+      "summary": "強度行動障害を有する者など、支援の必要性が高い利用者を受け入れる体制を評価する加算。強度行動障害支援者養成研修(基礎研修・実践研修)修了者の配置等が要件となる。2024年度(R6)改定で、行動関連項目の合計点が18点以上の最重度層を受け入れ、チーム支援をマネジメントする中核的人材を配置する場合の評価が拡充された。共同生活援助では重度障害者支援加算(Ⅰ)(区分6かつ行動関連項目10点以上)・(Ⅱ)(区分4かつ行動関連項目10点以上)の2区分が設定されている。",
+      "units": "対象者の状態・支援体制の区分により設定。具体的な単位数は要確認。",
+      "requirements": [
+        { "id": "r1", "text": "強度行動障害支援者養成研修(実践研修)修了者を配置している", "type": "boolean" },
+        { "id": "r2", "text": "対象利用者について支援計画(行動障害の状態を踏まえた個別支援計画)を作成し、多職種連携により支援している", "type": "boolean" },
+        { "id": "r3", "text": "対象となる利用者の障害支援区分・行動関連項目の合計点数が一定基準以上(基本は10点以上、より重度な区分は18点以上)", "type": "numeric" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "対象者ごとの状態(行動関連項目点数等)と支援体制の両面で要件を満たす必要がある。研修修了者が異動・退職した場合は速やかな体制見直しが必要。状態が悪化した強度行動障害児者に対しては、広域的支援人材が訪問等を行う「集中的支援加算」(Ⅰ:1,000単位/回、Ⅱ:500単位/日)が別途新設されている(2024年度改定)。",
+      "verifyAgainst": "報酬告示、強度行動障害支援者養成研修に関する通知、令和6年度報酬改定QA VOL.2",
+      "sourceFiles": [
+        "2024-03-29_R6年度報酬改定の概要(本編).txt",
+        "2024-04-05_R6年度報酬改定QA_VOL2.txt",
+        "2026-02-18_R8年度報酬改定における改定事項について.txt"
+      ]
+    },
+    {
+      "id": "shikaku_choukaku_gengo_shien_taisei_kasan",
+      "name": "視覚・聴覚言語障害者支援体制加算",
+      "category": "専門的支援体制系加算",
+      "summary": "視覚・聴覚・言語機能に重度の障害がある利用者を多く受け入れ、意思疎通に関する専門性を有する職員を手厚く配置している事業所を評価する加算。2024年度(R6)改定で単価が引き上げられ、(Ⅰ)(Ⅱ)の2区分に再編された。",
+      "units": "(Ⅰ) 51単位/日: 対象者割合が利用者数の50%以上、専門性を有する職員を利用者数を40で除した数以上配置。(Ⅱ) 41単位/日: 対象者割合が利用者数の30%以上、専門性を有する職員を利用者数を50で除した数以上配置(改定前の単価は41単位/日で区分なし)。",
+      "requirements": [
+        { "id": "r1", "text": "視覚・聴覚・言語機能に重度の障害のある利用者が、利用者数の30%以上(Ⅱ)又は50%以上(Ⅰ)である", "type": "choice", "options": ["Ⅰ(50%以上)", "Ⅱ(30%以上)", "該当なし"] },
+        { "id": "r2", "text": "視覚障害者等との意思疎通に関し専門性を有する職員を、利用者数を40(Ⅰ)又は50(Ⅱ)で除した数以上配置している", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND(区分ごとの人数要件と配置要件を両方満たす必要がある)",
+      "notes": "対象サービスは生活介護・施設入所支援・共同生活援助・自立訓練(機能訓練・生活訓練)・就労選択支援・就労移行支援・就労継続支援A型・B型(2024年度改定で対象サービスが拡大)。",
+      "verifyAgainst": "令和6年度報酬改定の概要(本編)",
+      "sourceFiles": ["2024-03-29_R6年度報酬改定の概要(本編).txt"]
+    }
+  ]
+},
+  commonReductions: {
+  "id": "common_reductions",
+  "title": "共通減算(全サービス種別に共通する代表的な減算)",
+  "note": "以下は施設入所支援・生活介護・短期入所・共同生活援助のいずれにも共通して適用され得る代表的な減算です。実際の減算率・除外要件は事業所の状況や自治体の運用により異なるため、必ず最新の報酬告示・留意事項通知で確認してください。",
+  "reductions": [
+    {
+      "id": "teiin_choka_riyou_gensan",
+      "name": "定員超過利用減算",
+      "category": "運営基準関連減算",
+      "summary": "利用定員を超えてサービスを提供した場合に適用される減算。原則として所定単位数の30%減算(一定期間の継続的な超過等ではより厳しい減算率となる場合がある)。",
+      "requirements": [
+        { "id": "r1", "text": "1日の利用者数が利用定員を超えている", "type": "boolean" },
+        { "id": "r2", "text": "災害・虐待等のやむを得ない事情による受け入れではない", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "やむを得ない事情がある場合は一定期間減算が猶予されることがある。連続して定員超過が続く場合は減算率がさらに引き上げられる。",
+      "verifyAgainst": "報酬告示 別表、指定基準に関する省令"
+    },
+    {
+      "id": "shokuin_ketsujo_gensan",
+      "name": "サービス提供職員欠如減算",
+      "category": "運営基準関連減算",
+      "summary": "人員基準で定められた職員数(生活支援員・世話人・看護職員等)を欠いた状態が一定期間続いた場合に適用される減算。ただし「突発的で想定が困難な事象によりやむを得ない事情」がある場合は、1年に1回に限り特例的な取扱い(減算の猶予等)が認められる。",
+      "requirements": [
+        { "id": "r1", "text": "直近の実績で必要配置人員数を下回っている月がある", "type": "boolean" },
+        { "id": "r2", "text": "欠如状態が改善されないまま翌々月以降も継続している", "type": "boolean" },
+        { "id": "r3", "text": "人員欠如が「突発的で想定が困難な事象によりやむを得ない事情」(職員や家族の突発的な体調不良等による1月を超える不在の見込み、職員の自己都合による急な離職が複数重なった場合等)に該当し、特例的な取扱いの対象である", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND(r3に該当する場合は特例的な取扱いにより1年に1回に限り減算の猶予等の対象となり得る)",
+      "notes": "欠如が生じた翌月から一定の猶予期間があり、その後も改善されない場合に減算(概ね所定単位数の70%等)が適用される。特例的な取扱いの「1年」は、人員欠如が発生した日の属する月の翌々月の初日から起算する。特例を受けるには、公共職業安定所・都道府県ナースセンター・福祉人材センター等への求人申込みなど職員確保に向けた取組を行っていることが前提で、短期的な不在の穴埋めだけでなく長期的に安定した人材確保を図る観点からの求人内容とすることが望ましいとされる。自ら管理するホームページ等で採用情報を公表することが望ましいとされるが、自らのホームページ等を有しない事業所はこの限りではない。",
+      "verifyAgainst": "報酬告示、指定基準に関する省令、やむを得ない事情における人員欠如に係る特例的な取扱いに関するQ&A(共通事項)"
+    },
+    {
+      "id": "shintai_kousoku_haishi_mijisshi_gensan",
+      "name": "身体拘束廃止未実施減算",
+      "category": "適正化・虐待防止関連減算",
+      "summary": "身体拘束等の適正化のための措置(委員会の定期開催、指針の整備、研修の実施、記録の実施等)を講じていない場合に適用される減算。",
+      "requirements": [
+        { "id": "r1", "text": "身体拘束廃止未実施減算対策委員会をおおむね年1回以上開催している", "type": "boolean" },
+        { "id": "r2", "text": "身体拘束等の適正化のための指針を整備している", "type": "boolean" },
+        { "id": "r3", "text": "従業者に対し研修を定期的に実施している", "type": "boolean" },
+        { "id": "r4", "text": "やむを得ず身体拘束を行う場合、その態様・時間・心身の状況・緊急やむを得ない理由等を記録している", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND(いずれか未実施で減算対象)",
+      "notes": "いずれか一つでも未実施の場合、所定単位数から減算(1日あたり概ね5単位/日相当が目安。要確認)。",
+      "verifyAgainst": "指定基準に関する省令、留意事項通知"
+    },
+    {
+      "id": "gyakutai_boushi_sochi_mijisshi_gensan",
+      "name": "虐待防止措置未実施減算",
+      "category": "適正化・虐待防止関連減算",
+      "summary": "虐待の防止のための委員会の開催、指針の整備、研修の実施、担当者の配置等の措置を講じていない場合に適用される減算。",
+      "requirements": [
+        { "id": "r1", "text": "虐待防止委員会を定期的に開催し、結果を従業者に周知している", "type": "boolean" },
+        { "id": "r2", "text": "虐待の防止のための指針を整備している", "type": "boolean" },
+        { "id": "r3", "text": "従業者に対し虐待防止の研修を定期的に実施している", "type": "boolean" },
+        { "id": "r4", "text": "虐待防止に関する担当者を配置している", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND(いずれか未実施で減算対象)",
+      "notes": "全ての措置が完了していないと判断された場合、所定単位数から減算(1日あたり概ね1%相当。要確認)。",
+      "verifyAgainst": "指定基準に関する省令、留意事項通知"
+    },
+    {
+      "id": "bcp_misakutei_gensan",
+      "name": "業務継続計画未策定減算(BCP未策定減算)",
+      "category": "運営基準関連減算",
+      "summary": "感染症や非常災害発生時における事業継続計画(BCP)を策定していない、または研修・訓練を実施していない場合に適用される減算。",
+      "requirements": [
+        { "id": "r1", "text": "感染症の業務継続計画(BCP)を策定している", "type": "boolean" },
+        { "id": "r2", "text": "非常災害の業務継続計画(BCP)を策定している", "type": "boolean" },
+        { "id": "r3", "text": "計画に基づく研修及び訓練(シミュレーション)を定期的に実施している", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "経過措置期間終了後、未策定の場合は所定単位数から減算(概ね1%相当。要確認)。",
+      "verifyAgainst": "指定基準に関する省令、留意事項通知"
+    },
+    {
+      "id": "jouhou_kouhyou_mihoukoku_gensan",
+      "name": "情報公表未報告減算",
+      "category": "運営基準関連減算",
+      "summary": "障害福祉サービス等情報公表制度に基づく報告を行っていない場合に適用される減算。",
+      "requirements": [
+        { "id": "r1", "text": "都道府県が定める期日までに障害福祉サービス等情報公表システムへの報告を行っていない", "type": "boolean" }
+      ],
+      "judgmentLogic": "AND",
+      "notes": "未報告の状態が一定期間継続すると減算対象となり、なお改善されない場合はさらに減算が強化される。",
+      "verifyAgainst": "報酬告示、都道府県の運用通知"
+    }
+  ]
+}
+};
+
+/* ---------------------------------------------------------------------
+ * Data merge (port of lib/dataStore.js)
+ * DATA is injected before this script: { shisetsu, seikatsu, tanki, kyodo,
+ * commonAdditions, commonReductions }
+ * ------------------------------------------------------------------- */
+const RAW_SERVICES = [DATA.shisetsu, DATA.seikatsu, DATA.tanki, DATA.kyodo];
+
+const SERVICES = RAW_SERVICES.map((svc) => {
+  const additions = [
+    ...svc.additions.map((a) => ({ ...a, serviceId: svc.serviceId, scope: "service" })),
+    ...DATA.commonAdditions.additions.map((a) => ({ ...a, serviceId: svc.serviceId, scope: "common" })),
+  ];
+  const reductions = [
+    ...(svc.reductions || []).map((r) => ({ ...r, serviceId: svc.serviceId, scope: "service" })),
+    ...DATA.commonReductions.reductions.map((r) => ({ ...r, serviceId: svc.serviceId, scope: "common" })),
+  ];
+  return { ...svc, additions, reductions };
+});
+
+function getService(serviceId) {
+  return SERVICES.find((s) => s.serviceId === serviceId) || null;
+}
+
+function findItemById(serviceId, itemId) {
+  const svc = getService(serviceId);
+  if (!svc) return null;
+  return svc.additions.find((a) => a.id === itemId) || svc.reductions.find((r) => r.id === itemId) || null;
+}
+
+/* ---------------------------------------------------------------------
+ * Search (port of lib/search.js)
+ * ------------------------------------------------------------------- */
+const SERVICE_ALIASES = {
+  shisetsu_nyusho_shien: ["施設入所支援", "施設入所", "入所施設", "入所支援"],
+  seikatsu_kaigo: ["生活介護", "デイサービス", "生活介護事業所"],
+  tanki_nyusho: ["短期入所", "ショートステイ", "短期"],
+  kyodo_seikatsu_engo: ["共同生活援助", "共同生活介護", "グループホーム", "ケアホーム", "GH", "gh"],
+};
+
+function detectServiceIds(query) {
+  const hits = [];
+  for (const [serviceId, aliases] of Object.entries(SERVICE_ALIASES)) {
+    if (aliases.some((alias) => query.includes(alias))) hits.push(serviceId);
+  }
+  return hits;
+}
+
+function bigrams(text) {
+  const clean = text.replace(/\s+/g, "");
+  const grams = new Set();
+  for (let i = 0; i < clean.length - 1; i++) grams.add(clean.slice(i, i + 2));
+  return grams;
+}
+
+function scoreOverlap(queryGrams, targetGrams) {
+  if (queryGrams.size === 0 || targetGrams.size === 0) return 0;
+  let overlap = 0;
+  for (const g of queryGrams) if (targetGrams.has(g)) overlap++;
+  return overlap / queryGrams.size;
+}
+
+function coreName(name) {
+  return name.split(/[(（]/)[0].trim();
+}
+
+function nameMatchBonus(query, name) {
+  const core = coreName(name);
+  if (core.length >= 4 && (query.includes(core) || core.includes(query))) return 1.5;
+  if (query.includes(name) || name.includes(query)) return 1;
+  return 0;
+}
+
+function buildSearchableText(item) {
+  return [
+    item.name,
+    item.category,
+    item.summary,
+    item.notes || "",
+    ...(item.requirements || []).map((r) => r.text),
+    ...(item.commonPitfalls || []),
+  ].join("  ");
+}
+
+function search(query, { serviceIds = null, limit = 5, includeReductions = true } = {}) {
+  const detected = serviceIds || detectServiceIds(query);
+  const services = detected.length ? detected.map(getService).filter(Boolean) : SERVICES;
+  const queryGrams = bigrams(query);
+  const results = [];
+
+  for (const svc of services) {
+    for (const item of svc.additions) {
+      const score = scoreOverlap(queryGrams, bigrams(buildSearchableText(item))) + nameMatchBonus(query, item.name);
+      if (score > 0) results.push({ type: "addition", serviceId: svc.serviceId, serviceName: svc.serviceName, item, score });
+    }
+    if (includeReductions) {
+      for (const item of svc.reductions) {
+        const score = scoreOverlap(queryGrams, bigrams(buildSearchableText(item))) + nameMatchBonus(query, item.name);
+        if (score > 0) results.push({ type: "reduction", serviceId: svc.serviceId, serviceName: svc.serviceName, item, score });
+      }
+    }
+  }
+
+  const dedupMap = new Map();
+  for (const r of results) {
+    const key = r.item.scope === "common" && detected.length === 0 ? `common:${r.item.id}` : `${r.serviceId}:${r.item.id}`;
+    const existing = dedupMap.get(key);
+    if (!existing || existing.score < r.score) dedupMap.set(key, r);
+  }
+
+  return Array.from(dedupMap.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
+
+/* ---------------------------------------------------------------------
+ * Eligibility (port of lib/eligibility.js)
+ * ------------------------------------------------------------------- */
+function evaluate(item, answers = {}) {
+  const requirementResults = (item.requirements || []).map((req) => {
+    const answer = answers[req.id];
+    if (req.type === "boolean") {
+      if (typeof answer !== "boolean") return { ...req, status: "unanswered" };
+      return { ...req, status: answer ? "met" : "not_met", answer };
+    }
+    return { ...req, status: answer === undefined || answer === "" ? "unanswered" : "needs_review", answer };
+  });
+
+  const booleanResults = requirementResults.filter((r) => r.type === "boolean");
+  const hasUnanswered = requirementResults.some((r) => r.status === "unanswered");
+  const hasNeedsReview = requirementResults.some((r) => r.status === "needs_review");
+  const isOr = Boolean(item.judgmentLogic && item.judgmentLogic.startsWith("OR"));
+
+  let verdict;
+  if (isOr && booleanResults.some((r) => r.status === "met")) verdict = "likely_eligible";
+  else if (!isOr && booleanResults.some((r) => r.status === "not_met")) verdict = "likely_not_eligible";
+  else if (hasUnanswered) verdict = "incomplete";
+  else if (isOr) verdict = "likely_not_eligible";
+  else verdict = "likely_eligible";
+  if (hasNeedsReview && verdict === "likely_eligible") verdict = "likely_eligible_needs_review";
+
+  return { requirementResults, verdict };
+}
+
+const VERDICT_LABEL = {
+  likely_eligible: "算定できる可能性が高いです",
+  likely_eligible_needs_review: "算定できる可能性がありますが、一部要件は個別確認が必要です",
+  likely_not_eligible: "現時点の入力では算定要件を満たしていない可能性が高いです",
+  incomplete: "すべての要件に回答すると判定できます",
+};
+
+const VERDICT_CLASS = {
+  likely_eligible: "v-ok",
+  likely_eligible_needs_review: "v-ok",
+  likely_not_eligible: "v-bad",
+  incomplete: "v-incomplete",
+};
+
+/* ---------------------------------------------------------------------
+ * Answer formatting (port of lib/answerFormatter.js, template-only)
+ * ------------------------------------------------------------------- */
+function escapeHtml(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function formatItemAnswer(match, index) {
+  const { item, serviceName, type } = match;
+  const kindLabel = type === "reduction" ? "減算" : "加算";
+  const lines = [`${index + 1}. 【${serviceName}】${item.name}(${kindLabel} / ${item.category})`, "", item.summary];
+  if (item.requirements && item.requirements.length) {
+    lines.push("", "算定要件:");
+    const typeLabel = { boolean: "○×要件", numeric: "数値要件", choice: "選択要件" };
+    for (const r of item.requirements) lines.push(`  ・(${typeLabel[r.type] || r.type}) ${r.text}`);
+  }
+  if (item.judgmentLogic) lines.push("", `判定の考え方: ${item.judgmentLogic}`);
+  if (item.units) lines.push(`単位数の目安: ${item.units}`);
+  if (item.notes) lines.push("", `補足: ${item.notes}`);
+  if (item.commonPitfalls && item.commonPitfalls.length) {
+    lines.push("", "よくある指摘・誤り:");
+    for (const p of item.commonPitfalls) lines.push(`  ・${p}`);
+  }
+  if (item.verifyAgainst) lines.push("", `要確認先: ${item.verifyAgainst}`);
+  return lines.join("\n");
+}
+
+function formatAnswer(question, matches) {
+  if (!matches.length) {
+    return [
+      `「${question}」に一致する加算・減算情報が見つかりませんでした。`,
+      "サービス種類(施設入所支援・生活介護・短期入所・共同生活援助)や加算名を含めて質問し直してみてください。",
+      "例:「生活介護の人員配置体制加算の要件は?」「共同生活援助の夜間支援等体制加算とは?」",
+    ].join("\n");
+  }
+  const header = `「${question}」に関連する可能性が高い加算・減算を${matches.length}件見つけました。`;
+  const body = matches.map(formatItemAnswer).join("\n\n---\n\n");
+  const footer = [
+    "",
+    "※ 本回答は一般的な制度知識と厚生労働省の報酬改定資料に基づく参考情報です。単位数や適用の可否は事業所の実際の体制・利用者の状態・自治体の運用により異なる場合があります。",
+    "実際の請求(国保連への伝送)にあたっては、必ず最新の報酬告示・留意事項通知・Q&A、及び管轄自治体への確認を行ってください。",
+  ].join("\n");
+  return [header, "", body, footer].join("\n");
+}
+
+/* ---------------------------------------------------------------------
+ * UI state & rendering
+ * ------------------------------------------------------------------- */
+const state = {
+  activeServiceId: null,
+  activeCategories: new Set(),
+  nameFilter: "",
+  openItemId: null,
+};
+
+const serviceTabsEl = document.getElementById("serviceTabs");
+const categoryChipsEl = document.getElementById("categoryChips");
+const ledgerListEl = document.getElementById("ledgerList");
+const ledgerCountEl = document.getElementById("ledgerCount");
+const filterInputEl = document.getElementById("filterInput");
+const inquiryForm = document.getElementById("inquiryForm");
+const inquiryInput = document.getElementById("inquiryInput");
+const inquiryLog = document.getElementById("inquiryLog");
+
+function renderServiceTabs() {
+  serviceTabsEl.innerHTML = "";
+  for (const svc of SERVICES) {
+    const btn = document.createElement("button");
+    btn.className = "tab";
+    btn.type = "button";
+    btn.textContent = svc.serviceName;
+    btn.setAttribute("role", "tab");
+    btn.setAttribute("aria-selected", String(state.activeServiceId === svc.serviceId));
+    btn.addEventListener("click", () => {
+      state.activeServiceId = state.activeServiceId === svc.serviceId ? null : svc.serviceId;
+      state.activeCategories.clear();
+      renderServiceTabs();
+      renderCategoryChips();
+      renderLedgerList();
+    });
+    serviceTabsEl.appendChild(btn);
+  }
+}
+
+function currentItems() {
+  if (!state.activeServiceId) return [];
+  const svc = getService(state.activeServiceId);
+  return [
+    ...svc.additions.map((a) => ({ item: a, kind: "addition" })),
+    ...svc.reductions.map((r) => ({ item: r, kind: "reduction" })),
+  ];
+}
+
+function renderCategoryChips() {
+  categoryChipsEl.innerHTML = "";
+  const items = currentItems();
+  if (!items.length) return;
+  const categories = Array.from(new Set(items.map((x) => x.item.category))).sort();
+  for (const cat of categories) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.textContent = cat;
+    chip.setAttribute("aria-pressed", String(state.activeCategories.has(cat)));
+    chip.addEventListener("click", () => {
+      if (state.activeCategories.has(cat)) state.activeCategories.delete(cat);
+      else state.activeCategories.add(cat);
+      renderCategoryChips();
+      renderLedgerList();
+    });
+    categoryChipsEl.appendChild(chip);
+  }
+}
+
+function requirementControl(req) {
+  if (req.type === "boolean") {
+    return `<select data-req="${req.id}" data-type="boolean">
+      <option value="">未回答</option>
+      <option value="true">満たす</option>
+      <option value="false">満たさない</option>
+    </select>`;
+  }
+  if (req.type === "choice") {
+    const opts = (req.options || []).map((o) => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join("");
+    return `<select data-req="${req.id}" data-type="choice"><option value="">未選択</option>${opts}</select>`;
+  }
+  return `<input type="number" data-req="${req.id}" data-type="numeric" placeholder="数値" />`;
+}
+
+function renderLedgerCard(entry) {
+  const { item, kind } = entry;
+  const isOpen = state.openItemId === `${state.activeServiceId}:${item.id}`;
+  const card = document.createElement("div");
+  card.className = "ledger-card";
+  card.dataset.open = String(isOpen);
+
+  const kindPill = kind === "reduction" ? '<span class="pill pill-gensan">減算</span>' : '<span class="pill pill-kasan">加算</span>';
+  const scopePill = item.scope === "common" ? '<span class="pill pill-common">共通</span>' : "";
+
+  const reqRows = (item.requirements || [])
+    .map((r) => `<div class="req-row" data-reqrow="${r.id}"><span>${escapeHtml(r.text)}</span>${requirementControl(r)}</div>`)
+    .join("");
+
+  const pitfalls = item.commonPitfalls && item.commonPitfalls.length
+    ? `<div class="field-label">よくある指摘・誤り</div><ul class="pitfalls">${item.commonPitfalls.map((p) => `<li>${escapeHtml(p)}</li>`).join("")}</ul>`
+    : "";
+
+  const sourceFiles = item.sourceFiles && item.sourceFiles.length
+    ? `<div>${item.sourceFiles.map((f) => `<span class="stamp">原文</span>${escapeHtml(f)}`).join("<br/>")}</div>`
+    : "";
+
+  card.innerHTML = `
+    <button type="button" class="ledger-card-head">
+      <span class="name">${escapeHtml(item.name)}</span>
+      <span class="disclosure" aria-hidden="true">›</span>
+    </button>
+    <div class="ledger-card-meta">
+      ${kindPill}${scopePill}<span class="category">${escapeHtml(item.category)}</span>
+    </div>
+    <div class="ledger-card-body">
+      <p class="summary">${escapeHtml(item.summary)}</p>
+      ${item.units ? `<div class="field-label">単位数の目安</div><div class="units-box">${escapeHtml(item.units)}</div>` : ""}
+      ${reqRows ? `<div class="field-label">算定要件</div><div class="req-list">${reqRows}</div><button type="button" class="judge-btn">判定する</button><div class="verdict"></div>` : ""}
+      ${item.notes ? `<div class="notes-block"><b>補足:</b> ${escapeHtml(item.notes)}</div>` : ""}
+      ${pitfalls}
+      ${item.verifyAgainst || sourceFiles ? `<div class="citation">${item.verifyAgainst ? `<div>要確認先: ${escapeHtml(item.verifyAgainst)}</div>` : ""}${sourceFiles}</div>` : ""}
+    </div>
+  `;
+
+  card.querySelector(".ledger-card-head").addEventListener("click", () => {
+    const key = `${state.activeServiceId}:${item.id}`;
+    state.openItemId = state.openItemId === key ? null : key;
+    renderLedgerList();
+  });
+
+  const judgeBtn = card.querySelector(".judge-btn");
+  if (judgeBtn) {
+    judgeBtn.addEventListener("click", () => {
+      const answers = {};
+      card.querySelectorAll("[data-req]").forEach((el) => {
+        const { req, type } = el.dataset;
+        if (!el.value) return;
+        if (type === "boolean") answers[req] = el.value === "true";
+        else if (type === "numeric") answers[req] = Number(el.value);
+        else answers[req] = el.value;
+      });
+      const { verdict } = evaluate(item, answers);
+      const verdictEl = card.querySelector(".verdict");
+      verdictEl.textContent = VERDICT_LABEL[verdict] || verdict;
+      verdictEl.className = `verdict show ${VERDICT_CLASS[verdict] || ""}`;
+    });
+  }
+
+  return card;
+}
+
+function renderLedgerList() {
+  ledgerListEl.innerHTML = "";
+  if (!state.activeServiceId) {
+    ledgerListEl.innerHTML = '<p class="ledger-count">上のタブでサービス種類を選ぶと、加算・減算の一覧が表示されます。</p>';
+    ledgerCountEl.textContent = "";
+    return;
+  }
+  let items = currentItems();
+  if (state.activeCategories.size) items = items.filter((x) => state.activeCategories.has(x.item.category));
+  if (state.nameFilter.trim()) {
+    const f = state.nameFilter.trim();
+    items = items.filter((x) => x.item.name.includes(f) || x.item.summary.includes(f));
+  }
+  ledgerCountEl.textContent = `${items.length}件`;
+  for (const entry of items) ledgerListEl.appendChild(renderLedgerCard(entry));
+}
+
+filterInputEl.addEventListener("input", (e) => {
+  state.nameFilter = e.target.value;
+  renderLedgerList();
+});
+
+function openItemInLedger(serviceId, itemId) {
+  state.activeServiceId = serviceId;
+  state.activeCategories.clear();
+  state.openItemId = `${serviceId}:${itemId}`;
+  state.nameFilter = "";
+  filterInputEl.value = "";
+  renderServiceTabs();
+  renderCategoryChips();
+  renderLedgerList();
+  const card = ledgerListEl.querySelector(`[data-open="true"]`);
+  if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function appendLogEntry(role, html) {
+  const div = document.createElement("div");
+  div.className = `log-entry log-${role}`;
+  div.innerHTML = html;
+  inquiryLog.appendChild(div);
+  div.scrollIntoView({ behavior: "smooth", block: "end" });
+  return div;
+}
+
+inquiryForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const question = inquiryInput.value.trim();
+  if (!question) return;
+  appendLogEntry("user", escapeHtml(question));
+  inquiryInput.value = "";
+
+  const mentioned = detectServiceIds(question);
+  const serviceIds = mentioned.length ? mentioned : state.activeServiceId ? [state.activeServiceId] : null;
+  const matches = search(question, { serviceIds, limit: 4 });
+  const answerText = formatAnswer(question, matches);
+
+  const refsHtml = matches.length
+    ? `<div class="refs">${matches
+        .map((m) => `<button type="button" class="ref-btn" data-service="${m.serviceId}" data-item="${m.item.id}">${escapeHtml(m.serviceName)}: ${escapeHtml(m.item.name)}</button>`)
+        .join("")}</div>`
+    : "";
+
+  const entry = appendLogEntry("bot", `<div class="answer-body">${escapeHtml(answerText)}</div>${refsHtml}`);
+  entry.querySelectorAll(".ref-btn").forEach((btn) => {
+    btn.addEventListener("click", () => openItemInLedger(btn.dataset.service, btn.dataset.item));
+  });
+});
+
+/* ---------------------------------------------------------------------
+ * Init
+ * ------------------------------------------------------------------- */
+renderServiceTabs();
+renderCategoryChips();
+renderLedgerList();
+appendLogEntry(
+  "bot",
+  `<div class="answer-body">こんにちは。障害福祉サービスの加算・減算について質問してください。</div>
+   <div class="example-chips">
+     <button type="button" class="ref-btn" data-example="生活介護の人員配置体制加算の要件を教えて">生活介護の人員配置体制加算の要件を教えて</button>
+     <button type="button" class="ref-btn" data-example="共同生活援助の夜間支援等体制加算とは?">共同生活援助の夜間支援等体制加算とは?</button>
+     <button type="button" class="ref-btn" data-example="処遇改善加算の仕組みを教えて">処遇改善加算の仕組みを教えて</button>
+   </div>`
+);
+inquiryLog.querySelectorAll("[data-example]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    inquiryInput.value = btn.dataset.example;
+    inquiryForm.requestSubmit();
+  });
+});
+
+</script>

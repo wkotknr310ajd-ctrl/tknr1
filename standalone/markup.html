@@ -1,0 +1,35 @@
+<div class="app-shell">
+  <header class="masthead">
+    <div class="seal" aria-hidden="true">障</div>
+    <div>
+      <h1>障害福祉サービス 加算・減算台帳</h1>
+      <p class="tagline">施設入所支援・生活介護・短期入所・共同生活援助 ―― 加算/減算の要件・単位数の目安・出典を引き、要件チェックまで行える台帳です。</p>
+    </div>
+  </header>
+
+  <nav class="service-tabs" role="tablist" id="serviceTabs" aria-label="サービス種類"></nav>
+
+  <div class="workspace">
+    <main class="inquiry-pane">
+      <form class="inquiry-form" id="inquiryForm" autocomplete="off">
+        <input type="text" id="inquiryInput" placeholder="例: 生活介護の人員配置体制加算の要件は?" aria-label="質問を入力" />
+        <button type="submit">照会</button>
+      </form>
+      <div class="inquiry-log" id="inquiryLog"></div>
+    </main>
+
+    <aside class="ledger-pane">
+      <div class="ledger-controls">
+        <input type="search" id="filterInput" placeholder="項目名で絞り込み" aria-label="項目名で絞り込み" />
+        <div class="category-chips" id="categoryChips"></div>
+        <div class="ledger-count" id="ledgerCount"></div>
+      </div>
+      <div class="ledger-list" id="ledgerList"></div>
+    </aside>
+  </div>
+
+  <footer class="colophon">
+    <p>本ツールは一般的な制度知識と、厚生労働省の報酬改定資料・Q&amp;A(平成18年度〜令和8年度)に基づく参考情報です。単位数・加算率は事業所の規模区分や地域区分により異なります。実際の請求(国保連伝送)にあたっては、必ず最新の報酬告示・留意事項通知、及び管轄の自治体・国保連への確認を行ってください。</p>
+    <p class="colophon-meta">tknr1 / 障害福祉サービス加算・減算AI ―― スタンドアロン版(2026年7月作成)</p>
+  </footer>
+</div>

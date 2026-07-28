@@ -46,6 +46,18 @@ npm start
 
 未設定でも、ナレッジベースから抽出したテンプレート形式の回答は問題なく動作します。
 
+## スタンドアロン版(サーバー不要・1ファイル)
+
+`public/standalone.html` は、Node.jsサーバーなしでブラウザだけで完結する単一HTMLファイル版です。検索・照会・要件チェックの機能をすべてクライアントサイドJSで実装しており、ファイルをそのまま開く(またはどこかにホストする)だけで動作します。Claude APIには接続しないため、回答は常にテンプレート形式です。原文アーカイブ(`data/source-archive/`)全文検索機能は含まれていません(サイズが大きいため)。
+
+ナレッジベース(`data/services/*.json`)を更新した後は、以下でスタンドアロン版を再生成できます。
+
+```bash
+npm run build:standalone
+```
+
+ソースは `standalone/`(`style.css` / `markup.html` / `app.js` / `build.js`)にあります。
+
 ## ディレクトリ構成
 
 ```
@@ -67,8 +79,14 @@ lib/
   answerFormatter.js  ナレッジベース+原文抜粋からテンプレート回答を組み立て
 
 routes/api.js         REST API (/api/services, /api/search, /api/source-search, /api/chat, /api/eligibility/...)
-public/                フロントエンド(チャットUI・加算一覧・要件チェックモーダル)
+public/                フロントエンド(チャットUI・加算一覧・要件チェックモーダル、standalone.htmlも含む)
 server.js              Expressサーバーのエントリポイント
+
+standalone/             サーバー不要の1ファイル版のソース
+  style.css              デザインシステム(和紙×紺色×朱印をモチーフにした配色・組版)
+  markup.html            画面のHTML構造
+  app.js                 検索・照会・要件チェックのクライアントサイドロジック(lib/*.jsの移植)
+  build.js               上記3つとJSONデータを結合し public/standalone.html を生成するビルドスクリプト
 ```
 
 ## API
