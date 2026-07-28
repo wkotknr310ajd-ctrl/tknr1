@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>障害福祉サービス加算AI</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h1>障害福祉サービス<br />加算・減算AI</h1>
+    <p class="subtitle">施設入所支援 / 生活介護 / 短期入所 / 共同生活援助</p>
+
+    <div class="service-filter">
+      <label for="serviceSelect">サービス種類で絞り込み</label>
+      <select id="serviceSelect">
+        <option value="">すべてのサービス</option>
+      </select>
+    </div>
+
+    <div class="addition-list-wrap">
+      <h2>加算・減算一覧</h2>
+      <div id="additionList" class="addition-list">
+        <p class="hint">サービス種類を選択すると一覧が表示されます。</p>
+      </div>
+    </div>
+  </aside>
+
+  <main class="chat-pane">
+    <div id="chatLog" class="chat-log">
+      <div class="msg msg-bot">
+        <p>こんにちは。障害福祉サービスの加算・減算について質問してください。</p>
+        <p>例:「生活介護の人員配置体制加算の要件を教えて」「共同生活援助の夜間支援等体制加算とは?」「処遇改善加算の仕組みを教えて」</p>
+      </div>
+    </div>
+    <form id="chatForm" class="chat-form">
+      <select id="chatServiceScope">
+        <option value="">サービス種類を指定しない</option>
+      </select>
+      <input id="chatInput" type="text" placeholder="加算・減算について質問を入力してください" autocomplete="off" />
+      <button type="submit">送信</button>
+    </form>
+    <p class="disclaimer">
+      本ツールは一般的な制度知識に基づく参考情報を提供するものです。実際の請求(国保連伝送)にあたっては、必ず最新の報酬告示・留意事項通知・自治体への確認を行ってください。
+    </p>
+  </main>
+</div>
+
+<div id="checkModal" class="modal hidden">
+  <div class="modal-content">
+    <button id="closeModal" class="modal-close">×</button>
+    <h2 id="checkTitle"></h2>
+    <p id="checkSummary" class="check-summary"></p>
+    <form id="checkForm"></form>
+    <div id="checkResult" class="check-result"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

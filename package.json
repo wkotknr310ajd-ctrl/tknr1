@@ -1,0 +1,15 @@
+{
+  "name": "shogai-fukushi-kasan-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "障害福祉サービス(施設入所支援・生活介護・短期入所・共同生活援助)の加算要件を案内するAIチャットアプリ",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
