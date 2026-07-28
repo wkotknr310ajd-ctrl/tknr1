@@ -34,8 +34,11 @@ Public Function Now2() As Date
     Now2 = Now
 End Function
 
+' 申請者(誰が申請したか)と対象者(誰の勤務が変わるか)は別項目として記録する。
+' 単独の勤務変更申請では申請者=対象者だが、2名間の交換申請では異なる場合がある。
 Public Sub AppendHistoryRow(ByVal reqId As String, ByVal appliedAt As Date, ByVal applicant As String, _
-                             ByVal targetDate As Date, ByVal beforeShift As String, ByVal afterShift As String, _
+                             ByVal targetPerson As String, ByVal targetDate As Date, _
+                             ByVal beforeShift As String, ByVal afterShift As String, _
                              ByVal reason As String, ByVal status As String, ByVal approver As String, _
                              ByVal approvedAt As Variant, ByVal origReqId As String)
     Dim hist As Worksheet
@@ -48,20 +51,21 @@ Public Sub AppendHistoryRow(ByVal reqId As String, ByVal appliedAt As Date, ByVa
     hist.Cells(r, 2).Value = appliedAt
     hist.Cells(r, 2).NumberFormat = "yyyy/mm/dd hh:mm:ss"
     hist.Cells(r, 3).Value = applicant
-    hist.Cells(r, 4).Value = targetDate
-    hist.Cells(r, 4).NumberFormat = "yyyy/mm/dd"
-    hist.Cells(r, 5).Value = beforeShift
-    hist.Cells(r, 6).Value = afterShift
-    hist.Cells(r, 7).Value = reason
-    hist.Cells(r, 8).Value = status
-    hist.Cells(r, 9).Value = approver
+    hist.Cells(r, 4).Value = targetPerson
+    hist.Cells(r, 5).Value = targetDate
+    hist.Cells(r, 5).NumberFormat = "yyyy/mm/dd"
+    hist.Cells(r, 6).Value = beforeShift
+    hist.Cells(r, 7).Value = afterShift
+    hist.Cells(r, 8).Value = reason
+    hist.Cells(r, 9).Value = status
+    hist.Cells(r, 10).Value = approver
     If Not IsEmpty(approvedAt) Then
         If Trim$(CStr(approvedAt)) <> "" Then
-            hist.Cells(r, 10).Value = CDate(approvedAt)
-            hist.Cells(r, 10).NumberFormat = "yyyy/mm/dd hh:mm:ss"
+            hist.Cells(r, 11).Value = CDate(approvedAt)
+            hist.Cells(r, 11).NumberFormat = "yyyy/mm/dd hh:mm:ss"
         End If
     End If
-    hist.Cells(r, 11).Value = origReqId
+    hist.Cells(r, 12).Value = origReqId
 End Sub
 
 Public Function FindStaffMasterRow(ByVal staffName As String) As Long
@@ -109,17 +113,19 @@ Public Function FindShiftDayColumn(ByVal dayNum As Integer) As Long
     FindShiftDayColumn = 0
 End Function
 
-Public Function FindHistoryRowById(ByVal reqId As String) As Long
+' 同じ申請IDを持つ履歴行をすべて返す。
+' 単独申請なら1行、2名間の交換申請なら2行(対象者ごとに1行)が返る。
+Public Function FindHistoryRowsById(ByVal reqId As String) As Collection
     Dim ws As Worksheet
     Set ws = ThisWorkbook.Sheets("履歴")
+    Dim result As New Collection
     Dim lastRow As Long
     lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
     Dim r As Long
     For r = 2 To lastRow
         If Trim$(CStr(ws.Cells(r, 1).Value)) = Trim$(reqId) Then
-            FindHistoryRowById = r
-            Exit Function
+            result.Add r
         End If
     Next r
-    FindHistoryRowById = 0
+    Set FindHistoryRowsById = result
 End Function

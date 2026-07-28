@@ -100,14 +100,18 @@ Public Sub RefreshStaffValidation()
     Dim lastRow As Long
     lastRow = masterWs.Cells(masterWs.Rows.Count, 1).End(xlUp).Row
 
-    Dim reqWs As Worksheet, apprWs As Worksheet, rbWs As Worksheet
+    Dim reqWs As Worksheet, apprWs As Worksheet, rbWs As Worksheet, swapWs As Worksheet
     Set reqWs = ThisWorkbook.Sheets("申請")
     Set apprWs = ThisWorkbook.Sheets("承認")
     Set rbWs = ThisWorkbook.Sheets("ロールバック")
+    Set swapWs = ThisWorkbook.Sheets("交換申請")
 
     SetNameValidation reqWs.Range("B3"), lastRow
     SetNameValidation apprWs.Range("B4"), lastRow
     SetNameValidation rbWs.Range("B4"), lastRow
+    SetNameValidation swapWs.Range("B3"), lastRow  ' 申請者
+    SetNameValidation swapWs.Range("B6"), lastRow  ' 対象者A
+    SetNameValidation swapWs.Range("B11"), lastRow ' 対象者B
 End Sub
 
 Private Sub SetNameValidation(ByVal targetCell As Range, ByVal lastRow As Long)
@@ -125,6 +129,7 @@ Public Sub SetupButtons()
     AddButton "申請", "申請する", "B12", "SubmitRequest"
     AddButton "承認", "承認/却下を実行", "D8", "ProcessApproval"
     AddButton "ロールバック", "選択した変更を取り消す", "D7", "RollbackChange"
+    AddButton "交換申請", "交換を申請する", "B20", "SubmitSwapRequest"
 End Sub
 
 Private Sub AddButton(ByVal sheetName As String, ByVal caption As String, ByVal anchorCell As String, ByVal macroName As String)

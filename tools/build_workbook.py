@@ -160,13 +160,13 @@ for row, label, note in fields:
 
 ws["A11"] = "▼ 承認待ち一覧(自動更新)"
 ws["A11"].font = Font(bold=True)
-headers = ["申請ID", "申請者", "対象日", "変更前", "変更後", "変更理由", "申請日時"]
+headers = ["申請ID", "申請者", "対象者", "対象日", "変更前", "変更後", "変更理由", "申請日時"]
 for i, h in enumerate(headers):
     c = ws.cell(row=12, column=1 + i, value=h)
     c.fill = HEADER_FILL
     c.font = HEADER_FONT
 
-for i in range(1, 8):
+for i in range(1, 9):
     ws.column_dimensions[get_column_letter(i)].width = 16
 
 dv_decision = DataValidation(type="list", formula1='"承認,却下"', allow_blank=True, showErrorMessage=True)
@@ -200,22 +200,70 @@ for row, label, note in fields:
 
 ws["A10"] = "▼ 承認済み一覧(自動更新)"
 ws["A10"].font = Font(bold=True)
-headers = ["申請ID", "申請者", "対象日", "変更前", "変更後(現在値)", "承認者", "承認日時"]
+headers = ["申請ID", "申請者", "対象者", "対象日", "変更前", "変更後(現在値)", "承認者", "承認日時"]
 for i, h in enumerate(headers):
     c = ws.cell(row=11, column=1 + i, value=h)
     c.fill = HEADER_FILL
     c.font = HEADER_FONT
 
-for i in range(1, 8):
+for i in range(1, 9):
     ws.column_dimensions[get_column_letter(i)].width = 16
 
 ws.protection.sheet = False
 
 # ------------------------------------------------------------------
-# 5. 履歴
+# 5. 交換申請 (2名間の勤務交換)
+# ------------------------------------------------------------------
+ws = wb.create_sheet("交換申請")
+ws["A1"] = "勤務交換申請(2名間の振替)"
+ws["A1"].font = TITLE_FONT
+ws.merge_cells("A1:D1")
+
+fields = [
+    (3, "申請者氏名", "", None),
+    (4, "パスワード", "", None),
+    (6, "【対象者A】氏名", "", None),
+    (7, "対象日A", "", None),
+    (8, "現在の勤務A(自動表示)",
+     '=IFERROR(INDEX(シフト表!$B$5:$AF$200,MATCH($B$7,シフト表!$A$5:$A$200,0),'
+     'MATCH(DAY($B$8),シフト表!$B$3:$AF$3,0)),"-")', None),
+    (9, "変更後の勤務A", "", None),
+    (11, "【対象者B】氏名", "", None),
+    (12, "対象日B", "", None),
+    (13, "現在の勤務B(自動表示)",
+     '=IFERROR(INDEX(シフト表!$B$5:$AF$200,MATCH($B$12,シフト表!$A$5:$A$200,0),'
+     'MATCH(DAY($B$13),シフト表!$B$3:$AF$3,0)),"-")', None),
+    (14, "変更後の勤務B", "", None),
+    (16, "交換理由(任意)", "", None),
+]
+for row, label, formula, _ in fields:
+    lc = ws.cell(row=row, column=1, value=label)
+    style_label_cell(lc)
+    ic = ws.cell(row=row, column=2, value=formula if formula else None)
+    if formula:
+        ic.fill = LOCK_FILL
+        ic.protection = openpyxl.styles.Protection(locked=True)
+    else:
+        style_input_cell(ic)
+    ic.border = BORDER
+
+ws["B7"].number_format = "yyyy/mm/dd"
+ws["B12"].number_format = "yyyy/mm/dd"
+ws["A18"] = "入力後、下の「交換を申請する」ボタンを押してください。(ボタンは初回に自動作成されます)"
+ws["A18"].font = Font(italic=True, size=9, color="808080")
+ws.merge_cells("A18:F18")
+
+ws.column_dimensions["A"].width = 24
+ws.column_dimensions["B"].width = 28
+
+ws.protection.sheet = True
+ws.protection.password = "shift-sys-2026"
+
+# ------------------------------------------------------------------
+# 6. 履歴
 # ------------------------------------------------------------------
 ws = wb.create_sheet("履歴")
-headers = ["申請ID", "申請日時", "申請者", "対象日", "変更前", "変更後", "変更理由",
+headers = ["申請ID", "申請日時", "申請者", "対象者", "対象日", "変更前", "変更後", "変更理由",
            "ステータス", "承認者", "承認/処理日時", "元申請ID(ロールバック用)"]
 for i, h in enumerate(headers):
     c = ws.cell(row=1, column=1 + i, value=h)
@@ -224,9 +272,9 @@ for i, h in enumerate(headers):
     ws.column_dimensions[get_column_letter(1 + i)].width = 18
 
 ws.freeze_panes = "A2"
-ws.auto_filter.ref = "A1:K1"
+ws.auto_filter.ref = "A1:L1"
 
-for row in ws.iter_rows(min_row=1, max_row=2000, min_col=1, max_col=11):
+for row in ws.iter_rows(min_row=1, max_row=2000, min_col=1, max_col=12):
     for cell in row:
         cell.protection = openpyxl.styles.Protection(locked=True)
 ws.protection.sheet = True
@@ -234,7 +282,7 @@ ws.protection.password = "shift-sys-2026"
 ws.protection.autoFilter = False
 
 # ------------------------------------------------------------------
-# 6. 職員マスタ (非表示)
+# 7. 職員マスタ (非表示)
 # ------------------------------------------------------------------
 ws = wb.create_sheet("職員マスタ")
 headers = ["氏名", "権限(一般/一般・承認者)", "ソルト", "パスワードハッシュ", "登録日時"]
@@ -246,7 +294,7 @@ for i, h in enumerate(headers):
 ws.sheet_state = "veryHidden"
 
 # ------------------------------------------------------------------
-# 7. 設定 (非表示)
+# 8. 設定 (非表示)
 # ------------------------------------------------------------------
 ws = wb.create_sheet("設定")
 ws["A1"] = "対象年月初日"
