@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>メモ板</title>
+<style>
+  :root {
+    --ink: #24312B;
+    --ink-soft: #4A5A50;
+    --paper: #FBFAF4;
+    --board: #E7EBE0;
+    --amber: #E8A33D;
+    --amber-deep: #7A4F0F;
+    --green: #4F7C5D;
+    --green-deep: #1F3A28;
+    --blue: #5B7A99;
+    --blue-deep: #223142;
+    --line: #C9D0C2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
+    color: var(--ink);
+    background: #F4F3EC;
+    margin: 0;
+    padding: 24px 16px 60px;
+  }
+  #app-root {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-family: "Hiragino Mincho ProN", "Noto Serif JP", serif;
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin: 0 0 4px;
+  }
+  .sub {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin: 0 0 20px;
+    line-height: 1.6;
+  }
+  .board {
+    background: var(--board);
+    border-radius: 14px;
+    padding: 18px;
+  }
+  .name-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .name-bar b { color: var(--ink); font-weight: 600; }
+  .status-pill {
+    font-size: 11px;
+    border-radius: 4px;
+    padding: 2px 8px;
+  }
+  .status-pill.ok { background: #E4EEE0; color: var(--green-deep); }
+  .status-pill.warn { background: #FBEED2; color: var(--amber-deep); }
+  .unread-banner {
+    background: #FBEED2;
+    color: var(--amber-deep);
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 14px;
+  }
+  .warn-banner {
+    background: #FBEED2;
+    color: var(--amber-deep);
+    font-size: 12.5px;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 14px;
+    line-height: 1.6;
+  }
+  button.link {
+    background: none; border: none; padding: 0;
+    color: var(--blue-deep); text-decoration: underline;
+    font-size: 13px; cursor: pointer;
+  }
+  .compose {
+    background: var(--paper);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+    border: 1px solid var(--line);
+  }
+  .compose-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .compose-row > div { flex: 1; }
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  input[type=text], textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fff;
+    color: var(--ink);
+  }
+  textarea { min-height: 64px; resize: vertical; }
+  .post-btn {
+    background: var(--green);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .post-btn:hover { background: var(--green-deep); }
+  .post-btn:disabled { opacity: 0.5; cursor: default; }
+  .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    margin: 18px 0 8px;
+  }
+  .empty {
+    font-size: 13px;
+    color: var(--ink-soft);
+    padding: 14px 4px;
+  }
+  .card {
+    position: relative;
+    background: var(--paper);
+    border-radius: 8px;
+    border-left: 4px solid var(--line);
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.05);
+    transition: transform 0.35s ease, opacity 0.35s ease;
+  }
+  .card.to-me { border-left-color: var(--amber); }
+  .card.to-me.confirmed { border-left-color: #B7B7AC; }
+  .card.mine { border-left-color: var(--blue); }
+  .card.fold {
+    transform: scale(0.9) translateY(6px);
+    opacity: 0;
+  }
+  .card .meta {
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .card .title {
+    font-family: "Hiragino Mincho ProN", "Noto Serif JP", serif;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 6px;
+  }
+  .card .body {
+    font-size: 13.5px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    margin: 0 0 10px;
+  }
+  .card .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .card .actions button {
+    font-size: 12px;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    border: 1px solid var(--line);
+    background: #fff;
+  }
+  .card .actions .confirm {
+    background: var(--green);
+    color: #fff;
+    border: none;
+    font-weight: 600;
+  }
+  .card .actions .confirm:hover { background: var(--green-deep); }
+  .card .actions .delete:hover { background: #f0efe8; }
+  .card .confirmed-note { font-size: 12px; color: var(--ink-soft); margin-bottom: 8px; }
+  .setup-wrap {
+    background: var(--board);
+    border-radius: 14px;
+    padding: 24px 20px;
+  }
+  .setup-wrap input[type=text] { max-width: 280px; }
+  .setup-note {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin: 10px 0 18px;
+    line-height: 1.7;
+  }
+  .loading { font-size: 13px; color: var(--ink-soft); padding: 20px 4px; }
+</style>
+</head>
+<body>
+<div id="app-root"></div>
+<script>
+(function(){
+  'use strict';
+  const root = document.getElementById('app-root');
+  const ORIGINAL_TITLE = 'メモ板';
+  const POLL_MS = 5000;
+  const SUPPRESS_MS = 3000;
+
+  let username = null;
+  let mode = null;          // 'handle' | 'manual'
+  let fileHandle = null;    // FileSystemFileHandle, session-only (never persisted)
+  let memos = [];
+  let pollTimer = null;
+  let pollFailCount = 0;
+  let suppressRefreshUntil = 0;
+  let autoWarning = '';
+
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function fmtTime(ts){
+    const d = new Date(ts);
+    const mo = d.getMonth()+1, da = d.getDate();
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mm = String(d.getMinutes()).padStart(2,'0');
+    return mo + '/' + da + ' ' + hh + ':' + mm;
+  }
+  function updateTitle(unreadCount){
+    document.title = unreadCount > 0 ? '(' + unreadCount + ') ' + ORIGINAL_TITLE : ORIGINAL_TITLE;
+  }
+
+  function loadUsername(){
+    try { return localStorage.getItem('memoita_username'); } catch(e){ return null; }
+  }
+  function saveUsername(name){
+    try { localStorage.setItem('memoita_username', name); } catch(e){}
+  }
+  function computeToMe(list){
+    return list.filter(function(m){ return m.from !== username && (m.to === username || m.to === '全員'); });
+  }
+  function knownNames(){
+    const set = new Set();
+    memos.forEach(function(m){
+      if (m.from) set.add(m.from);
+      if (m.to && m.to !== '全員') set.add(m.to);
+    });
+    return Array.from(set);
+  }
+
+  function supportsFilePicker(){
+    return typeof window.showOpenFilePicker === 'function';
+  }
+
+  async function readViaHandle(handle){
+    const file = await handle.getFile();
+    const text = await file.text();
+    if (!text || !text.trim()) return [];
+    const parsed = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed : [];
+  }
+  async function writeViaHandle(handle, arr){
+    const w = await handle.createWritable();
+    await w.write(JSON.stringify(arr, null, 0));
+    await w.close();
+  }
+  function downloadJson(arr){
+    try {
+      const blob = new Blob([JSON.stringify(arr)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'memos.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+      return true;
+    } catch(e){ return false; }
+  }
+  function readFileAsMemos(file){
+    return new Promise(function(resolve, reject){
+      const reader = new FileReader();
+      reader.onload = function(){
+        try {
+          const parsed = JSON.parse(reader.result || '[]');
+          resolve(Array.isArray(parsed) ? parsed : []);
+        } catch(e){ reject(e); }
+      };
+      reader.onerror = function(){ reject(reader.error || new Error('読み込みエラー')); };
+      reader.readAsText(file);
+    });
+  }
+
+  async function saveMemos(arr){
+    if (mode === 'handle') {
+      try {
+        await writeViaHandle(fileHandle, arr);
+        return true;
+      } catch(e){
+        alert('共有フォルダへの保存に失敗しました。念のため、今の内容を手元にダウンロードします。ダウンロードされたファイルを共有フォルダの memos.json に上書きしてください。\n詳細: ' + (e && e.message ? e.message : e));
+        downloadJson(arr);
+        return false;
+      }
+    }
+    downloadJson(arr);
+    return true;
+  }
+
+  // ---------------- setup screens ----------------
+
+  function renderSetup(prefillName, errorMsg){
+    root.innerHTML =
+      '<h1>メモ板</h1>' +
+      '<p class="sub">サーバーの共有フォルダに置いた memos.json をみんなで読み書きする、貼り紙代わりのメモ板です。</p>' +
+      '<div class="setup-wrap">' +
+        '<label>あなたの名前</label>' +
+        '<input type="text" id="name-input" placeholder="例: 田中" value="' + esc(prefillName || '') + '" />' +
+        '<p class="setup-note">' +
+          '共有フォルダの中にある <b>memos.json</b> を選んでください。まだファイルが無い場合は、先に「空のmemos.jsonを作成してダウンロード」を押し、ダウンロードされたファイルを共有フォルダに移動してから選んでください。<br><br>' +
+          (supportsFilePicker()
+            ? 'このブラウザでは、ファイルを選ぶだけで以降の読み込み・保存が自動で同じファイルに対して行われます(ページを開き直したら選び直しが必要です)。共有フォルダの種類によってはうまく動かないことがあります。その場合は下の「手動方式を使う」をお試しください。'
+            : 'このブラウザは自動保存に対応していないため、手動方式(保存のたびにダウンロードして上書きする方式)を使用します。') +
+        '</p>' +
+        (supportsFilePicker() ? '<button class="post-btn" id="pick-btn">memos.json を選ぶ</button>' : '') +
+        '<div style="margin-top:12px;">' +
+          (supportsFilePicker() ? '<button class="link" id="manual-toggle-btn">手動方式を使う(ファイルを毎回選ぶ/保存はダウンロード)</button>' : '') +
+        '</div>' +
+        '<div style="margin-top:10px;"><button class="link" id="create-empty-btn">空のmemos.jsonを作成してダウンロード</button></div>' +
+        '<div id="manual-area" style="display:none; margin-top:14px;">' +
+          '<label>memos.json を選択</label>' +
+          '<input type="file" id="manual-file-input" accept="application/json,.json" />' +
+        '</div>' +
+        (errorMsg ? '<div class="warn-banner" style="margin-top:14px;">' + esc(errorMsg) + '</div>' : '') +
+        '<div id="setup-error"></div>' +
+      '</div>';
+
+    const nameInput = document.getElementById('name-input');
+
+    function currentName(){ return nameInput.value.trim(); }
+
+    document.getElementById('create-empty-btn').addEventListener('click', function(){
+      downloadJson([]);
+      showInfo('空のmemos.jsonをダウンロードしました。共有フォルダに移動してから、上のボタンでそのファイルを選んでください。');
+    });
+
+    function showInfo(msg){
+      const el = document.getElementById('setup-error');
+      if (el) el.innerHTML = '<div class="warn-banner" style="margin-top:14px; background:#E4EEE0; color:var(--green-deep);">' + esc(msg) + '</div>';
+    }
+    function showError(msg){
+      const el = document.getElementById('setup-error');
+      if (el) el.innerHTML = '<div class="warn-banner" style="margin-top:14px;">' + esc(msg) + '</div>';
+    }
+
+    if (supportsFilePicker()) {
+      document.getElementById('pick-btn').addEventListener('click', async function(){
+        const name = currentName();
+        if (!name) { nameInput.focus(); return; }
+        const btn = document.getElementById('pick-btn');
+        btn.disabled = true;
+        btn.textContent = '選択中...';
+        try {
+          const handles = await window.showOpenFilePicker({
+            types: [{ description: 'メモデータ', accept: { 'application/json': ['.json'] } }],
+            excludeAcceptAllOption: false
+          });
+          const handle = handles[0];
+          const list = await readViaHandle(handle);
+          fileHandle = handle;
+          mode = 'handle';
+          username = name;
+          saveUsername(name);
+          memos = list;
+          await enterApp();
+        } catch(e){
+          btn.disabled = false;
+          btn.textContent = 'memos.json を選ぶ';
+          if (e && e.name === 'AbortError') return;
+          showError('ファイルの読み込みに失敗しました。共有フォルダの種類によってはこの方式が使えないことがあります。下の「手動方式を使う」をお試しください。\n詳細: ' + (e && e.message ? e.message : e));
+        }
+      });
+      document.getElementById('manual-toggle-btn').addEventListener('click', function(){
+        document.getElementById('manual-area').style.display = 'block';
+      });
+    } else {
+      document.getElementById('manual-area').style.display = 'block';
+    }
+
+    document.getElementById('manual-file-input').addEventListener('change', async function(e){
+      const name = currentName();
+      if (!name) { nameInput.focus(); return; }
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      try {
+        const parsed = await readFileAsMemos(file);
+        mode = 'manual';
+        fileHandle = null;
+        username = name;
+        saveUsername(name);
+        memos = parsed;
+        await enterApp();
+      } catch(err){
+        showError('ファイルの読み込みに失敗しました。正しい memos.json を選んでいるかご確認ください。詳細: ' + (err && err.message ? err.message : err));
+      }
+    });
+  }
+
+  // ---------------- main app ----------------
+
+  function cardHtml(m, kind){
+    const confirmedBy = Array.isArray(m.confirmedBy) ? m.confirmedBy : [];
+    const iConfirmed = confirmedBy.indexOf(username) !== -1;
+    const toLabel = m.to === '全員' ? '全員宛て' : ('宛先: ' + esc(m.to));
+    const cardClass = kind === 'to-me' ? ('to-me' + (iConfirmed ? ' confirmed' : '')) : 'mine';
+
+    let actions;
+    if (kind === 'to-me') {
+      const confirmBtn = iConfirmed
+        ? '<span style="font-size:12px; color: var(--green-deep); padding: 6px 4px;">確認済み</span>'
+        : '<button class="confirm" data-action="confirm" data-id="' + m.id + '">確認済みにする</button>';
+      actions = '<div class="actions">' + confirmBtn + '<button class="delete" data-action="delete" data-id="' + m.id + '">削除する</button></div>';
+    } else {
+      const confirmedNote = confirmedBy.length
+        ? '<div class="confirmed-note">確認済み: ' + confirmedBy.map(esc).join('、') + '</div>'
+        : '';
+      actions = confirmedNote + '<div class="actions"><button class="delete" data-action="delete" data-id="' + m.id + '">削除する</button></div>';
+    }
+
+    return (
+      '<div class="card ' + cardClass + '" data-card-id="' + m.id + '">' +
+        '<div class="meta">' + esc(m.from) + ' ・ ' + toLabel + ' ・ ' + fmtTime(m.createdAt) + '</div>' +
+        '<div class="title">' + esc(m.title || '(無題)') + '</div>' +
+        '<div class="body">' + esc(m.body || '') + '</div>' +
+        actions +
+      '</div>'
+    );
+  }
+
+  function render(){
+    const toMe = computeToMe(memos);
+    const mine = memos.filter(function(m){ return m.from === username; });
+    const unreadCount = toMe.filter(function(m){
+      return !(Array.isArray(m.confirmedBy) && m.confirmedBy.indexOf(username) !== -1);
+    }).length;
+    updateTitle(unreadCount);
+
+    const unreadBanner = unreadCount > 0
+      ? '<div class="unread-banner">未確認のメモが ' + unreadCount + ' 件あります</div>'
+      : '';
+
+    const modeLabel = mode === 'handle'
+      ? '<span class="status-pill ok">共有フォルダと自動連携中</span>'
+      : '<span class="status-pill warn">手動読み込みモード</span>';
+
+    const reloadControl = mode === 'manual'
+      ? ('<button class="link" id="reload-btn">最新を読み込み直す</button>' +
+         '<input type="file" id="reload-file-input" accept="application/json,.json" style="display:none;" />')
+      : '<button class="link" id="reload-btn">今すぐ最新を読み込む</button>';
+
+    const manualBanner = mode === 'manual'
+      ? '<div class="warn-banner">手動モードで利用中です。投稿・確認・削除のたびに更新済みの memos.json がダウンロードされます。共有フォルダの memos.json に上書きしてください。他の人の最新の変更を見るには「最新を読み込み直す」を押してください。</div>'
+      : '';
+    const autoWarnBanner = (mode === 'handle' && autoWarning)
+      ? '<div class="warn-banner">' + esc(autoWarning) + '</div>'
+      : '';
+
+    const namesList = knownNames();
+    const datalist = namesList.length
+      ? '<datalist id="name-suggestions">' + namesList.map(function(n){ return '<option value="' + esc(n) + '">'; }).join('') + '</datalist>'
+      : '';
+
+    root.innerHTML =
+      '<h1>メモ板</h1>' +
+      '<p class="sub">共有フォルダに置いた memos.json を通じて、みんなで貼り紙代わりのメモをやり取りします。</p>' +
+      '<div class="board">' +
+        '<div class="name-bar"><span>あなたは <b>' + esc(username) + '</b> として利用中</span>' + modeLabel +
+          '<button class="link" id="rename-btn">名前を変更</button>' +
+          reloadControl +
+        '</div>' +
+        manualBanner + autoWarnBanner + unreadBanner +
+        '<div class="compose">' +
+          '<div class="compose-row">' +
+            '<div><label>宛先</label><input type="text" id="c-to" placeholder="全員 または 相手の名前" list="name-suggestions" /></div>' +
+          '</div>' +
+          '<div class="compose-row">' +
+            '<div><label>件名</label><input type="text" id="c-title" placeholder="例: 会議室変更のお知らせ" /></div>' +
+          '</div>' +
+          '<div class="compose-row">' +
+            '<div><label>本文</label><textarea id="c-body" placeholder="内容を入力"></textarea></div>' +
+          '</div>' +
+          '<button class="post-btn" id="c-submit">貼り出す</button>' +
+          datalist +
+        '</div>' +
+        '<div class="section-title">あなた宛てのメモ (' + toMe.length + ')</div>' +
+        (toMe.length ? toMe.map(function(m){ return cardHtml(m, 'to-me'); }).join('') : '<div class="empty">今のところ新しいメモはありません。</div>') +
+        '<div class="section-title">自分が貼った分 (' + mine.length + ')</div>' +
+        (mine.length ? mine.map(function(m){ return cardHtml(m, 'mine'); }).join('') : '<div class="empty">まだ何も貼っていません。</div>') +
+      '</div>';
+
+    document.getElementById('rename-btn').addEventListener('click', function(){
+      const name = prompt('新しい名前を入力してください', username || '');
+      if (name && name.trim()) {
+        username = name.trim();
+        saveUsername(username);
+        render();
+      }
+    });
+
+    if (mode === 'manual') {
+      const reloadBtn = document.getElementById('reload-btn');
+      const reloadInput = document.getElementById('reload-file-input');
+      reloadBtn.addEventListener('click', function(){ reloadInput.click(); });
+      reloadInput.addEventListener('change', async function(e){
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        try {
+          memos = await readFileAsMemos(file);
+          render();
+        } catch(err){
+          alert('ファイルの読み込みに失敗しました: ' + (err && err.message ? err.message : err));
+        }
+      });
+    } else {
+      document.getElementById('reload-btn').addEventListener('click', function(){ refreshFromHandle(true); });
+    }
+
+    document.getElementById('c-submit').addEventListener('click', onSubmit);
+
+    root.querySelectorAll('[data-action]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        const id = btn.getAttribute('data-id');
+        const action = btn.getAttribute('data-action');
+        if (action === 'confirm') confirmMemo(id);
+        else if (action === 'delete') removeMemo(id);
+      });
+    });
+  }
+
+  async function onSubmit(){
+    const toEl = document.getElementById('c-to');
+    const titleEl = document.getElementById('c-title');
+    const bodyEl = document.getElementById('c-body');
+    const to = toEl.value.trim() || '全員';
+    const title = titleEl.value.trim();
+    const body = bodyEl.value.trim();
+    if (!title && !body) return;
+    const memo = {
+      id: 'm' + Date.now() + '-' + Math.random().toString(36).slice(2,7),
+      from: username,
+      to: to,
+      title: title,
+      body: body,
+      createdAt: Date.now(),
+      confirmedBy: []
+    };
+    memos.push(memo);
+    suppressRefreshUntil = Date.now() + SUPPRESS_MS;
+    render();
+    await saveMemos(memos);
+  }
+
+  async function confirmMemo(id){
+    const m = memos.find(function(x){ return x.id === id; });
+    if (!m) return;
+    if (!Array.isArray(m.confirmedBy)) m.confirmedBy = [];
+    if (m.confirmedBy.indexOf(username) === -1) m.confirmedBy.push(username);
+    suppressRefreshUntil = Date.now() + SUPPRESS_MS;
+    render();
+    await saveMemos(memos);
+  }
+
+  async function removeMemo(id){
+    if (!confirm('このメモを削除します。よろしいですか?')) return;
+    const card = root.querySelector('[data-card-id="' + id + '"]');
+    if (card) card.classList.add('fold');
+    suppressRefreshUntil = Date.now() + SUPPRESS_MS;
+    setTimeout(async function(){
+      memos = memos.filter(function(m){ return m.id !== id; });
+      render();
+      await saveMemos(memos);
+    }, 350);
+  }
+
+  async function refreshFromHandle(manualTrigger){
+    if (mode !== 'handle') return;
+    if (!manualTrigger && Date.now() < suppressRefreshUntil) return;
+    try {
+      const latest = await readViaHandle(fileHandle);
+      pollFailCount = 0;
+      if (autoWarning) { autoWarning = ''; }
+      const currentIds = memos.map(function(m){ return m.id; }).sort().join(',');
+      const latestIds = latest.map(function(m){ return m.id; }).sort().join(',');
+      if (currentIds !== latestIds) {
+        memos = latest;
+        render();
+      } else if (manualTrigger) {
+        render();
+      }
+    } catch(e){
+      pollFailCount++;
+      if (pollFailCount >= 2) {
+        autoWarning = '共有フォルダからの自動読み込みに失敗しています。ネットワークの状態をご確認のうえ、「今すぐ最新を読み込む」をお試しください。';
+        render();
+      }
+    }
+  }
+
+  async function enterApp(){
+    render();
+    if (pollTimer) clearInterval(pollTimer);
+    if (mode === 'handle') {
+      pollTimer = setInterval(function(){ refreshFromHandle(false); }, POLL_MS);
+    }
+  }
+
+  function init(){
+    username = loadUsername();
+    renderSetup(username, null);
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
