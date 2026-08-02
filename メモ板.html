@@ -245,6 +245,57 @@
   function saveUsername(name){
     try { localStorage.setItem('memoita_username', name); } catch(e){}
   }
+
+  function withTimeout(promise, ms, label){
+    return new Promise(function(resolve, reject){
+      const timer = setTimeout(function(){ reject(new Error('タイムアウトしました(' + (label || '処理') + ')')); }, ms);
+      promise.then(function(v){ clearTimeout(timer); resolve(v); }, function(e){ clearTimeout(timer); reject(e); });
+    });
+  }
+
+  // ---- remembering the chosen file across reopens, so users don't have to re-pick it every time ----
+  function idbOpen(){
+    return new Promise(function(resolve, reject){
+      const req = indexedDB.open('memoita-db', 1);
+      req.onupgradeneeded = function(){ req.result.createObjectStore('handles'); };
+      req.onsuccess = function(){ resolve(req.result); };
+      req.onerror = function(){ reject(req.error); };
+    });
+  }
+  async function idbGet(key){
+    try {
+      const db = await idbOpen();
+      return await new Promise(function(resolve, reject){
+        const tx = db.transaction('handles', 'readonly');
+        const r = tx.objectStore('handles').get(key);
+        r.onsuccess = function(){ resolve(r.result || null); };
+        r.onerror = function(){ reject(r.error); };
+      });
+    } catch(e){ return null; }
+  }
+  async function idbSet(key, val){
+    try {
+      const db = await idbOpen();
+      return await new Promise(function(resolve, reject){
+        const tx = db.transaction('handles', 'readwrite');
+        tx.objectStore('handles').put(val, key);
+        tx.oncomplete = function(){ resolve(true); };
+        tx.onerror = function(){ reject(tx.error); };
+      });
+    } catch(e){ return false; }
+  }
+  async function idbClear(key){
+    try {
+      const db = await idbOpen();
+      return await new Promise(function(resolve, reject){
+        const tx = db.transaction('handles', 'readwrite');
+        tx.objectStore('handles').delete(key);
+        tx.oncomplete = function(){ resolve(true); };
+        tx.onerror = function(){ reject(tx.error); };
+      });
+    } catch(e){ return false; }
+  }
+
   function computeToMe(list){
     return list.filter(function(m){ return m.from !== username && (m.to === username || m.to === '全員'); });
   }
@@ -328,7 +379,7 @@
         '<p class="setup-note">' +
           '共有フォルダの中にある <b>memos.json</b> を選んでください。まだファイルが無い場合は、先に「空のmemos.jsonを作成してダウンロード」を押し、ダウンロードされたファイルを共有フォルダに移動してから選んでください。<br><br>' +
           (supportsFilePicker()
-            ? 'このブラウザでは、ファイルを選ぶだけで以降の読み込み・保存が自動で同じファイルに対して行われます(ページを開き直したら選び直しが必要です)。共有フォルダの種類によってはうまく動かないことがあります。その場合は下の「手動方式を使う」をお試しください。'
+            ? '一度選べば、次にこのページを開いたときも選び直し不要で使えます。共有フォルダの種類によってはうまく動かないことがあります。その場合は下の「手動方式を使う」をお試しください。'
             : 'このブラウザは自動保存に対応していないため、手動方式(保存のたびにダウンロードして上書きする方式)を使用します。') +
         '</p>' +
         (supportsFilePicker() ? '<button class="post-btn" id="pick-btn">memos.json を選ぶ</button>' : '') +
@@ -381,6 +432,7 @@
           username = name;
           saveUsername(name);
           memos = list;
+          await idbSet('fileHandle', handle);
           await enterApp();
         } catch(e){
           btn.disabled = false;
@@ -412,6 +464,67 @@
       } catch(err){
         showError('ファイルの読み込みに失敗しました。正しい memos.json を選んでいるかご確認ください。詳細: ' + (err && err.message ? err.message : err));
       }
+    });
+  }
+
+  // ---------------- reconnect screens (returning users) ----------------
+
+  function renderReconnectPrompt(handle, name){
+    root.innerHTML =
+      '<h1>メモ板</h1>' +
+      '<p class="sub">サーバーの共有フォルダに置いた memos.json をみんなで読み書きする、貼り紙代わりのメモ板です。</p>' +
+      '<div class="setup-wrap">' +
+        '<p style="font-size:13px; margin:0 0 14px;"><b>' + esc(name) + '</b> さんとして、前回選んだファイル「<b>' + esc(handle.name) + '</b>」に接続します。</p>' +
+        '<button class="post-btn" id="continue-btn">続ける</button>' +
+        '<div style="margin-top:10px;"><button class="link" id="pick-other-btn">別のファイルを選び直す</button></div>' +
+        '<div id="reconnect-error"></div>' +
+      '</div>';
+    document.getElementById('continue-btn').addEventListener('click', async function(){
+      const btn = document.getElementById('continue-btn');
+      btn.disabled = true;
+      btn.textContent = '接続中...';
+      try {
+        const perm = await withTimeout(handle.requestPermission({ mode: 'readwrite' }), 6000, 'アクセス許可の確認');
+        if (perm === 'granted') {
+          const list = await withTimeout(readViaHandle(handle), 6000, 'ファイルの読み込み');
+          fileHandle = handle;
+          mode = 'handle';
+          memos = list;
+          await enterApp();
+        } else {
+          renderReconnectFailed(handle, name, new Error('アクセスが許可されませんでした'));
+        }
+      } catch(e){
+        if (e && e.name === 'AbortError') {
+          btn.disabled = false;
+          btn.textContent = '続ける';
+          return;
+        }
+        renderReconnectFailed(handle, name, e);
+      }
+    });
+    document.getElementById('pick-other-btn').addEventListener('click', async function(){
+      await idbClear('fileHandle');
+      renderSetup(name, null);
+    });
+  }
+
+  function renderReconnectFailed(handle, name, err){
+    root.innerHTML =
+      '<h1>メモ板</h1>' +
+      '<div class="setup-wrap">' +
+        '<div class="warn-banner">前回のファイルに自動接続できませんでした。もう一度ファイルを選び直してください。</div>' +
+        '<button class="post-btn" id="reselect-btn">ファイルを選び直す</button>' +
+        '<div style="margin-top:10px;"><button class="link" id="details-toggle">詳細を表示</button></div>' +
+        '<div id="details-area" style="display:none; font-size:11px; color: var(--ink-soft); margin-top:8px;">' + esc(err && err.message ? err.message : String(err)) + '</div>' +
+      '</div>';
+    document.getElementById('reselect-btn').addEventListener('click', async function(){
+      await idbClear('fileHandle');
+      renderSetup(name, null);
+    });
+    document.getElementById('details-toggle').addEventListener('click', function(){
+      const el = document.getElementById('details-area');
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
     });
   }
 
@@ -485,6 +598,7 @@
       '<div class="board">' +
         '<div class="name-bar"><span>あなたは <b>' + esc(username) + '</b> として利用中</span>' + modeLabel +
           '<button class="link" id="rename-btn">名前を変更</button>' +
+          (mode === 'handle' ? '<button class="link" id="switch-file-btn">別のファイルに切り替える</button>' : '') +
           reloadControl +
         '</div>' +
         manualBanner + autoWarnBanner + unreadBanner +
@@ -507,6 +621,16 @@
         (mine.length ? mine.map(function(m){ return cardHtml(m, 'mine'); }).join('') : '<div class="empty">まだ何も貼っていません。</div>') +
       '</div>';
 
+    const switchFileBtn = document.getElementById('switch-file-btn');
+    if (switchFileBtn) {
+      switchFileBtn.addEventListener('click', async function(){
+        if (pollTimer) clearInterval(pollTimer);
+        await idbClear('fileHandle');
+        fileHandle = null;
+        mode = null;
+        renderSetup(username, null);
+      });
+    }
     document.getElementById('rename-btn').addEventListener('click', function(){
       const name = prompt('新しい名前を入力してください', username || '');
       if (name && name.trim()) {
@@ -623,9 +747,38 @@
     }
   }
 
-  function init(){
+  async function init(){
     username = loadUsername();
-    renderSetup(username, null);
+    if (!username || !supportsFilePicker()) {
+      renderSetup(username, null);
+      return;
+    }
+    const stored = await idbGet('fileHandle');
+    if (!stored) {
+      renderSetup(username, null);
+      return;
+    }
+    root.innerHTML = '<h1>メモ板</h1><div class="loading">読み込み中...</div>';
+    let perm;
+    try {
+      perm = await withTimeout(stored.queryPermission({ mode: 'readwrite' }), 5000, 'アクセス確認');
+    } catch(e){
+      renderReconnectFailed(stored, username, e);
+      return;
+    }
+    if (perm === 'granted') {
+      try {
+        const list = await withTimeout(readViaHandle(stored), 6000, 'ファイルの読み込み');
+        fileHandle = stored;
+        mode = 'handle';
+        memos = list;
+        await enterApp();
+      } catch(e){
+        renderReconnectFailed(stored, username, e);
+      }
+      return;
+    }
+    renderReconnectPrompt(stored, username);
   }
 
   init();
