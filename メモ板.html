@@ -246,6 +246,7 @@
   'use strict';
   const root = document.getElementById('app-root');
   const ORIGINAL_TITLE = 'メモ板';
+  const PRESET_NAMES = ['工藤', '鈴木', '木村', '遠山', '石川', '恭成'];
   const POLL_MS = 4000;
   const SUPPRESS_MS = 2000;
 
@@ -285,15 +286,6 @@
   function computeToMe(list){
     return list.filter(function(m){ return m.from !== username && (m.to === username || m.to === '全員'); });
   }
-  function knownNames(){
-    const set = new Set();
-    memos.forEach(function(m){
-      if (m.from) set.add(m.from);
-      if (m.to && m.to !== '全員') set.add(m.to);
-    });
-    return Array.from(set);
-  }
-
   // ---- tracking which memos this browser has already notified about ----
   function loadSeenIds(){
     try {
@@ -378,21 +370,31 @@
   // ---------------- setup / connection screens ----------------
 
   function renderSetup(prefillName, errorMsg){
+    const isPreset = PRESET_NAMES.indexOf(prefillName) !== -1;
     root.innerHTML =
       '<h1>メモ板</h1>' +
-      '<p class="sub">社内サーバーで動いている、貼り紙代わりのメモ板です。名前を入力するだけで使えます。</p>' +
+      '<p class="sub">社内サーバーで動いている、貼り紙代わりのメモ板です。名前を選ぶだけで使えます。</p>' +
       '<div class="setup-wrap">' +
         '<label>あなたの名前</label>' +
-        '<input type="text" id="name-input" placeholder="例: 田中" value="' + esc(prefillName || '') + '" />' +
+        '<select id="name-select">' +
+          PRESET_NAMES.map(function(n){ return '<option value="' + esc(n) + '"' + (n === prefillName ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') +
+          '<option value="__custom__"' + (prefillName && !isPreset ? ' selected' : '') + '>その他(自由記述)</option>' +
+        '</select>' +
+        '<input type="text" id="name-custom" placeholder="名前を入力" value="' + (!isPreset ? esc(prefillName || '') : '') + '" style="margin-top:6px; display:' + (!isPreset && prefillName ? 'block' : 'none') + ';" />' +
         '<div style="margin-top:14px;"><button class="post-btn" id="start-btn">はじめる</button></div>' +
         (errorMsg ? '<div class="warn-banner" style="margin-top:14px;">' + esc(errorMsg) + '</div>' : '') +
         '<div id="setup-error"></div>' +
       '</div>';
 
-    const nameInput = document.getElementById('name-input');
+    const nameSelect = document.getElementById('name-select');
+    const nameCustom = document.getElementById('name-custom');
+    nameSelect.addEventListener('change', function(){
+      nameCustom.style.display = nameSelect.value === '__custom__' ? 'block' : 'none';
+      if (nameSelect.value === '__custom__') nameCustom.focus();
+    });
     document.getElementById('start-btn').addEventListener('click', async function(){
-      const name = nameInput.value.trim();
-      if (!name) { nameInput.focus(); return; }
+      const name = nameSelect.value === '__custom__' ? nameCustom.value.trim() : nameSelect.value;
+      if (!name) { nameCustom.focus(); return; }
       const btn = document.getElementById('start-btn');
       btn.disabled = true;
       btn.textContent = '接続中...';
@@ -501,11 +503,6 @@
       ? '<div class="warn-banner">' + esc(autoWarning) + '</div>'
       : '';
 
-    const namesList = knownNames();
-    const datalist = namesList.length
-      ? '<datalist id="name-suggestions">' + namesList.map(function(n){ return '<option value="' + esc(n) + '">'; }).join('') + '</datalist>'
-      : '';
-
     let notifyBtnHtml = '';
     if (notifySupported()) {
       if (Notification.permission === 'granted') {
@@ -529,7 +526,14 @@
         autoWarnBanner + unreadBanner +
         '<div class="compose">' +
           '<div class="compose-row">' +
-            '<div><label>宛先</label><input type="text" id="c-to" placeholder="全員 または 相手の名前" list="name-suggestions" /></div>' +
+            '<div><label>宛先</label>' +
+              '<select id="c-to-select">' +
+                '<option value="全員">全員</option>' +
+                PRESET_NAMES.map(function(n){ return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('') +
+                '<option value="__custom__">その他(自由記述)</option>' +
+              '</select>' +
+              '<input type="text" id="c-to-custom" placeholder="宛先を入力" style="margin-top:6px; display:none;" />' +
+            '</div>' +
           '</div>' +
           '<div class="compose-row">' +
             '<div><label>件名</label><input type="text" id="c-title" placeholder="例: 会議室変更のお知らせ" /></div>' +
@@ -547,7 +551,6 @@
             '</div>' +
           '</div>' +
           '<button class="post-btn" id="c-submit">貼り出す</button>' +
-          datalist +
         '</div>' +
         '<div class="section-title">あなた宛てのメモ (' + toMe.length + ')</div>' +
         (toMe.length ? toMe.map(function(m){ return cardHtml(m, 'to-me'); }).join('') : '<div class="empty">今のところ新しいメモはありません。</div>') +
@@ -575,6 +578,13 @@
 
     document.getElementById('c-submit').addEventListener('click', onSubmit);
 
+    const toSelect = document.getElementById('c-to-select');
+    const toCustom = document.getElementById('c-to-custom');
+    toSelect.addEventListener('change', function(){
+      toCustom.style.display = toSelect.value === '__custom__' ? 'block' : 'none';
+      if (toSelect.value === '__custom__') toCustom.focus();
+    });
+
     const lockCheck = document.getElementById('c-lock');
     const pinWrap = document.getElementById('c-pin-wrap');
     lockCheck.addEventListener('change', function(){
@@ -599,12 +609,15 @@
   }
 
   async function onSubmit(){
-    const toEl = document.getElementById('c-to');
+    const toSelect = document.getElementById('c-to-select');
+    const toCustom = document.getElementById('c-to-custom');
     const titleEl = document.getElementById('c-title');
     const bodyEl = document.getElementById('c-body');
     const lockCheck = document.getElementById('c-lock');
     const pinEl = document.getElementById('c-pin');
-    const to = toEl.value.trim() || '全員';
+    const to = toSelect.value === '__custom__'
+      ? (toCustom.value.trim() || '全員')
+      : toSelect.value;
     const title = titleEl.value.trim();
     const body = bodyEl.value.trim();
     if (!title && !body) return;
