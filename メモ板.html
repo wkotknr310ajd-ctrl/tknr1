@@ -58,13 +58,6 @@
     flex-wrap: wrap;
   }
   .name-bar b { color: var(--ink); font-weight: 600; }
-  .status-pill {
-    font-size: 11px;
-    border-radius: 4px;
-    padding: 2px 8px;
-  }
-  .status-pill.ok { background: #E4EEE0; color: var(--green-deep); }
-  .status-pill.warn { background: #FBEED2; color: var(--amber-deep); }
   .unread-banner {
     background: #FBEED2;
     color: var(--amber-deep);
@@ -250,12 +243,10 @@
   'use strict';
   const root = document.getElementById('app-root');
   const ORIGINAL_TITLE = 'メモ板';
-  const POLL_MS = 5000;
-  const SUPPRESS_MS = 3000;
+  const POLL_MS = 4000;
+  const SUPPRESS_MS = 2000;
 
   let username = null;
-  let mode = null;          // 'handle' | 'manual'
-  let fileHandle = null;    // FileSystemFileHandle, session-only (never persisted)
   let memos = [];
   let pollTimer = null;
   let pollFailCount = 0;
@@ -288,58 +279,16 @@
     try { localStorage.setItem('memoita_username', name); } catch(e){}
   }
 
-  function withTimeout(promise, ms, label){
-    return new Promise(function(resolve, reject){
-      const timer = setTimeout(function(){ reject(new Error('タイムアウトしました(' + (label || '処理') + ')')); }, ms);
-      promise.then(function(v){ clearTimeout(timer); resolve(v); }, function(e){ clearTimeout(timer); reject(e); });
-    });
-  }
-
-  // ---- remembering the chosen file across reopens, so users don't have to re-pick it every time ----
-  function idbOpen(){
-    return new Promise(function(resolve, reject){
-      const req = indexedDB.open('memoita-db', 1);
-      req.onupgradeneeded = function(){ req.result.createObjectStore('handles'); };
-      req.onsuccess = function(){ resolve(req.result); };
-      req.onerror = function(){ reject(req.error); };
-    });
-  }
-  async function idbGet(key){
-    try {
-      const db = await idbOpen();
-      return await new Promise(function(resolve, reject){
-        const tx = db.transaction('handles', 'readonly');
-        const r = tx.objectStore('handles').get(key);
-        r.onsuccess = function(){ resolve(r.result || null); };
-        r.onerror = function(){ reject(r.error); };
-      });
-    } catch(e){ return null; }
-  }
-  async function idbSet(key, val){
-    try {
-      const db = await idbOpen();
-      return await new Promise(function(resolve, reject){
-        const tx = db.transaction('handles', 'readwrite');
-        tx.objectStore('handles').put(val, key);
-        tx.oncomplete = function(){ resolve(true); };
-        tx.onerror = function(){ reject(tx.error); };
-      });
-    } catch(e){ return false; }
-  }
-  async function idbClear(key){
-    try {
-      const db = await idbOpen();
-      return await new Promise(function(resolve, reject){
-        const tx = db.transaction('handles', 'readwrite');
-        tx.objectStore('handles').delete(key);
-        tx.oncomplete = function(){ resolve(true); };
-        tx.onerror = function(){ reject(tx.error); };
-      });
-    } catch(e){ return false; }
-  }
-
   function computeToMe(list){
     return list.filter(function(m){ return m.from !== username && (m.to === username || m.to === '全員'); });
+  }
+  function knownNames(){
+    const set = new Set();
+    memos.forEach(function(m){
+      if (m.from) set.add(m.from);
+      if (m.to && m.to !== '全員') set.add(m.to);
+    });
+    return Array.from(set);
   }
 
   // ---- tracking which memos this browser has already notified about ----
@@ -395,237 +344,77 @@
     });
     if (changed) saveSeenIds();
   }
-  function knownNames(){
-    const set = new Set();
-    memos.forEach(function(m){
-      if (m.from) set.add(m.from);
-      if (m.to && m.to !== '全員') set.add(m.to);
+
+  // ---- talking to the server ----
+  async function apiLoad(){
+    const res = await fetch('/api/memos', { cache: 'no-store' });
+    if (!res.ok) throw new Error('サーバーからの読み込みに失敗しました(status ' + res.status + ')');
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  }
+  async function apiSave(arr){
+    const res = await fetch('/api/memos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(arr)
     });
-    return Array.from(set);
+    if (!res.ok) throw new Error('サーバーへの保存に失敗しました(status ' + res.status + ')');
   }
-
-  function supportsFilePicker(){
-    return typeof window.showOpenFilePicker === 'function';
-  }
-
-  async function readViaHandle(handle){
-    const file = await handle.getFile();
-    const text = await file.text();
-    if (!text || !text.trim()) return [];
-    const parsed = JSON.parse(text);
-    return Array.isArray(parsed) ? parsed : [];
-  }
-  async function writeViaHandle(handle, arr){
-    const w = await handle.createWritable();
-    await w.write(JSON.stringify(arr, null, 0));
-    await w.close();
-  }
-  function downloadJson(arr){
-    try {
-      const blob = new Blob([JSON.stringify(arr)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'memos.json';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
-      return true;
-    } catch(e){ return false; }
-  }
-  function readFileAsMemos(file){
-    return new Promise(function(resolve, reject){
-      const reader = new FileReader();
-      reader.onload = function(){
-        try {
-          const parsed = JSON.parse(reader.result || '[]');
-          resolve(Array.isArray(parsed) ? parsed : []);
-        } catch(e){ reject(e); }
-      };
-      reader.onerror = function(){ reject(reader.error || new Error('読み込みエラー')); };
-      reader.readAsText(file);
-    });
-  }
-
   async function saveMemos(arr){
-    if (mode === 'handle') {
-      try {
-        await writeViaHandle(fileHandle, arr);
-        return true;
-      } catch(e){
-        alert('共有フォルダへの保存に失敗しました。念のため、今の内容を手元にダウンロードします。ダウンロードされたファイルを共有フォルダの memos.json に上書きしてください。\n詳細: ' + (e && e.message ? e.message : e));
-        downloadJson(arr);
-        return false;
-      }
+    try {
+      await apiSave(arr);
+      if (autoWarning) { autoWarning = ''; render(); }
+      return true;
+    } catch(e){
+      autoWarning = 'サーバーへの保存に失敗しました。ネットワークの状態をご確認のうえ、「今すぐ最新を読み込む」をお試しください。';
+      render();
+      return false;
     }
-    downloadJson(arr);
-    return true;
   }
 
-  // ---------------- setup screens ----------------
+  // ---------------- setup / connection screens ----------------
 
   function renderSetup(prefillName, errorMsg){
     root.innerHTML =
       '<h1>メモ板</h1>' +
-      '<p class="sub">サーバーの共有フォルダに置いた memos.json をみんなで読み書きする、貼り紙代わりのメモ板です。</p>' +
+      '<p class="sub">社内サーバーで動いている、貼り紙代わりのメモ板です。名前を入力するだけで使えます。</p>' +
       '<div class="setup-wrap">' +
         '<label>あなたの名前</label>' +
         '<input type="text" id="name-input" placeholder="例: 田中" value="' + esc(prefillName || '') + '" />' +
-        '<p class="setup-note">' +
-          '共有フォルダの中にある <b>memos.json</b> を選んでください。まだファイルが無い場合は、先に「空のmemos.jsonを作成してダウンロード」を押し、ダウンロードされたファイルを共有フォルダに移動してから選んでください。<br><br>' +
-          (supportsFilePicker()
-            ? '一度選べば、次にこのページを開いたときも選び直し不要で使えます。共有フォルダの種類によってはうまく動かないことがあります。その場合は下の「手動方式を使う」をお試しください。'
-            : 'このブラウザは自動保存に対応していないため、手動方式(保存のたびにダウンロードして上書きする方式)を使用します。') +
-        '</p>' +
-        (supportsFilePicker() ? '<button class="post-btn" id="pick-btn">memos.json を選ぶ</button>' : '') +
-        '<div style="margin-top:12px;">' +
-          (supportsFilePicker() ? '<button class="link" id="manual-toggle-btn">手動方式を使う(ファイルを毎回選ぶ/保存はダウンロード)</button>' : '') +
-        '</div>' +
-        '<div style="margin-top:10px;"><button class="link" id="create-empty-btn">空のmemos.jsonを作成してダウンロード</button></div>' +
-        '<div id="manual-area" style="display:none; margin-top:14px;">' +
-          '<label>memos.json を選択</label>' +
-          '<input type="file" id="manual-file-input" accept="application/json,.json" />' +
-        '</div>' +
+        '<div style="margin-top:14px;"><button class="post-btn" id="start-btn">はじめる</button></div>' +
         (errorMsg ? '<div class="warn-banner" style="margin-top:14px;">' + esc(errorMsg) + '</div>' : '') +
         '<div id="setup-error"></div>' +
       '</div>';
 
     const nameInput = document.getElementById('name-input');
-
-    function currentName(){ return nameInput.value.trim(); }
-
-    document.getElementById('create-empty-btn').addEventListener('click', function(){
-      downloadJson([]);
-      showInfo('空のmemos.jsonをダウンロードしました。共有フォルダに移動してから、上のボタンでそのファイルを選んでください。');
-    });
-
-    function showInfo(msg){
-      const el = document.getElementById('setup-error');
-      if (el) el.innerHTML = '<div class="warn-banner" style="margin-top:14px; background:#E4EEE0; color:var(--green-deep);">' + esc(msg) + '</div>';
-    }
-    function showError(msg){
-      const el = document.getElementById('setup-error');
-      if (el) el.innerHTML = '<div class="warn-banner" style="margin-top:14px;">' + esc(msg) + '</div>';
-    }
-
-    if (supportsFilePicker()) {
-      document.getElementById('pick-btn').addEventListener('click', async function(){
-        const name = currentName();
-        if (!name) { nameInput.focus(); return; }
-        const btn = document.getElementById('pick-btn');
-        btn.disabled = true;
-        btn.textContent = '選択中...';
-        try {
-          const handles = await window.showOpenFilePicker({
-            types: [{ description: 'メモデータ', accept: { 'application/json': ['.json'] } }],
-            excludeAcceptAllOption: false
-          });
-          const handle = handles[0];
-          const writePerm = await handle.requestPermission({ mode: 'readwrite' });
-          if (writePerm !== 'granted') {
-            throw new Error('書き込みの許可が得られませんでした。共有フォルダへの保存ができません。');
-          }
-          const list = await readViaHandle(handle);
-          fileHandle = handle;
-          mode = 'handle';
-          username = name;
-          saveUsername(name);
-          memos = list;
-          await idbSet('fileHandle', handle);
-          await enterApp();
-        } catch(e){
-          btn.disabled = false;
-          btn.textContent = 'memos.json を選ぶ';
-          if (e && e.name === 'AbortError') return;
-          showError('ファイルの読み込みに失敗しました。共有フォルダの種類によってはこの方式が使えないことがあります。下の「手動方式を使う」をお試しください。\n詳細: ' + (e && e.message ? e.message : e));
-        }
-      });
-      document.getElementById('manual-toggle-btn').addEventListener('click', function(){
-        document.getElementById('manual-area').style.display = 'block';
-      });
-    } else {
-      document.getElementById('manual-area').style.display = 'block';
-    }
-
-    document.getElementById('manual-file-input').addEventListener('change', async function(e){
-      const name = currentName();
+    document.getElementById('start-btn').addEventListener('click', async function(){
+      const name = nameInput.value.trim();
       if (!name) { nameInput.focus(); return; }
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-      try {
-        const parsed = await readFileAsMemos(file);
-        mode = 'manual';
-        fileHandle = null;
-        username = name;
-        saveUsername(name);
-        memos = parsed;
-        await enterApp();
-      } catch(err){
-        showError('ファイルの読み込みに失敗しました。正しい memos.json を選んでいるかご確認ください。詳細: ' + (err && err.message ? err.message : err));
-      }
-    });
-  }
-
-  // ---------------- reconnect screens (returning users) ----------------
-
-  function renderReconnectPrompt(handle, name){
-    root.innerHTML =
-      '<h1>メモ板</h1>' +
-      '<p class="sub">サーバーの共有フォルダに置いた memos.json をみんなで読み書きする、貼り紙代わりのメモ板です。</p>' +
-      '<div class="setup-wrap">' +
-        '<p style="font-size:13px; margin:0 0 14px;"><b>' + esc(name) + '</b> さんとして、前回選んだファイル「<b>' + esc(handle.name) + '</b>」に接続します。</p>' +
-        '<button class="post-btn" id="continue-btn">続ける</button>' +
-        '<div style="margin-top:10px;"><button class="link" id="pick-other-btn">別のファイルを選び直す</button></div>' +
-        '<div id="reconnect-error"></div>' +
-      '</div>';
-    document.getElementById('continue-btn').addEventListener('click', async function(){
-      const btn = document.getElementById('continue-btn');
+      const btn = document.getElementById('start-btn');
       btn.disabled = true;
       btn.textContent = '接続中...';
       try {
-        const perm = await withTimeout(handle.requestPermission({ mode: 'readwrite' }), 6000, 'アクセス許可の確認');
-        if (perm === 'granted') {
-          const list = await withTimeout(readViaHandle(handle), 6000, 'ファイルの読み込み');
-          fileHandle = handle;
-          mode = 'handle';
-          memos = list;
-          await enterApp();
-        } else {
-          renderReconnectFailed(handle, name, new Error('アクセスが許可されませんでした'));
-        }
+        memos = await apiLoad();
+        username = name;
+        saveUsername(name);
+        await enterApp();
       } catch(e){
-        if (e && e.name === 'AbortError') {
-          btn.disabled = false;
-          btn.textContent = '続ける';
-          return;
-        }
-        renderReconnectFailed(handle, name, e);
+        btn.disabled = false;
+        btn.textContent = 'はじめる';
+        const el = document.getElementById('setup-error');
+        if (el) el.innerHTML = '<div class="warn-banner" style="margin-top:14px;">サーバーに接続できませんでした。サーバーが起動しているか、管理者にご確認ください。<br>詳細: ' + esc(e && e.message ? e.message : e) + '</div>';
       }
-    });
-    document.getElementById('pick-other-btn').addEventListener('click', async function(){
-      await idbClear('fileHandle');
-      renderSetup(name, null);
     });
   }
 
-  function renderReconnectFailed(handle, name, err){
+  function renderConnectError(err){
     root.innerHTML =
       '<h1>メモ板</h1>' +
       '<div class="setup-wrap">' +
-        '<div class="warn-banner">前回のファイルに自動接続できませんでした。もう一度ファイルを選び直してください。</div>' +
-        '<button class="post-btn" id="reselect-btn">ファイルを選び直す</button>' +
-        '<div style="margin-top:10px;"><button class="link" id="details-toggle">詳細を表示</button></div>' +
-        '<div id="details-area" style="display:none; font-size:11px; color: var(--ink-soft); margin-top:8px;">' + esc(err && err.message ? err.message : String(err)) + '</div>' +
+        '<div class="warn-banner">サーバーに接続できませんでした。サーバーが起動しているか、ネットワークの状態を管理者にご確認ください。<br>詳細: ' + esc(err && err.message ? err.message : String(err)) + '</div>' +
+        '<button class="post-btn" id="retry-btn">もう一度試す</button>' +
       '</div>';
-    document.getElementById('reselect-btn').addEventListener('click', async function(){
-      await idbClear('fileHandle');
-      renderSetup(name, null);
-    });
-    document.getElementById('details-toggle').addEventListener('click', function(){
-      const el = document.getElementById('details-area');
-      el.style.display = el.style.display === 'none' ? 'block' : 'none';
-    });
+    document.getElementById('retry-btn').addEventListener('click', function(){ init(); });
   }
 
   // ---------------- main app ----------------
@@ -705,20 +494,7 @@
     const unreadBanner = unreadCount > 0
       ? '<div class="unread-banner">未確認のメモが ' + unreadCount + ' 件あります</div>'
       : '';
-
-    const modeLabel = mode === 'handle'
-      ? '<span class="status-pill ok">共有フォルダと自動連携中</span>'
-      : '<span class="status-pill warn">手動読み込みモード</span>';
-
-    const reloadControl = mode === 'manual'
-      ? ('<button class="link" id="reload-btn">最新を読み込み直す</button>' +
-         '<input type="file" id="reload-file-input" accept="application/json,.json" style="display:none;" />')
-      : '<button class="link" id="reload-btn">今すぐ最新を読み込む</button>';
-
-    const manualBanner = mode === 'manual'
-      ? '<div class="warn-banner">手動モードで利用中です。投稿・確認・削除のたびに更新済みの memos.json がダウンロードされます。共有フォルダの memos.json に上書きしてください。他の人の最新の変更を見るには「最新を読み込み直す」を押してください。</div>'
-      : '';
-    const autoWarnBanner = (mode === 'handle' && autoWarning)
+    const autoWarnBanner = autoWarning
       ? '<div class="warn-banner">' + esc(autoWarning) + '</div>'
       : '';
 
@@ -740,15 +516,14 @@
 
     root.innerHTML =
       '<h1>メモ板</h1>' +
-      '<p class="sub">共有フォルダに置いた memos.json を通じて、みんなで貼り紙代わりのメモをやり取りします。</p>' +
+      '<p class="sub">社内サーバーで動いている、貼り紙代わりのメモ板です。</p>' +
       '<div class="board">' +
-        '<div class="name-bar"><span>あなたは <b>' + esc(username) + '</b> として利用中</span>' + modeLabel +
+        '<div class="name-bar"><span>あなたは <b>' + esc(username) + '</b> として利用中</span>' +
           '<button class="link" id="rename-btn">名前を変更</button>' +
-          (mode === 'handle' ? '<button class="link" id="switch-file-btn">別のファイルに切り替える</button>' : '') +
-          reloadControl +
+          '<button class="link" id="reload-btn">今すぐ最新を読み込む</button>' +
           notifyBtnHtml +
         '</div>' +
-        manualBanner + autoWarnBanner + unreadBanner +
+        autoWarnBanner + unreadBanner +
         '<div class="compose">' +
           '<div class="compose-row">' +
             '<div><label>宛先</label><input type="text" id="c-to" placeholder="全員 または 相手の名前" list="name-suggestions" /></div>' +
@@ -785,16 +560,6 @@
         });
       }
     }
-    const switchFileBtn = document.getElementById('switch-file-btn');
-    if (switchFileBtn) {
-      switchFileBtn.addEventListener('click', async function(){
-        if (pollTimer) clearInterval(pollTimer);
-        await idbClear('fileHandle');
-        fileHandle = null;
-        mode = null;
-        renderSetup(username, null);
-      });
-    }
     document.getElementById('rename-btn').addEventListener('click', function(){
       const name = prompt('新しい名前を入力してください', username || '');
       if (name && name.trim()) {
@@ -803,25 +568,7 @@
         render();
       }
     });
-
-    if (mode === 'manual') {
-      const reloadBtn = document.getElementById('reload-btn');
-      const reloadInput = document.getElementById('reload-file-input');
-      reloadBtn.addEventListener('click', function(){ reloadInput.click(); });
-      reloadInput.addEventListener('change', async function(e){
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
-        try {
-          memos = await readFileAsMemos(file);
-          checkForNewMemos(computeToMe(memos), false);
-          render();
-        } catch(err){
-          alert('ファイルの読み込みに失敗しました: ' + (err && err.message ? err.message : err));
-        }
-      });
-    } else {
-      document.getElementById('reload-btn').addEventListener('click', function(){ refreshFromHandle(true); });
-    }
+    document.getElementById('reload-btn').addEventListener('click', function(){ refreshFromServer(true); });
 
     document.getElementById('c-submit').addEventListener('click', onSubmit);
 
@@ -903,11 +650,10 @@
     setTimeout(function(){ render(); }, 350);
   }
 
-  async function refreshFromHandle(manualTrigger){
-    if (mode !== 'handle') return;
+  async function refreshFromServer(manualTrigger){
     if (!manualTrigger && Date.now() < suppressRefreshUntil) return;
     try {
-      const latest = await readViaHandle(fileHandle);
+      const latest = await apiLoad();
       pollFailCount = 0;
       if (autoWarning) { autoWarning = ''; }
       const currentIds = memos.map(function(m){ return m.id; }).sort().join(',');
@@ -922,7 +668,7 @@
     } catch(e){
       pollFailCount++;
       if (pollFailCount >= 2) {
-        autoWarning = '共有フォルダからの自動読み込みに失敗しています。ネットワークの状態をご確認のうえ、「今すぐ最新を読み込む」をお試しください。';
+        autoWarning = 'サーバーに接続できません。ネットワークの状態をご確認のうえ、「今すぐ最新を読み込む」をお試しください。';
         render();
       }
     }
@@ -933,43 +679,23 @@
     checkForNewMemos(computeToMe(memos), true);
     render();
     if (pollTimer) clearInterval(pollTimer);
-    if (mode === 'handle') {
-      pollTimer = setInterval(function(){ refreshFromHandle(false); }, POLL_MS);
-    }
+    pollTimer = setInterval(function(){ refreshFromServer(false); }, POLL_MS);
   }
 
   async function init(){
     username = loadUsername();
-    if (!username || !supportsFilePicker()) {
-      renderSetup(username, null);
-      return;
-    }
-    const stored = await idbGet('fileHandle');
-    if (!stored) {
-      renderSetup(username, null);
+    if (!username) {
+      renderSetup(null, null);
       return;
     }
     root.innerHTML = '<h1>メモ板</h1><div class="loading">読み込み中...</div>';
-    let perm;
     try {
-      perm = await withTimeout(stored.queryPermission({ mode: 'readwrite' }), 5000, 'アクセス確認');
+      memos = await apiLoad();
     } catch(e){
-      renderReconnectFailed(stored, username, e);
+      renderConnectError(e);
       return;
     }
-    if (perm === 'granted') {
-      try {
-        const list = await withTimeout(readViaHandle(stored), 6000, 'ファイルの読み込み');
-        fileHandle = stored;
-        mode = 'handle';
-        memos = list;
-        await enterApp();
-      } catch(e){
-        renderReconnectFailed(stored, username, e);
-      }
-      return;
-    }
-    renderReconnectPrompt(stored, username);
+    await enterApp();
   }
 
   init();
