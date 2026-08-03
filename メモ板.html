@@ -522,6 +522,10 @@
             excludeAcceptAllOption: false
           });
           const handle = handles[0];
+          const writePerm = await handle.requestPermission({ mode: 'readwrite' });
+          if (writePerm !== 'granted') {
+            throw new Error('書き込みの許可が得られませんでした。共有フォルダへの保存ができません。');
+          }
           const list = await readViaHandle(handle);
           fileHandle = handle;
           mode = 'handle';
