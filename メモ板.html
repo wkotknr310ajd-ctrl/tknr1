@@ -894,11 +894,9 @@
     const card = root.querySelector('[data-card-id="' + id + '"]');
     if (card) card.classList.add('fold');
     suppressRefreshUntil = Date.now() + SUPPRESS_MS;
-    setTimeout(async function(){
-      memos = memos.filter(function(m){ return m.id !== id; });
-      render();
-      await saveMemos(memos);
-    }, 350);
+    memos = memos.filter(function(m){ return m.id !== id; });
+    await saveMemos(memos);
+    setTimeout(function(){ render(); }, 350);
   }
 
   async function refreshFromHandle(manualTrigger){
