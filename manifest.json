@@ -1,0 +1,11 @@
+{
+  "name": "メモ板",
+  "short_name": "メモ板",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F4F3EC",
+  "theme_color": "#4F7C5D",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
