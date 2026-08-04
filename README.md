@@ -82,6 +82,18 @@ npm run preview
 デプロイしてください。デプロイ後は、OAuth クライアントIDの「承認済みの JavaScript 生成元」に
 本番 URL を追加するのを忘れないようにしてください。
 
+### GitHub Pages への自動デプロイ
+
+`.github/workflows/deploy-pages.yml` により、`main` ブランチへの push（または手動実行）で
+自動的に GitHub Pages（`https://<ユーザー名>.github.io/tknr1/`）へデプロイされます。
+
+- Google ドライブ連携を有効にした状態でデプロイしたい場合は、リポジトリの
+  Settings → Secrets and variables → Actions で `VITE_GOOGLE_CLIENT_ID` という名前の
+  Secret を登録してください（未設定でもビルド・公開は可能ですが、その場合サインイン機能は無効になります）。
+- Client ID の「承認済みの JavaScript 生成元」には `https://<ユーザー名>.github.io` を追加してください。
+- 初回のみ、リポジトリの Settings → Pages で Source が「GitHub Actions」になっていることを確認してください
+  （ワークフローが自動で有効化しますが、反映されない場合は手動で選択してください）。
+
 ## 使い方
 
 1. 右上の「Googleでサインイン」でログイン

@@ -2,7 +2,10 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
-export default defineConfig({
+// Project pages on GitHub Pages are served from https://<user>.github.io/<repo>/,
+// so the production build needs that path as its base. Local dev keeps root ("/").
+export default defineConfig(({ command }) => ({
+  base: command === "build" ? "/tknr1/" : "/",
   plugins: [
     react(),
     VitePWA({
@@ -48,4 +51,4 @@ export default defineConfig({
       }
     })
   ]
-});
+}));
