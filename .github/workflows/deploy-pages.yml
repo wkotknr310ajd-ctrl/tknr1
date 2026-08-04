@@ -28,6 +28,10 @@ jobs:
         env:
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
       - uses: actions/configure-pages@v5
+        with:
+          # Auto-create the Pages site (source: GitHub Actions) on first run
+          # if it doesn't exist yet; without this, configure-pages 404s.
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
