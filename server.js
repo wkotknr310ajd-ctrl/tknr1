@@ -5,23 +5,18 @@
  * 同じフォルダの memos.json を読み書きするAPIを提供する。
  * 依存パッケージなし。Node.js があれば `node server.js` で起動できる。
  *
- * デスクトップ通知などブラウザの一部機能は「暗号化された接続(HTTPS)」でないと
- * 使えないため、自己署名証明書(オレオレ証明書、selfsigned.js で生成)を使って
- * HTTPSで配信する。初回アクセス時にブラウザで「保護されていません」という警告が
- * 出るが、これは正式な認証局の証明書ではないためで、想定内の動作。「詳細設定」→
- * 「アクセスする」で進めば、以後は暗号化された接続で通信できる。
+ * デスクトップ通知はブラウザの仕様上「暗号化された接続(HTTPS)」でないと使えないが、
+ * 自己署名証明書によるHTTPS化は警告画面やIPアドレス変更時の再設定など運用上の手間が
+ * 大きかったため、通知機能は使わない前提で通常のHTTPで配信するシンプルな構成にしている。
  */
-const https = require('https');
+const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { generateSelfSignedCert } = require('./selfsigned.js');
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8787;
 const DIR = __dirname;
 const DATA_FILE = path.join(DIR, 'memos.json');
-const CERT_FILE = path.join(DIR, 'server-cert.pem');
-const KEY_FILE = path.join(DIR, 'server-key.pem');
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -99,48 +94,7 @@ function serveStatic(req, res, urlPath){
   });
 }
 
-function localAddresses(){
-  const nets = os.networkInterfaces();
-  const out = [];
-  Object.keys(nets).forEach(function(name){
-    (nets[name] || []).forEach(function(net){
-      if (net.family === 'IPv4' && !net.internal) out.push(net.address);
-    });
-  });
-  return out;
-}
-
-// 証明書を使い回せるかどうか確認し、必要なら(初回、またはこのパソコンの
-// IPアドレスが変わったときなど)新しく作り直してファイルに保存する。
-function loadOrCreateCert(){
-  const wantIps = ['127.0.0.1'].concat(localAddresses());
-  if (fs.existsSync(CERT_FILE) && fs.existsSync(KEY_FILE)) {
-    try {
-      const cert = fs.readFileSync(CERT_FILE, 'utf8');
-      const key = fs.readFileSync(KEY_FILE, 'utf8');
-      const x509 = new (require('crypto').X509Certificate)(cert);
-      const notExpired = new Date(x509.validTo).getTime() > Date.now() + 24 * 3600 * 1000;
-      const coversAllIps = wantIps.every(function(ip){ return x509.checkIP(ip); });
-      if (notExpired && coversAllIps) {
-        return { cert, key };
-      }
-      console.log('証明書を作り直します(IPアドレスの変更または期限切れのため)。');
-    } catch(e){
-      console.log('既存の証明書を読み込めなかったため、作り直します。詳細: ' + (e && e.message ? e.message : e));
-    }
-  }
-  const generated = generateSelfSignedCert({
-    commonName: wantIps[1] || 'localhost',
-    dnsNames: ['localhost'],
-    ipAddresses: wantIps,
-    days: 3650,
-  });
-  fs.writeFileSync(CERT_FILE, generated.cert);
-  fs.writeFileSync(KEY_FILE, generated.key);
-  return generated;
-}
-
-const server = https.createServer(loadOrCreateCert(), async function(req, res){
+const server = http.createServer(async function(req, res){
   try {
     const url = new URL(req.url, 'http://localhost');
     if (url.pathname === '/api/memos' && req.method === 'GET') {
@@ -168,14 +122,22 @@ const server = https.createServer(loadOrCreateCert(), async function(req, res){
   }
 });
 
+function localAddresses(){
+  const nets = os.networkInterfaces();
+  const out = [];
+  Object.keys(nets).forEach(function(name){
+    (nets[name] || []).forEach(function(net){
+      if (net.family === 'IPv4' && !net.internal) out.push(net.address);
+    });
+  });
+  return out;
+}
+
 server.listen(PORT, function(){
   console.log('メモ板サーバーを起動しました。');
-  console.log('このパソコンから: https://localhost:' + PORT + '/');
+  console.log('このパソコンから: http://localhost:' + PORT + '/');
   localAddresses().forEach(function(addr){
-    console.log('同じネットワークの他のパソコンから: https://' + addr + ':' + PORT + '/');
+    console.log('同じネットワークの他のパソコンから: http://' + addr + ':' + PORT + '/');
   });
-  console.log('※ 初回アクセス時に「保護されていません」という警告が出ますが、');
-  console.log('  自己署名証明書を使っているためで想定内です。「詳細設定」→');
-  console.log('  「アクセスする(安全ではないページに進む)」で進んでください。');
   console.log('終了するには、このウィンドウで Ctrl+C を押してください。');
 });
