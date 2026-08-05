@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { BusinessCard } from "../types";
-import { captureVideoFrame, fileToDataUrl, resizeDataUrl } from "../lib/image";
+import { captureVideoFrame, fileToDataUrl, prepareForOcr, resizeDataUrl } from "../lib/image";
 import { recognizeCardText } from "../lib/ocr";
 import { parseCardText, type ParsedFields } from "../lib/parser";
 import CardForm, { type FormFields } from "./CardForm";
@@ -9,6 +9,13 @@ interface Props {
   signedIn: boolean;
   onRequestSignIn: () => void;
   onSave: (card: BusinessCard) => Promise<string | undefined>;
+}
+
+interface PendingCard {
+  /** Full-resolution image used for OCR only, never stored. */
+  ocrSource: string;
+  /** Smaller, compressed image saved with the card. */
+  storageImage: string;
 }
 
 const EMPTY_FIELDS: FormFields = {
@@ -31,7 +38,7 @@ export default function CaptureView({ signedIn, onRequestSignIn, onSave }: Props
 
   // Images picked (camera or file picker) waiting to be reviewed/saved, in order.
   // pendingImages[0] is the one currently shown for OCR + editing.
-  const [pendingImages, setPendingImages] = useState<string[]>([]);
+  const [pendingImages, setPendingImages] = useState<PendingCard[]>([]);
   const [totalInBatch, setTotalInBatch] = useState(0);
   const processedImage = useRef<string | null>(null);
 
@@ -72,27 +79,28 @@ export default function CaptureView({ signedIn, onRequestSignIn, onSave }: Props
     };
   }, []);
 
-  const currentImage = pendingImages[0] ?? null;
+  const current = pendingImages[0] ?? null;
 
   // Automatically start OCR whenever a new image reaches the front of the queue.
   useEffect(() => {
-    if (currentImage && processedImage.current !== currentImage) {
-      processedImage.current = currentImage;
-      void runOcr(currentImage);
+    if (current && processedImage.current !== current.ocrSource) {
+      processedImage.current = current.ocrSource;
+      void runOcr(current.ocrSource);
     }
-    if (!currentImage) {
+    if (!current) {
       setTotalInBatch(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentImage]);
+  }, [current]);
 
-  async function runOcr(dataUrl: string) {
+  async function runOcr(ocrSource: string) {
     setOcrRunning(true);
     setOcrProgress(0);
     setSaveError(null);
     setFields(EMPTY_FIELDS);
     try {
-      const text = await recognizeCardText(dataUrl, setOcrProgress);
+      const ocrImage = await prepareForOcr(ocrSource);
+      const text = await recognizeCardText(ocrImage, setOcrProgress);
       setRawText(text);
       const parsed: ParsedFields = parseCardText(text);
       setFields({ ...parsed, note: "" });
@@ -106,8 +114,8 @@ export default function CaptureView({ signedIn, onRequestSignIn, onSave }: Props
   async function handleCapture() {
     if (!videoRef.current) return;
     const raw = captureVideoFrame(videoRef.current);
-    const resized = await resizeDataUrl(raw);
-    setPendingImages((q) => [...q, resized]);
+    const storageImage = await resizeDataUrl(raw);
+    setPendingImages((q) => [...q, { ocrSource: raw, storageImage }]);
     setTotalInBatch((n) => n + 1);
     streamRef.current?.getTracks().forEach((t) => t.stop());
   }
@@ -116,11 +124,15 @@ export default function CaptureView({ signedIn, onRequestSignIn, onSave }: Props
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (files.length === 0) return;
-    const resizedImages = await Promise.all(
-      files.map(async (file) => resizeDataUrl(await fileToDataUrl(file)))
+    const newCards = await Promise.all(
+      files.map(async (file): Promise<PendingCard> => {
+        const raw = await fileToDataUrl(file);
+        const storageImage = await resizeDataUrl(raw);
+        return { ocrSource: raw, storageImage };
+      })
     );
-    setPendingImages((q) => [...q, ...resizedImages]);
-    setTotalInBatch((n) => n + resizedImages.length);
+    setPendingImages((q) => [...q, ...newCards]);
+    setTotalInBatch((n) => n + newCards.length);
     streamRef.current?.getTracks().forEach((t) => t.stop());
   }
 
@@ -136,7 +148,7 @@ export default function CaptureView({ signedIn, onRequestSignIn, onSave }: Props
   }
 
   async function handleSave() {
-    if (!currentImage) return;
+    if (!current) return;
     if (!signedIn) {
       onRequestSignIn();
       return;
@@ -149,7 +161,7 @@ export default function CaptureView({ signedIn, onRequestSignIn, onSave }: Props
         id: "",
         ...fields,
         rawText,
-        imageDataUrl: currentImage,
+        imageDataUrl: current.storageImage,
         createdAt: now,
         updatedAt: now
       };
@@ -171,7 +183,7 @@ export default function CaptureView({ signedIn, onRequestSignIn, onSave }: Props
       {saved && remainingCount === 0 && (
         <div className="banner banner-success">保存しました。「一覧」タブから確認できます。</div>
       )}
-      {!currentImage && (
+      {!current && (
         <div className="camera-box">
           {cameraError ? <p className="muted">{cameraError}</p> : null}
           <video ref={videoRef} className={cameraReady ? "" : "hidden"} playsInline muted />
@@ -192,14 +204,14 @@ export default function CaptureView({ signedIn, onRequestSignIn, onSave }: Props
         </div>
       )}
 
-      {currentImage && (
+      {current && (
         <div className="review-box">
           {totalInBatch > 1 && (
             <p className="muted">
               {currentPosition} / {totalInBatch} 枚目(残り {remainingCount} 枚)
             </p>
           )}
-          <img className="card-photo" src={currentImage} alt="名刺" />
+          <img className="card-photo" src={current.storageImage} alt="名刺" />
           {ocrRunning ? (
             <div className="ocr-progress">
               <p>文字を読み取っています… {Math.round(ocrProgress * 100)}%</p>
