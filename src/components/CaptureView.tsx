@@ -28,7 +28,13 @@ export default function CaptureView({ signedIn, onRequestSignIn, onSave }: Props
   const streamRef = useRef<MediaStream | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+
+  // Images picked (camera or file picker) waiting to be reviewed/saved, in order.
+  // pendingImages[0] is the one currently shown for OCR + editing.
+  const [pendingImages, setPendingImages] = useState<string[]>([]);
+  const [totalInBatch, setTotalInBatch] = useState(0);
+  const processedImage = useRef<string | null>(null);
+
   const [rawText, setRawText] = useState("");
   const [ocrRunning, setOcrRunning] = useState(false);
   const [ocrProgress, setOcrProgress] = useState(0);
@@ -66,10 +72,25 @@ export default function CaptureView({ signedIn, onRequestSignIn, onSave }: Props
     };
   }, []);
 
+  const currentImage = pendingImages[0] ?? null;
+
+  // Automatically start OCR whenever a new image reaches the front of the queue.
+  useEffect(() => {
+    if (currentImage && processedImage.current !== currentImage) {
+      processedImage.current = currentImage;
+      void runOcr(currentImage);
+    }
+    if (!currentImage) {
+      setTotalInBatch(0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentImage]);
+
   async function runOcr(dataUrl: string) {
     setOcrRunning(true);
     setOcrProgress(0);
     setSaveError(null);
+    setFields(EMPTY_FIELDS);
     try {
       const text = await recognizeCardText(dataUrl, setOcrProgress);
       setRawText(text);
@@ -86,31 +107,36 @@ export default function CaptureView({ signedIn, onRequestSignIn, onSave }: Props
     if (!videoRef.current) return;
     const raw = captureVideoFrame(videoRef.current);
     const resized = await resizeDataUrl(raw);
-    setImageDataUrl(resized);
+    setPendingImages((q) => [...q, resized]);
+    setTotalInBatch((n) => n + 1);
     streamRef.current?.getTracks().forEach((t) => t.stop());
-    await runOcr(resized);
   }
 
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const raw = await fileToDataUrl(file);
-    const resized = await resizeDataUrl(raw);
-    setImageDataUrl(resized);
+  async function handleFilesChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0) return;
+    const resizedImages = await Promise.all(
+      files.map(async (file) => resizeDataUrl(await fileToDataUrl(file)))
+    );
+    setPendingImages((q) => [...q, ...resizedImages]);
+    setTotalInBatch((n) => n + resizedImages.length);
     streamRef.current?.getTracks().forEach((t) => t.stop());
-    await runOcr(resized);
   }
 
-  function handleRetake() {
-    setImageDataUrl(null);
+  function advanceQueue() {
+    setPendingImages((q) => q.slice(1));
     setRawText("");
     setFields(EMPTY_FIELDS);
-    setSaved(false);
     setSaveError(null);
   }
 
+  function handleSkip() {
+    advanceQueue();
+  }
+
   async function handleSave() {
-    if (!imageDataUrl) return;
+    if (!currentImage) return;
     if (!signedIn) {
       onRequestSignIn();
       return;
@@ -123,13 +149,13 @@ export default function CaptureView({ signedIn, onRequestSignIn, onSave }: Props
         id: "",
         ...fields,
         rawText,
-        imageDataUrl,
+        imageDataUrl: currentImage,
         createdAt: now,
         updatedAt: now
       };
       await onSave(card);
       setSaved(true);
-      handleRetake();
+      advanceQueue();
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "保存に失敗しました");
     } finally {
@@ -137,10 +163,15 @@ export default function CaptureView({ signedIn, onRequestSignIn, onSave }: Props
     }
   }
 
+  const remainingCount = pendingImages.length;
+  const currentPosition = totalInBatch > 0 ? totalInBatch - remainingCount + 1 : 0;
+
   return (
     <div className="capture-view">
-      {saved && <div className="banner banner-success">保存しました。「一覧」タブから確認できます。</div>}
-      {!imageDataUrl && (
+      {saved && remainingCount === 0 && (
+        <div className="banner banner-success">保存しました。「一覧」タブから確認できます。</div>
+      )}
+      {!currentImage && (
         <div className="camera-box">
           {cameraError ? <p className="muted">{cameraError}</p> : null}
           <video ref={videoRef} className={cameraReady ? "" : "hidden"} playsInline muted />
@@ -151,16 +182,24 @@ export default function CaptureView({ signedIn, onRequestSignIn, onSave }: Props
               </button>
             )}
             <label className="file-picker">
-              画像を選択
-              <input type="file" accept="image/*" capture="environment" onChange={handleFileChange} />
+              画像を選択(複数可)
+              <input type="file" accept="image/*" multiple onChange={handleFilesChange} />
             </label>
           </div>
+          <p className="muted">
+            「画像を選択」からは、スマホ内の写真・Googleフォト・ファイルアプリなどから複数枚まとめて選べます。
+          </p>
         </div>
       )}
 
-      {imageDataUrl && (
+      {currentImage && (
         <div className="review-box">
-          <img className="card-photo" src={imageDataUrl} alt="撮影した名刺" />
+          {totalInBatch > 1 && (
+            <p className="muted">
+              {currentPosition} / {totalInBatch} 枚目(残り {remainingCount} 枚)
+            </p>
+          )}
+          <img className="card-photo" src={currentImage} alt="名刺" />
           {ocrRunning ? (
             <div className="ocr-progress">
               <p>文字を読み取っています… {Math.round(ocrProgress * 100)}%</p>
@@ -174,8 +213,8 @@ export default function CaptureView({ signedIn, onRequestSignIn, onSave }: Props
               <CardForm value={fields} onChange={(patch) => setFields((f) => ({ ...f, ...patch }))} />
               {saveError && <div className="banner banner-error">{saveError}</div>}
               <div className="review-actions">
-                <button onClick={handleRetake} disabled={saving}>
-                  撮り直す
+                <button onClick={handleSkip} disabled={saving}>
+                  スキップ
                 </button>
                 <button className="primary" onClick={handleSave} disabled={saving}>
                   {saving ? "保存中…" : signedIn ? "Googleドライブに保存" : "サインインして保存"}
