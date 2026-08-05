@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { BusinessCard } from "../types";
 import { captureVideoFrame, fileToDataUrl, prepareForOcr, resizeDataUrl } from "../lib/image";
 import { recognizeCardText } from "../lib/ocr";
+import { isVisionConfigured, recognizeCardTextVision } from "../lib/visionOcr";
 import { parseCardText, type ParsedFields } from "../lib/parser";
 import CardForm, { type FormFields } from "./CardForm";
 
@@ -99,8 +100,16 @@ export default function CaptureView({ signedIn, onRequestSignIn, onSave }: Props
     setSaveError(null);
     setFields(EMPTY_FIELDS);
     try {
-      const ocrImage = await prepareForOcr(ocrSource);
-      const text = await recognizeCardText(ocrImage, setOcrProgress);
+      let text: string;
+      if (isVisionConfigured()) {
+        // Vision reads the original color photo better than a grayscale one;
+        // just cap the resolution to keep the request small and fast.
+        const visionImage = await resizeDataUrl(ocrSource, 1600, 0.92);
+        text = await recognizeCardTextVision(visionImage);
+      } else {
+        const ocrImage = await prepareForOcr(ocrSource);
+        text = await recognizeCardText(ocrImage, setOcrProgress);
+      }
       setRawText(text);
       const parsed: ParsedFields = parseCardText(text);
       setFields({ ...parsed, note: "" });
@@ -214,8 +223,8 @@ export default function CaptureView({ signedIn, onRequestSignIn, onSave }: Props
           <img className="card-photo" src={current.storageImage} alt="名刺" />
           {ocrRunning ? (
             <div className="ocr-progress">
-              <p>文字を読み取っています… {Math.round(ocrProgress * 100)}%</p>
-              <progress value={ocrProgress} max={1} />
+              <p>文字を読み取っています…{ocrProgress > 0 ? ` ${Math.round(ocrProgress * 100)}%` : ""}</p>
+              <progress value={ocrProgress > 0 ? ocrProgress : undefined} max={1} />
             </div>
           ) : (
             <>
