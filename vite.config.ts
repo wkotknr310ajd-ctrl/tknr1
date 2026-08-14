@@ -12,9 +12,9 @@ export default defineConfig(({ command }) => ({
       registerType: "autoUpdate",
       includeAssets: ["icons/icon.svg"],
       manifest: {
-        name: "名刺スキャナー",
-        short_name: "名刺スキャナー",
-        description: "名刺をカメラで読み取り、Googleドライブに保存してLINEで共有できるアプリ",
+        name: "秒刻みタイマー",
+        short_name: "秒刻みタイマー",
+        description: "1秒ごとに小さい音、10秒ごとに大きい音が鳴るタイマー",
         start_url: ".",
         display: "standalone",
         background_color: "#0f172a",
@@ -35,19 +35,7 @@ export default defineConfig(({ command }) => ({
         ]
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,png,ico}"],
-        // tesseract.js loads its worker/wasm/traineddata from a CDN at runtime;
-        // let those be network-first instead of trying to precache them.
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/(cdn\.jsdelivr\.net|tessdata\.projectnaptha\.com)\//,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "tesseract-assets",
-              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 30 }
-            }
-          }
-        ]
+        globPatterns: ["**/*.{js,css,html,svg,png,ico}"]
       }
     })
   ]
