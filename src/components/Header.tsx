@@ -1,4 +1,4 @@
-type View = "list" | "capture";
+type View = "list" | "capture" | "timer";
 
 interface Props {
   signedIn: boolean;
@@ -20,6 +20,9 @@ export default function Header({ signedIn, authBusy, onSignIn, onSignOut, view, 
         </button>
         <button className={view === "capture" ? "active" : ""} onClick={() => onChangeView("capture")}>
           + 名刺を読み取る
+        </button>
+        <button className={view === "timer" ? "active" : ""} onClick={() => onChangeView("timer")}>
+          ⏱ タイマー
         </button>
       </nav>
       <div className="auth-area">

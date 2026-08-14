@@ -6,8 +6,9 @@ import Header from "./components/Header";
 import CaptureView from "./components/CaptureView";
 import CardList from "./components/CardList";
 import CardDetailModal from "./components/CardDetailModal";
+import TimerView from "./components/TimerView";
 
-type View = "list" | "capture";
+type View = "list" | "capture" | "timer";
 
 export default function App() {
   const [token, setToken] = useState<string | null>(null);
@@ -130,6 +131,8 @@ export default function App() {
       <main>
         {view === "capture" ? (
           <CaptureView signedIn={!!token} onRequestSignIn={() => void signIn(true)} onSave={handleSaveNewCard} />
+        ) : view === "timer" ? (
+          <TimerView />
         ) : (
           <CardList
             summaries={summaries}
