@@ -25,9 +25,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-        env:
-          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
-          VITE_GOOGLE_VISION_API_KEY: ${{ secrets.VITE_GOOGLE_VISION_API_KEY }}
       - uses: actions/configure-pages@v5
         with:
           # Auto-create the Pages site (source: GitHub Actions) on first run
