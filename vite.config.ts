@@ -12,9 +12,9 @@ export default defineConfig(({ command }) => ({
       registerType: "autoUpdate",
       includeAssets: ["icons/icon.svg"],
       manifest: {
-        name: "秒刻みタイマー",
-        short_name: "秒刻みタイマー",
-        description: "1秒ごとに小さい音、10秒ごとに大きい音が鳴るタイマー",
+        name: "エギングタイマー",
+        short_name: "エギングタイマー",
+        description: "沈める・しゃくるなどのフェーズを繰り返すエギング用インターバルタイマー",
         start_url: ".",
         display: "standalone",
         background_color: "#0f172a",
