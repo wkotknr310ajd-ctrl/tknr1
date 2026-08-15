@@ -103,6 +103,55 @@ button.danger {
   align-items: center;
   gap: 1.5rem;
   padding: 2rem 1rem;
+  width: 100%;
+}
+
+.phase-editor {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.phase-editor h2 {
+  margin: 0 0 0.2rem;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.phase-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.phase-name-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+}
+
+.phase-seconds-input {
+  width: 4.5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+}
+
+.phase-remove {
+  padding: 0.4rem 0.6rem;
+  flex-shrink: 0;
 }
 
 .timer-display {
@@ -113,17 +162,17 @@ button.danger {
   padding: 2rem 2.5rem;
   border-radius: 20px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   transition: border-color 0.15s, background 0.15s;
 }
 
-.timer-display.timer-pulse {
-  border-color: var(--primary);
-  background: var(--surface-2);
+.phase-name-label {
+  font-size: 1.1rem;
+  font-weight: 700;
 }
 
 .timer-time {
-  font-size: 3rem;
+  font-size: 3.5rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
