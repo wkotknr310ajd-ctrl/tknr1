@@ -1,22 +1,57 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-function formatTime(totalSeconds: number): string {
-  const m = Math.floor(totalSeconds / 60);
-  const s = totalSeconds % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+interface Phase {
+  id: string;
+  name: string;
+  seconds: number;
+}
+
+const DEFAULT_PHASES: Phase[] = [
+  { id: "sink", name: "沈める", seconds: 10 },
+  { id: "jerk", name: "しゃくる", seconds: 3 }
+];
+
+const STORAGE_KEY = "interval-timer-phases";
+const PHASE_COLORS = ["#4c7bf3", "#f2b134", "#06c755", "#ef5164", "#a855f7"];
+
+function loadPhases(): Phase[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return DEFAULT_PHASES;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+  } catch {
+    // ignore malformed storage
+  }
+  return DEFAULT_PHASES;
+}
+
+function newPhaseId() {
+  return Math.random().toString(36).slice(2, 9);
 }
 
 export default function TimerView() {
-  const [seconds, setSeconds] = useState(0);
+  const [phases, setPhases] = useState<Phase[]>(loadPhases);
+  const [started, setStarted] = useState(false);
   const [running, setRunning] = useState(false);
+  const [phaseIndex, setPhaseIndex] = useState(0);
+  const [remaining, setRemaining] = useState(phases[0]?.seconds ?? 0);
+  const [cycle, setCycle] = useState(0);
   const [muted, setMuted] = useState(false);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const timeoutRef = useRef<number | null>(null);
   const startRef = useRef(0);
-  const secondsRef = useRef(0);
+  const tickCountRef = useRef(0);
+  const phaseIndexRef = useRef(0);
+  const remainingRef = useRef(phases[0]?.seconds ?? 0);
+  const cycleRef = useRef(0);
   const mutedRef = useRef(muted);
   mutedRef.current = muted;
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(phases));
+  }, [phases]);
 
   const getAudioCtx = () => {
     if (!audioCtxRef.current) {
@@ -25,7 +60,7 @@ export default function TimerView() {
     return audioCtxRef.current;
   };
 
-  const playTick = useCallback((big: boolean) => {
+  const playTone = useCallback((big: boolean) => {
     if (mutedRef.current) return;
     const ctx = getAudioCtx();
     if (ctx.state === "suspended") void ctx.resume();
@@ -54,20 +89,41 @@ export default function TimerView() {
 
   const scheduleNext = useCallback(() => {
     const elapsed = performance.now() - startRef.current;
-    const nextSecond = secondsRef.current + 1;
-    const delay = nextSecond * 1000 - elapsed;
+    const nextTick = tickCountRef.current + 1;
+    const delay = nextTick * 1000 - elapsed;
     timeoutRef.current = window.setTimeout(() => {
-      secondsRef.current += 1;
-      setSeconds(secondsRef.current);
-      playTick(secondsRef.current % 10 === 0);
+      tickCountRef.current += 1;
+      remainingRef.current -= 1;
+      if (remainingRef.current <= 0) {
+        phaseIndexRef.current = (phaseIndexRef.current + 1) % phases.length;
+        if (phaseIndexRef.current === 0) cycleRef.current += 1;
+        remainingRef.current = phases[phaseIndexRef.current].seconds;
+        playTone(true);
+      } else {
+        playTone(false);
+      }
+      setPhaseIndex(phaseIndexRef.current);
+      setRemaining(remainingRef.current);
+      setCycle(cycleRef.current);
       scheduleNext();
     }, Math.max(0, delay));
-  }, [playTick]);
+  }, [phases, playTone]);
 
   const start = () => {
-    if (running) return;
+    if (running || phases.length === 0) return;
     getAudioCtx();
-    startRef.current = performance.now() - secondsRef.current * 1000;
+    if (!started) {
+      phaseIndexRef.current = 0;
+      remainingRef.current = phases[0].seconds;
+      cycleRef.current = 0;
+      setPhaseIndex(0);
+      setRemaining(phases[0].seconds);
+      setCycle(0);
+      setStarted(true);
+      playTone(true);
+    }
+    startRef.current = performance.now();
+    tickCountRef.current = 0;
     setRunning(true);
     scheduleNext();
   };
@@ -80,8 +136,13 @@ export default function TimerView() {
   const reset = () => {
     clearScheduledTick();
     setRunning(false);
-    secondsRef.current = 0;
-    setSeconds(0);
+    setStarted(false);
+    phaseIndexRef.current = 0;
+    remainingRef.current = phases[0]?.seconds ?? 0;
+    cycleRef.current = 0;
+    setPhaseIndex(0);
+    setRemaining(phases[0]?.seconds ?? 0);
+    setCycle(0);
   };
 
   useEffect(() => {
@@ -91,32 +152,83 @@ export default function TimerView() {
     };
   }, []);
 
-  const tenSecCount = Math.floor(seconds / 10);
+  const updatePhaseName = (id: string, name: string) => {
+    setPhases((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)));
+  };
+
+  const updatePhaseSeconds = (id: string, value: string) => {
+    const seconds = Math.max(1, Math.round(Number(value) || 1));
+    setPhases((prev) => prev.map((p) => (p.id === id ? { ...p, seconds } : p)));
+  };
+
+  const addPhase = () => {
+    setPhases((prev) => [...prev, { id: newPhaseId(), name: `フェーズ${prev.length + 1}`, seconds: 5 }]);
+  };
+
+  const removePhase = (id: string) => {
+    setPhases((prev) => (prev.length > 1 ? prev.filter((p) => p.id !== id) : prev));
+  };
+
+  const currentPhase = phases[phaseIndex];
+  const displaySeconds = started ? remaining : currentPhase?.seconds ?? 0;
+  const color = PHASE_COLORS[phaseIndex % PHASE_COLORS.length];
 
   return (
     <div className="timer-view">
-      <div className={`timer-display${seconds > 0 && seconds % 10 === 0 ? " timer-pulse" : ""}`}>
-        <span className="timer-time">{formatTime(seconds)}</span>
-        <span className="timer-sub muted">
-          {seconds}秒経過 ・ 10秒区切り {tenSecCount}回
+      {!started && (
+        <div className="phase-editor">
+          <h2>フェーズ設定</h2>
+          {phases.map((p) => (
+            <div className="phase-row" key={p.id}>
+              <input
+                type="text"
+                className="phase-name-input"
+                value={p.name}
+                onChange={(e) => updatePhaseName(p.id, e.target.value)}
+              />
+              <input
+                type="number"
+                min={1}
+                className="phase-seconds-input"
+                value={p.seconds}
+                onChange={(e) => updatePhaseSeconds(p.id, e.target.value)}
+              />
+              <span className="muted">秒</span>
+              {phases.length > 1 && (
+                <button className="phase-remove" onClick={() => removePhase(p.id)} aria-label="削除">
+                  ✕
+                </button>
+              )}
+            </div>
+          ))}
+          <button onClick={addPhase}>+ フェーズを追加</button>
+        </div>
+      )}
+
+      <div className="timer-display" style={{ borderColor: color, background: running ? `${color}22` : undefined }}>
+        <span className="phase-name-label" style={{ color }}>
+          {currentPhase?.name ?? "-"}
         </span>
+        <span className="timer-time">{displaySeconds}</span>
+        <span className="timer-sub muted">サイクル {cycle} 回目</span>
       </div>
+
       <div className="timer-actions">
         {!running ? (
           <button className="primary" onClick={start}>
-            {seconds > 0 ? "再開" : "スタート"}
+            {started ? "再開" : "スタート"}
           </button>
         ) : (
           <button className="danger" onClick={pause}>
             一時停止
           </button>
         )}
-        <button onClick={reset} disabled={seconds === 0 && !running}>
+        <button onClick={reset} disabled={!started}>
           リセット
         </button>
         <button onClick={() => setMuted((m) => !m)}>{muted ? "🔇 ミュート中" : "🔊 音あり"}</button>
       </div>
-      <p className="muted timer-note">毎秒、小さい音が鳴ります。10秒ごとに大きい音が鳴ります。</p>
+      <p className="muted timer-note">毎秒小さい音、フェーズが切り替わる瞬間に大きい音が鳴ります。</p>
     </div>
   );
 }
