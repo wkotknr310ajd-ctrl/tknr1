@@ -127,7 +127,11 @@ function localAddresses(){
   const out = [];
   Object.keys(nets).forEach(function(name){
     (nets[name] || []).forEach(function(net){
-      if (net.family === 'IPv4' && !net.internal) out.push(net.address);
+      // 169.254.x.x は接続先が無いときにWindowsが自動でつける仮のアドレス(APIPA)なので、
+      // 実際には使えず紛らわしいだけなので除外する。
+      if (net.family === 'IPv4' && !net.internal && net.address.indexOf('169.254.') !== 0) {
+        out.push(net.address);
+      }
     });
   });
   return out;
