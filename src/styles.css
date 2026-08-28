@@ -60,6 +60,24 @@ textarea {
   white-space: nowrap;
 }
 
+.tabs {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.tab-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
 main {
   flex: 1;
   padding: 1rem;
@@ -193,4 +211,144 @@ button.danger {
   text-align: center;
   font-size: 0.85rem;
   max-width: 320px;
+}
+
+/* Morning call */
+
+.morning-view {
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem 0.5rem;
+}
+
+.morning-card {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem;
+}
+
+.morning-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.morning-row-top {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.morning-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.morning-row input[type="time"],
+.morning-row select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  align-self: flex-start;
+}
+
+.weekday-buttons {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.weekday-btn {
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+}
+
+.weekday-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.weekday-presets {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.weekday-presets button {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.morning-patterns {
+  gap: 0.6rem;
+}
+
+.pattern-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.pattern-option:has(input:checked) {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.pattern-label {
+  font-weight: 600;
+}
+
+.pattern-text {
+  font-size: 0.85rem;
+}
+
+.custom-message-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.6rem;
+  resize: vertical;
+}
+
+.morning-sliders {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.morning-sliders label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.preview-box {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  background: var(--surface-2);
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+.morning-actions {
+  display: flex;
+  justify-content: center;
 }
