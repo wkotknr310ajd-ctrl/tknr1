@@ -17,6 +17,7 @@ const LAST_FIRED_KEY = "morning-call-last-fired";
 const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
 const PATTERNS: { id: string; label: string; template: string }[] = [
+  { id: "notice", label: "回覧物確認（職員向け）", template: "{time}になりました。職員の皆さんは回覧物、ファイルを確認してください。" },
   { id: "standard", label: "スタンダード", template: "おはようございます。ただいま{time}です。今日も一日、頑張りましょう。" },
   { id: "genki", label: "元気いっぱい", template: "おはよう!起きる時間だよ!{time}になったよ!今日も元気に頑張ろう!" },
   { id: "calm", label: "やさしく", template: "おはようございます。{time}になりました。ゆっくり起きて、今日も良い一日にしましょうね。" },
@@ -28,7 +29,7 @@ const DEFAULT_SETTINGS: MorningSettings = {
   enabled: false,
   time: "08:30",
   days: [0, 1, 2, 3, 4, 5, 6],
-  patternId: "standard",
+  patternId: "notice",
   customMessage: "おはようございます。起きる時間です。",
   voiceURI: "",
   rate: 1,
@@ -192,7 +193,7 @@ export default function MorningCall() {
         </div>
 
         <div className="morning-row">
-          <label htmlFor="morning-time">時刻（パソコンの時計と連動）</label>
+          <label htmlFor="morning-time">時刻（この端末の時計と連動）</label>
           <input
             id="morning-time"
             type="time"
@@ -307,9 +308,14 @@ export default function MorningCall() {
         </div>
 
         <p className="muted timer-note">
-          この機能はこのアプリ（ブラウザ／PWA）を開いている間だけ、パソコンの時計を見て動作します。
-          スリープさせず、タブを閉じずに開いたままにしておいてください。
+          この機能はこのアプリ（ブラウザ／PWA）を開いている間だけ、端末の時計を見て動作します。
+          スリープさせず、閉じずに開いたままにしておいてください。
           ブラウザの自動再生制限があるため、一度「今すぐテスト再生」を押しておくと、以降の自動再生が有効になります。
+        </p>
+        <p className="muted timer-note">
+          iPad で使う場合は、画面ロック（自動ロック）がかかるとアプリが停止してしまいます。
+          設定アプリの「画面表示と明るさ」→「自動ロック」を「なし」にし、充電しながら画面をつけたまま
+          このアプリを開いておいてください。
         </p>
       </div>
     </div>
