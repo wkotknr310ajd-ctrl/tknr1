@@ -60,24 +60,6 @@ textarea {
   white-space: nowrap;
 }
 
-.tabs {
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-
-.tab-btn {
-  padding: 0.4rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.85rem;
-}
-
-.tab-btn.active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: white;
-}
-
 main {
   flex: 1;
   padding: 1rem;
@@ -113,101 +95,7 @@ button.danger {
   color: var(--text-muted);
 }
 
-/* Timer */
-
-.timer-view {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 2rem 1rem;
-  width: 100%;
-}
-
-.phase-editor {
-  width: 100%;
-  max-width: 360px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 1rem;
-}
-
-.phase-editor h2 {
-  margin: 0 0 0.2rem;
-  font-size: 0.95rem;
-  color: var(--text-muted);
-}
-
-.phase-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.phase-name-input {
-  flex: 1;
-  min-width: 0;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 8px;
-  padding: 0.5rem 0.6rem;
-}
-
-.phase-seconds-input {
-  width: 4.5rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 8px;
-  padding: 0.5rem 0.6rem;
-}
-
-.phase-remove {
-  padding: 0.4rem 0.6rem;
-  flex-shrink: 0;
-}
-
-.timer-display {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 2rem 2.5rem;
-  border-radius: 20px;
-  background: var(--surface);
-  border: 2px solid var(--border);
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.phase-name-label {
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-.timer-time {
-  font-size: 3.5rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-}
-
-.timer-sub {
-  font-size: 0.85rem;
-}
-
-.timer-actions {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.timer-note {
+.note-text {
   text-align: center;
   font-size: 0.85rem;
   max-width: 320px;
@@ -351,4 +239,47 @@ button.danger {
 .morning-actions {
   display: flex;
   justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.voice-source-options {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.voice-source-option {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  flex: 1;
+  min-width: 160px;
+}
+
+.voice-source-option:has(input:checked) {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.audio-upload-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.audio-file-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.audio-file-name {
+  font-size: 0.85rem;
+  word-break: break-all;
 }

@@ -12,9 +12,9 @@ export default defineConfig(({ command }) => ({
       registerType: "autoUpdate",
       includeAssets: ["icons/icon.svg"],
       manifest: {
-        name: "エギングタイマー",
-        short_name: "エギングタイマー",
-        description: "沈める・しゃくるなどのフェーズを繰り返すエギング用インターバルタイマー",
+        name: "モーニングコール",
+        short_name: "モーニングコール",
+        description: "指定した時刻にチャイムと音声メッセージでお知らせするモーニングコールアプリ",
         start_url: ".",
         display: "standalone",
         background_color: "#0f172a",

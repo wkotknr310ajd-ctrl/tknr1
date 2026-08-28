@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { deleteAudio, loadAudio, saveAudio } from "../audioStore";
 
 interface MorningSettings {
   enabled: boolean;
-  time: string; // "HH:MM" (PC のローカル時計基準)
+  time: string; // "HH:MM" (この端末のローカル時計基準)
   days: number[]; // 0(日)〜6(土)
+  voiceSource: "tts" | "upload";
   patternId: string;
   customMessage: string;
   voiceURI: string;
@@ -29,6 +31,7 @@ const DEFAULT_SETTINGS: MorningSettings = {
   enabled: false,
   time: "08:30",
   days: [0, 1, 2, 3, 4, 5, 6],
+  voiceSource: "tts",
   patternId: "notice",
   customMessage: "おはようございます。起きる時間です。",
   voiceURI: "",
@@ -80,8 +83,12 @@ export default function MorningCall() {
   const [settings, setSettings] = useState<MorningSettings>(loadSettings);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [nowLabel, setNowLabel] = useState("");
+  const [audioInfo, setAudioInfo] = useState<{ name: string; url: string } | null>(null);
+  const [audioError, setAudioError] = useState("");
   const audioCtxRef = useRef<AudioContext | null>(null);
   const lastFiredRef = useRef<string>(localStorage.getItem(LAST_FIRED_KEY) ?? "");
+  const audioInfoRef = useRef<{ name: string; url: string } | null>(null);
+  audioInfoRef.current = audioInfo;
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
@@ -93,6 +100,24 @@ export default function MorningCall() {
     update();
     window.speechSynthesis.addEventListener("voiceschanged", update);
     return () => window.speechSynthesis.removeEventListener("voiceschanged", update);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    let createdUrl: string | null = null;
+    loadAudio()
+      .then((stored) => {
+        if (cancelled || !stored) return;
+        createdUrl = URL.createObjectURL(stored.blob);
+        setAudioInfo({ name: stored.name, url: createdUrl });
+      })
+      .catch(() => {
+        // 保存済み音声がない、または読み込みに失敗した場合は無視
+      });
+    return () => {
+      cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
   }, []);
 
   const getAudioCtx = () => {
@@ -138,11 +163,23 @@ export default function MorningCall() {
     [settings.rate, settings.pitch, settings.voiceURI, voices]
   );
 
+  const playUploadedAudio = useCallback(() => {
+    const info = audioInfoRef.current;
+    if (!info) return;
+    const audio = new Audio(info.url);
+    void audio.play();
+  }, []);
+
   const triggerNow = useCallback(() => {
     playChime();
-    const text = messageFor(settings);
-    window.setTimeout(() => speakMessage(text), 750);
-  }, [playChime, speakMessage, settings]);
+    window.setTimeout(() => {
+      if (settings.voiceSource === "upload") {
+        playUploadedAudio();
+      } else {
+        speakMessage(messageFor(settings));
+      }
+    }, 750);
+  }, [playChime, playUploadedAudio, speakMessage, settings]);
 
   useEffect(() => {
     if (!settings.enabled) return;
@@ -170,6 +207,31 @@ export default function MorningCall() {
   };
 
   const setAllDays = (days: number[]) => setSettings((prev) => ({ ...prev, days }));
+
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setAudioError("");
+    try {
+      await saveAudio(file, file.name);
+      if (audioInfo) URL.revokeObjectURL(audioInfo.url);
+      const url = URL.createObjectURL(file);
+      setAudioInfo({ name: file.name, url });
+    } catch {
+      setAudioError("音声ファイルの保存に失敗しました。もう一度お試しください。");
+    }
+  };
+
+  const handleDeleteAudio = async () => {
+    try {
+      await deleteAudio();
+    } catch {
+      // 削除に失敗しても表示上はクリアする
+    }
+    if (audioInfo) URL.revokeObjectURL(audioInfo.url);
+    setAudioInfo(null);
+  };
 
   const preview = useMemo(() => messageFor(settings), [settings]);
   const nextFire = useMemo(() => nextFireLabel(settings), [settings, nowLabel]);
@@ -229,77 +291,124 @@ export default function MorningCall() {
           </div>
         </div>
 
-        <div className="morning-row morning-patterns">
-          <span className="muted">メッセージパターン</span>
-          {PATTERNS.map((p) => (
-            <label className="pattern-option" key={p.id}>
+        <div className="morning-row">
+          <span className="muted">音声ソース</span>
+          <div className="voice-source-options">
+            <label className="voice-source-option">
               <input
                 type="radio"
-                name="pattern"
-                checked={settings.patternId === p.id}
-                onChange={() => setSettings((prev) => ({ ...prev, patternId: p.id }))}
+                name="voice-source"
+                checked={settings.voiceSource === "tts"}
+                onChange={() => setSettings((prev) => ({ ...prev, voiceSource: "tts" }))}
               />
-              <span className="pattern-label">{p.label}</span>
-              {p.id !== "custom" && (
-                <span className="pattern-text muted">{p.template.split("{time}").join(settings.time)}</span>
-              )}
+              読み上げ（音声合成）
             </label>
-          ))}
-          {settings.patternId === "custom" && (
-            <textarea
-              className="custom-message-input"
-              rows={3}
-              value={settings.customMessage}
-              onChange={(e) => setSettings((prev) => ({ ...prev, customMessage: e.target.value }))}
-              placeholder="読み上げたいメッセージを入力してください（{time} と書くとその位置に時刻が入ります）"
-            />
-          )}
-        </div>
-
-        {voiceOptions.length > 0 && (
-          <div className="morning-row">
-            <label htmlFor="morning-voice">読み上げ音声</label>
-            <select
-              id="morning-voice"
-              value={settings.voiceURI}
-              onChange={(e) => setSettings((prev) => ({ ...prev, voiceURI: e.target.value }))}
-            >
-              <option value="">端末の標準音声</option>
-              {voiceOptions.map((v) => (
-                <option key={v.voiceURI} value={v.voiceURI}>
-                  {v.name} ({v.lang})
-                </option>
-              ))}
-            </select>
+            <label className="voice-source-option">
+              <input
+                type="radio"
+                name="voice-source"
+                checked={settings.voiceSource === "upload"}
+                onChange={() => setSettings((prev) => ({ ...prev, voiceSource: "upload" }))}
+              />
+              アップロードした音声
+            </label>
           </div>
-        )}
-
-        <div className="morning-row morning-sliders">
-          <label>
-            速さ {settings.rate.toFixed(1)}
-            <input
-              type="range"
-              min={0.5}
-              max={1.5}
-              step={0.1}
-              value={settings.rate}
-              onChange={(e) => setSettings((prev) => ({ ...prev, rate: Number(e.target.value) }))}
-            />
-          </label>
-          <label>
-            高さ {settings.pitch.toFixed(1)}
-            <input
-              type="range"
-              min={0.5}
-              max={1.5}
-              step={0.1}
-              value={settings.pitch}
-              onChange={(e) => setSettings((prev) => ({ ...prev, pitch: Number(e.target.value) }))}
-            />
-          </label>
         </div>
 
-        <p className="preview-box">「{preview}」</p>
+        {settings.voiceSource === "upload" ? (
+          <div className="morning-row audio-upload-box">
+            <label htmlFor="morning-audio-upload">音声ファイル（mp3, m4a, wav など）</label>
+            <input id="morning-audio-upload" type="file" accept="audio/*" onChange={handleAudioUpload} />
+            {audioError && <span className="muted">{audioError}</span>}
+            {audioInfo ? (
+              <div className="audio-file-row">
+                <span className="audio-file-name">🎵 {audioInfo.name}</span>
+                <button type="button" onClick={playUploadedAudio}>
+                  ▶ 試聴
+                </button>
+                <button type="button" onClick={handleDeleteAudio}>
+                  削除
+                </button>
+              </div>
+            ) : (
+              <span className="muted">まだ音声がアップロードされていません。</span>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="morning-row morning-patterns">
+              <span className="muted">メッセージパターン</span>
+              {PATTERNS.map((p) => (
+                <label className="pattern-option" key={p.id}>
+                  <input
+                    type="radio"
+                    name="pattern"
+                    checked={settings.patternId === p.id}
+                    onChange={() => setSettings((prev) => ({ ...prev, patternId: p.id }))}
+                  />
+                  <span className="pattern-label">{p.label}</span>
+                  {p.id !== "custom" && (
+                    <span className="pattern-text muted">{p.template.split("{time}").join(settings.time)}</span>
+                  )}
+                </label>
+              ))}
+              {settings.patternId === "custom" && (
+                <textarea
+                  className="custom-message-input"
+                  rows={3}
+                  value={settings.customMessage}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, customMessage: e.target.value }))}
+                  placeholder="読み上げたいメッセージを入力してください（{time} と書くとその位置に時刻が入ります）"
+                />
+              )}
+            </div>
+
+            {voiceOptions.length > 0 && (
+              <div className="morning-row">
+                <label htmlFor="morning-voice">読み上げ音声</label>
+                <select
+                  id="morning-voice"
+                  value={settings.voiceURI}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, voiceURI: e.target.value }))}
+                >
+                  <option value="">端末の標準音声</option>
+                  {voiceOptions.map((v) => (
+                    <option key={v.voiceURI} value={v.voiceURI}>
+                      {v.name} ({v.lang})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="morning-row morning-sliders">
+              <label>
+                速さ {settings.rate.toFixed(1)}
+                <input
+                  type="range"
+                  min={0.5}
+                  max={1.5}
+                  step={0.1}
+                  value={settings.rate}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, rate: Number(e.target.value) }))}
+                />
+              </label>
+              <label>
+                高さ {settings.pitch.toFixed(1)}
+                <input
+                  type="range"
+                  min={0.5}
+                  max={1.5}
+                  step={0.1}
+                  value={settings.pitch}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, pitch: Number(e.target.value) }))}
+                />
+              </label>
+            </div>
+
+            <p className="preview-box">「{preview}」</p>
+          </>
+        )}
 
         <div className="morning-actions">
           <button className="primary" onClick={triggerNow}>
@@ -307,12 +416,12 @@ export default function MorningCall() {
           </button>
         </div>
 
-        <p className="muted timer-note">
+        <p className="muted note-text">
           この機能はこのアプリ（ブラウザ／PWA）を開いている間だけ、端末の時計を見て動作します。
           スリープさせず、閉じずに開いたままにしておいてください。
           ブラウザの自動再生制限があるため、一度「今すぐテスト再生」を押しておくと、以降の自動再生が有効になります。
         </p>
-        <p className="muted timer-note">
+        <p className="muted note-text">
           iPad で使う場合は、画面ロック（自動ロック）がかかるとアプリが停止してしまいます。
           設定アプリの「画面表示と明るさ」→「自動ロック」を「なし」にし、充電しながら画面をつけたまま
           このアプリを開いておいてください。
