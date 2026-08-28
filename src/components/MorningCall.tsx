@@ -17,6 +17,7 @@ const LAST_FIRED_KEY = "morning-call-last-fired";
 const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
 const PATTERNS: { id: string; label: string; template: string }[] = [
+  { id: "notice", label: "回覧物確認（職員向け）", template: "{time}になりました。職員の皆さんは回覧物、ファイルを確認してください。" },
   { id: "standard", label: "スタンダード", template: "おはようございます。ただいま{time}です。今日も一日、頑張りましょう。" },
   { id: "genki", label: "元気いっぱい", template: "おはよう!起きる時間だよ!{time}になったよ!今日も元気に頑張ろう!" },
   { id: "calm", label: "やさしく", template: "おはようございます。{time}になりました。ゆっくり起きて、今日も良い一日にしましょうね。" },
@@ -28,7 +29,7 @@ const DEFAULT_SETTINGS: MorningSettings = {
   enabled: false,
   time: "08:30",
   days: [0, 1, 2, 3, 4, 5, 6],
-  patternId: "standard",
+  patternId: "notice",
   customMessage: "おはようございます。起きる時間です。",
   voiceURI: "",
   rate: 1,
