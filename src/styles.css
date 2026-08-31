@@ -135,6 +135,17 @@ button.danger {
   gap: 0.5rem;
 }
 
+.fired-today-notice {
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+}
+
+.fired-today-notice button {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85rem;
+}
+
 .morning-toggle {
   display: flex;
   align-items: center;

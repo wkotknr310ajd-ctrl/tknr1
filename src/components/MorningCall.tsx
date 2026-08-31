@@ -85,8 +85,9 @@ export default function MorningCall() {
   const [nowLabel, setNowLabel] = useState("");
   const [audioInfo, setAudioInfo] = useState<{ name: string; url: string } | null>(null);
   const [audioError, setAudioError] = useState("");
+  const [lastFired, setLastFired] = useState<string>(localStorage.getItem(LAST_FIRED_KEY) ?? "");
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const lastFiredRef = useRef<string>(localStorage.getItem(LAST_FIRED_KEY) ?? "");
+  const lastFiredRef = useRef<string>(lastFired);
   const audioInfoRef = useRef<{ name: string; url: string } | null>(null);
   audioInfoRef.current = audioInfo;
 
@@ -203,11 +204,18 @@ export default function MorningCall() {
       ) {
         lastFiredRef.current = todayStr;
         localStorage.setItem(LAST_FIRED_KEY, todayStr);
+        setLastFired(todayStr);
         triggerNow();
       }
     }, 1000);
     return () => window.clearInterval(id);
   }, [settings, triggerNow]);
+
+  const resetTodaysFireFlag = () => {
+    lastFiredRef.current = "";
+    localStorage.removeItem(LAST_FIRED_KEY);
+    setLastFired("");
+  };
 
   const toggleDay = (day: number) => {
     setSettings((prev) => ({
@@ -245,6 +253,7 @@ export default function MorningCall() {
 
   const preview = useMemo(() => messageFor(settings), [settings]);
   const nextFire = useMemo(() => nextFireLabel(settings), [settings, nowLabel]);
+  const firedToday = useMemo(() => lastFired !== "" && lastFired === localDateStr(new Date()), [lastFired, nowLabel]);
 
   const japaneseVoices = voices.filter((v) => v.lang.startsWith("ja"));
   const voiceOptions = japaneseVoices.length > 0 ? japaneseVoices : voices;
@@ -263,6 +272,15 @@ export default function MorningCall() {
           </label>
           {nextFire && <span className="muted">{nextFire}</span>}
         </div>
+
+        {firedToday && (
+          <div className="morning-row morning-row-top fired-today-notice">
+            <span className="muted">✅ 本日はすでに再生済みです（次は明日以降の対象曜日に再生されます）</span>
+            <button type="button" onClick={resetTodaysFireFlag}>
+              本日分をリセット
+            </button>
+          </div>
+        )}
 
         <div className="morning-row">
           <label htmlFor="morning-time">時刻（この端末の時計と連動）</label>
