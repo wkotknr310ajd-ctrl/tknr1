@@ -190,7 +190,17 @@ export default function MorningCall() {
       const current = `${hh}:${mm}`;
       const todayStr = localDateStr(now);
       setNowLabel(current);
-      if (current === settings.time && settings.days.includes(now.getDay()) && lastFiredRef.current !== todayStr) {
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+      const [targetH, targetM] = settings.time.split(":").map(Number);
+      const targetMinutes = targetH * 60 + targetM;
+      // 完全一致ではなく「指定時刻を過ぎているか」で判定する。
+      // スリープ／画面ロックから復帰した直後にタイマーが動き出した場合でも、
+      // ちょうどその分を狙い撃ちできず永久に鳴らなくなるのを防ぐため。
+      if (
+        nowMinutes >= targetMinutes &&
+        settings.days.includes(now.getDay()) &&
+        lastFiredRef.current !== todayStr
+      ) {
         lastFiredRef.current = todayStr;
         localStorage.setItem(LAST_FIRED_KEY, todayStr);
         triggerNow();
@@ -420,6 +430,11 @@ export default function MorningCall() {
           この機能はこのアプリ（ブラウザ／PWA）を開いている間だけ、端末の時計を見て動作します。
           スリープさせず、閉じずに開いたままにしておいてください。
           ブラウザの自動再生制限があるため、一度「今すぐテスト再生」を押しておくと、以降の自動再生が有効になります。
+        </p>
+        <p className="muted note-text">
+          会社・学校のパソコンなど、しばらく操作しないと自動で画面ロック／スリープする設定の場合、
+          ロック中はこのアプリも動作が止まります。ちょうどその時刻を狙い撃ちできなくても、
+          ロックが解除されて画面に戻った時点で指定時刻を過ぎていれば、その時点ですぐに再生されます。
         </p>
         <p className="muted note-text">
           iPad で使う場合は、画面ロック（自動ロック）がかかるとアプリが停止してしまいます。
