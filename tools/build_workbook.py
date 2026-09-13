@@ -124,6 +124,7 @@ for row, label, formula in fields:
     ic.border = BORDER
 
 ws["B5"].number_format = "yyyy/mm/dd"
+ws["B4"].number_format = "@"  # パスワード欄: 先頭0が消えないよう文字列形式にする
 ws["A10"] = "入力後、下の「申請する」ボタンを押してください。(ボタンは初回に自動作成されます)"
 ws["A10"].font = Font(italic=True, size=9, color="808080")
 ws.merge_cells("A10:F10")
@@ -160,6 +161,7 @@ for row, label, note in fields:
 
 ws["A11"] = "▼ 承認待ち一覧(自動更新)"
 ws["A11"].font = Font(bold=True)
+ws["B5"].number_format = "@"  # パスワード欄: 先頭0が消えないよう文字列形式にする
 headers = ["申請ID", "申請者", "対象者", "対象日", "変更前", "変更後", "変更理由", "申請日時"]
 for i, h in enumerate(headers):
     c = ws.cell(row=12, column=1 + i, value=h)
@@ -200,6 +202,7 @@ for row, label, note in fields:
 
 ws["A10"] = "▼ 承認済み一覧(自動更新)"
 ws["A10"].font = Font(bold=True)
+ws["B5"].number_format = "@"  # パスワード欄: 先頭0が消えないよう文字列形式にする
 headers = ["申請ID", "申請者", "対象者", "対象日", "変更前", "変更後(現在値)", "承認者", "承認日時"]
 for i, h in enumerate(headers):
     c = ws.cell(row=11, column=1 + i, value=h)
@@ -249,6 +252,7 @@ for row, label, formula, _ in fields:
 
 ws["B7"].number_format = "yyyy/mm/dd"
 ws["B12"].number_format = "yyyy/mm/dd"
+ws["B4"].number_format = "@"  # パスワード欄: 先頭0が消えないよう文字列形式にする
 ws["A18"] = "入力後、下の「交換を申請する」ボタンを押してください。(ボタンは初回に自動作成されます)"
 ws["A18"].font = Font(italic=True, size=9, color="808080")
 ws.merge_cells("A18:F18")
