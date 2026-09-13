@@ -94,11 +94,23 @@ Public Sub ChangeMyPassword()
 End Sub
 
 ' 申請・承認・ロールバックの各シートの氏名入力欄に、職員マスタに基づくドロップダウンを設定する。
+' 注意: Excelのデータ入力規則(リスト)は、別シートのセル範囲を直接
+' Formula1に指定すると実行時エラー1004になる制限があるため、
+' 名前付き範囲(StaffNameList)を経由して参照する。
 Public Sub RefreshStaffValidation()
     Dim masterWs As Worksheet
     Set masterWs = ThisWorkbook.Sheets("職員マスタ")
     Dim lastRow As Long
     lastRow = masterWs.Cells(masterWs.Rows.Count, 1).End(xlUp).Row
+
+    If lastRow >= 2 Then
+        ThisWorkbook.Names.Add Name:="StaffNameList", _
+            RefersTo:="=職員マスタ!$A$2:$A$" & lastRow
+    Else
+        On Error Resume Next
+        ThisWorkbook.Names("StaffNameList").Delete
+        On Error GoTo 0
+    End If
 
     Dim reqWs As Worksheet, apprWs As Worksheet, rbWs As Worksheet, swapWs As Worksheet
     Set reqWs = ThisWorkbook.Sheets("申請")
@@ -119,7 +131,7 @@ Private Sub SetNameValidation(ByVal targetCell As Range, ByVal lastRow As Long)
         .Delete
         If lastRow >= 2 Then
             .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
-                 Formula1:="=職員マスタ!$A$2:$A$" & lastRow
+                 Formula1:="=StaffNameList"
         End If
     End With
 End Sub
