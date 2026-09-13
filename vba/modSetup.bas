@@ -118,12 +118,33 @@ Public Sub RefreshStaffValidation()
     Set rbWs = ThisWorkbook.Sheets("ロールバック")
     Set swapWs = ThisWorkbook.Sheets("交換申請")
 
-    SetNameValidation reqWs.Range("B3"), lastRow
-    SetNameValidation apprWs.Range("B4"), lastRow
-    SetNameValidation rbWs.Range("B4"), lastRow
-    SetNameValidation swapWs.Range("B3"), lastRow  ' 申請者
-    SetNameValidation swapWs.Range("B6"), lastRow  ' 対象者A
-    SetNameValidation swapWs.Range("B11"), lastRow ' 対象者B
+    SetNameValidationSafe reqWs.Range("B3"), lastRow
+    SetNameValidationSafe apprWs.Range("B4"), lastRow
+    SetNameValidationSafe rbWs.Range("B4"), lastRow
+    SetNameValidationSafe swapWs.Range("B3"), lastRow  ' 申請者
+    SetNameValidationSafe swapWs.Range("B6"), lastRow  ' 対象者A
+    SetNameValidationSafe swapWs.Range("B11"), lastRow ' 対象者B
+End Sub
+
+' データ入力規則の追加・削除は、シートが保護されていると実行時エラー1004になるため、
+' 保護されている場合は一時的に解除してから設定し、直後に同じパスワードで再保護する。
+Private Sub SetNameValidationSafe(ByVal targetCell As Range, ByVal lastRow As Long)
+    Dim ws As Worksheet
+    Set ws = targetCell.Worksheet
+
+    Dim wasProtected As Boolean
+    wasProtected = ws.ProtectContents
+    If wasProtected Then
+        On Error Resume Next
+        ws.Unprotect Password:=SHEET_PROTECT_PASSWORD
+        On Error GoTo 0
+    End If
+
+    SetNameValidation targetCell, lastRow
+
+    If wasProtected Then
+        ws.Protect Password:=SHEET_PROTECT_PASSWORD
+    End If
 End Sub
 
 Private Sub SetNameValidation(ByVal targetCell As Range, ByVal lastRow As Long)
@@ -156,9 +177,23 @@ Private Sub AddButton(ByVal sheetName As String, ByVal caption As String, ByVal 
     Dim rng As Range
     Set rng = ws.Range(anchorCell)
 
+    ' 図形(ボタン)の追加も、シートが保護されていると実行時エラー1004になるため、
+    ' 保護されている場合は一時的に解除してから追加し、直後に再保護する。
+    Dim wasProtected As Boolean
+    wasProtected = ws.ProtectContents
+    If wasProtected Then
+        On Error Resume Next
+        ws.Unprotect Password:=SHEET_PROTECT_PASSWORD
+        On Error GoTo 0
+    End If
+
     Dim btn As Button
     Set btn = ws.Buttons.Add(rng.Left, rng.Top, 170, 26)
     btn.Name = "btn_" & macroName
     btn.Caption = caption
     btn.OnAction = macroName
+
+    If wasProtected Then
+        ws.Protect Password:=SHEET_PROTECT_PASSWORD
+    End If
 End Sub
