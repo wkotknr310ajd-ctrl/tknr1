@@ -9,6 +9,7 @@ Private Sub Workbook_Open()
     On Error Resume Next
     ApplyProtection
     SetupButtons
+    SetupChoiceLists
     RefreshStaffValidation
     RefreshPendingList
     RefreshApprovedList
