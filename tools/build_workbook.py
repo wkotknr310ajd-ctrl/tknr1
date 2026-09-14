@@ -264,7 +264,93 @@ ws.protection.sheet = True
 ws.protection.password = "shift-sys-2026"
 
 # ------------------------------------------------------------------
-# 6. 履歴
+# 6. 有給申請 (連続日付範囲)
+# ------------------------------------------------------------------
+ws = wb.create_sheet("有給申請")
+ws["A1"] = "有給休暇申請"
+ws["A1"].font = TITLE_FONT
+ws.merge_cells("A1:D1")
+
+fields = [
+    (3, "申請者氏名", None),
+    (4, "パスワード", None),
+    (5, "開始日", None),
+    (6, "終了日", None),
+    (7, "理由(任意)", None),
+]
+for row, label, formula in fields:
+    lc = ws.cell(row=row, column=1, value=label)
+    style_label_cell(lc)
+    ic = ws.cell(row=row, column=2, value=formula if formula else None)
+    if formula:
+        ic.fill = LOCK_FILL
+        ic.protection = openpyxl.styles.Protection(locked=True)
+    else:
+        style_input_cell(ic)
+    ic.border = BORDER
+
+ws["B5"].number_format = "yyyy/mm/dd"
+ws["B6"].number_format = "yyyy/mm/dd"
+ws["B4"].number_format = "@"  # パスワード欄: 先頭0が消えないよう文字列形式にする
+ws["A9"] = "開始日〜終了日の全日程が1件の申請としてまとめて登録されます。(最大31日分)"
+ws["A9"].font = Font(italic=True, size=9, color="808080")
+ws.merge_cells("A9:F9")
+ws["A10"] = "入力後、下の「有給を申請する」ボタンを押してください。(ボタンは初回に自動作成されます)"
+ws["A10"].font = Font(italic=True, size=9, color="808080")
+ws.merge_cells("A10:F10")
+
+ws.column_dimensions["A"].width = 22
+ws.column_dimensions["B"].width = 28
+
+ws.protection.sheet = True
+ws.protection.password = "shift-sys-2026"
+
+# ------------------------------------------------------------------
+# 7. 超過勤務申請 (開始・終了時刻)
+# ------------------------------------------------------------------
+ws = wb.create_sheet("超過勤務申請")
+ws["A1"] = "超過勤務(残業)申請"
+ws["A1"].font = TITLE_FONT
+ws.merge_cells("A1:D1")
+
+fields = [
+    (3, "申請者氏名", None),
+    (4, "パスワード", None),
+    (5, "対象日", None),
+    (6, "開始時刻", None),
+    (7, "終了時刻", None),
+    (8, "理由(任意)", None),
+]
+for row, label, formula in fields:
+    lc = ws.cell(row=row, column=1, value=label)
+    style_label_cell(lc)
+    ic = ws.cell(row=row, column=2, value=formula if formula else None)
+    if formula:
+        ic.fill = LOCK_FILL
+        ic.protection = openpyxl.styles.Protection(locked=True)
+    else:
+        style_input_cell(ic)
+    ic.border = BORDER
+
+ws["B5"].number_format = "yyyy/mm/dd"
+ws["B6"].number_format = "hh:mm"
+ws["B7"].number_format = "hh:mm"
+ws["B4"].number_format = "@"  # パスワード欄: 先頭0が消えないよう文字列形式にする
+ws["A10"] = "承認されると、シフト表の対象日のセルに残業時間が追記されます。(例: 日勤(残1時間30分))"
+ws["A10"].font = Font(italic=True, size=9, color="808080")
+ws.merge_cells("A10:F10")
+ws["A11"] = "入力後、下の「残業を申請する」ボタンを押してください。(ボタンは初回に自動作成されます)"
+ws["A11"].font = Font(italic=True, size=9, color="808080")
+ws.merge_cells("A11:F11")
+
+ws.column_dimensions["A"].width = 22
+ws.column_dimensions["B"].width = 28
+
+ws.protection.sheet = True
+ws.protection.password = "shift-sys-2026"
+
+# ------------------------------------------------------------------
+# 8. 履歴
 # ------------------------------------------------------------------
 ws = wb.create_sheet("履歴")
 headers = ["申請ID", "申請日時", "申請者", "対象者", "対象日", "変更前", "変更後", "変更理由",
@@ -286,7 +372,7 @@ ws.protection.password = "shift-sys-2026"
 ws.protection.autoFilter = False
 
 # ------------------------------------------------------------------
-# 7. 職員マスタ (非表示)
+# 9. 職員マスタ (非表示)
 # ------------------------------------------------------------------
 ws = wb.create_sheet("職員マスタ")
 headers = ["氏名", "権限(一般/一般・承認者)", "ソルト", "パスワードハッシュ", "登録日時"]
@@ -298,7 +384,7 @@ for i, h in enumerate(headers):
 ws.sheet_state = "veryHidden"
 
 # ------------------------------------------------------------------
-# 8. 設定 (非表示)
+# 10. 設定 (非表示)
 # ------------------------------------------------------------------
 ws = wb.create_sheet("設定")
 ws["A1"] = "対象年月初日"
@@ -308,6 +394,8 @@ ws["A2"] = "次回申請ID通番"
 ws["B2"] = 0
 ws["A3"] = "メモ"
 ws["B3"] = "シート保護パスワードは vba/modCommon.bas の SHEET_PROTECT_PASSWORD 定数で管理(運用上の誤操作防止用。真の権限管理は職員マスタのハッシュ照合で行う)"
+ws["A4"] = "有給の勤務コード"
+ws["B4"] = "年"
 ws.column_dimensions["A"].width = 18
 ws.column_dimensions["B"].width = 60
 ws.sheet_state = "veryHidden"

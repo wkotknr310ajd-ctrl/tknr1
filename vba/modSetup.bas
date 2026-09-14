@@ -113,10 +113,13 @@ Public Sub RefreshStaffValidation()
     End If
 
     Dim reqWs As Worksheet, apprWs As Worksheet, rbWs As Worksheet, swapWs As Worksheet
+    Dim leaveWs As Worksheet, otWs As Worksheet
     Set reqWs = ThisWorkbook.Sheets("申請")
     Set apprWs = ThisWorkbook.Sheets("承認")
     Set rbWs = ThisWorkbook.Sheets("ロールバック")
     Set swapWs = ThisWorkbook.Sheets("交換申請")
+    Set leaveWs = ThisWorkbook.Sheets("有給申請")
+    Set otWs = ThisWorkbook.Sheets("超過勤務申請")
 
     SetNameValidationSafe reqWs.Range("B3"), lastRow
     SetNameValidationSafe apprWs.Range("B4"), lastRow
@@ -124,6 +127,8 @@ Public Sub RefreshStaffValidation()
     SetNameValidationSafe swapWs.Range("B3"), lastRow  ' 申請者
     SetNameValidationSafe swapWs.Range("B6"), lastRow  ' 対象者A
     SetNameValidationSafe swapWs.Range("B11"), lastRow ' 対象者B
+    SetNameValidationSafe leaveWs.Range("B3"), lastRow ' 有給申請の申請者
+    SetNameValidationSafe otWs.Range("B3"), lastRow    ' 超過勤務申請の申請者
 End Sub
 
 ' データ入力規則の追加・削除は、シートが保護されていると実行時エラー1004になるため、
@@ -163,6 +168,8 @@ Public Sub SetupButtons()
     AddButton "承認", "承認/却下を実行", "D8", "ProcessApproval"
     AddButton "ロールバック", "選択した変更を取り消す", "D7", "RollbackChange"
     AddButton "交換申請", "交換を申請する", "B20", "SubmitSwapRequest"
+    AddButton "有給申請", "有給を申請する", "B12", "SubmitLeaveRequest"
+    AddButton "超過勤務申請", "残業を申請する", "B13", "SubmitOvertimeRequest"
 End Sub
 
 Private Sub AddButton(ByVal sheetName As String, ByVal caption As String, ByVal anchorCell As String, ByVal macroName As String)
