@@ -9,6 +9,10 @@ Option Explicit
 ' 日付一覧は「設定」シートの対象年月をもとに毎回自動生成されるので、
 ' 対象月を変更したときは Alt+F8 から SetupChoiceLists を実行し直すか、
 ' ファイルを閉じて開き直せば(Workbook_Openで自動実行される)最新化される。
+' (日付一覧の中身自体は設定!B1を直接参照しているため、変更すればその場で
+'  自動的に反映される。SetupChoiceListsの再実行が必要なのは、名前付き範囲や
+'  入力規則を初めて設定する場合のみ)
+' 時刻一覧は15分刻み(00:00〜23:45、96件)。
 Public Sub SetupChoiceLists()
     Dim ws As Worksheet
     On Error Resume Next
@@ -30,15 +34,15 @@ Public Sub SetupChoiceLists()
         ws.Cells(i, 1).NumberFormat = "m/d(aaa)"
     Next i
 
-    For i = 1 To 48
-        ws.Cells(i, 2).Formula = "=TIME(INT((" & i & "-1)/2),MOD(" & i & "-1,2)*30,0)"
+    For i = 1 To 96
+        ws.Cells(i, 2).Formula = "=TIME(INT((" & i & "-1)/4),MOD(" & i & "-1,4)*15,0)"
         ws.Cells(i, 2).NumberFormat = "hh:mm"
     Next i
 
     ws.Visible = xlSheetVeryHidden
 
     ThisWorkbook.Names.Add Name:="DateList", RefersTo:="=選択肢!$A$1:$A$31"
-    ThisWorkbook.Names.Add Name:="TimeList", RefersTo:="=選択肢!$B$1:$B$48"
+    ThisWorkbook.Names.Add Name:="TimeList", RefersTo:="=選択肢!$B$1:$B$96"
 
     SetDateValidation ThisWorkbook.Sheets("申請").Range("B5")
     SetDateValidation ThisWorkbook.Sheets("交換申請").Range("B7")

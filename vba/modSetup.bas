@@ -163,6 +163,7 @@ Public Sub SetupButtons()
     AddButton "交換申請", "交換を申請する", "B20", "SubmitSwapRequest"
     AddButton "有給申請", "有給を申請する", "B12", "SubmitLeaveRequest"
     AddButton "超過勤務申請", "残業を申請する", "B13", "SubmitOvertimeRequest"
+    AddButton "管理", "月初めの切り替え", "B7", "StartNewMonth"
 End Sub
 
 Private Sub AddButton(ByVal sheetName As String, ByVal caption As String, ByVal anchorCell As String, ByVal macroName As String)
