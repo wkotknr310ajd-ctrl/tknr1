@@ -52,20 +52,25 @@ Public Sub SubmitRequest()
         Exit Sub
     End If
 
-    Dim shiftRow As Long, shiftCol As Long
-    shiftRow = FindShiftStaffRow(reqName)
-    If shiftRow = 0 Then
+    Dim staffCell As Range
+    Set staffCell = FindShiftStaffCell(reqName)
+    If staffCell Is Nothing Then
         MsgBox "シフト表に " & reqName & " の行が見つかりません。管理者に確認してください。", vbCritical
         Exit Sub
     End If
-    shiftCol = FindShiftDayColumn(Day(reqDate))
+    Dim shiftWs As Worksheet
+    Set shiftWs = staffCell.Worksheet
+    Dim shiftRow As Long
+    shiftRow = staffCell.Row
+    Dim shiftCol As Long
+    shiftCol = FindShiftDayColumn(shiftWs, Day(reqDate))
     If shiftCol = 0 Then
-        MsgBox "対象日がシフト表の対象月と一致しません(設定シートの対象年月をご確認ください)。", vbCritical
+        MsgBox "対象日が " & shiftWs.Name & " の対象月と一致しません(設定シートの対象年月をご確認ください)。", vbCritical
         Exit Sub
     End If
 
     Dim currentShift As String
-    currentShift = CStr(ThisWorkbook.Sheets("シフト表").Cells(shiftRow, shiftCol).Value)
+    currentShift = CStr(shiftWs.Cells(shiftRow, shiftCol).Value)
 
     If currentShift = newShift Then
         MsgBox "変更前と変更後の内容が同じです。", vbExclamation

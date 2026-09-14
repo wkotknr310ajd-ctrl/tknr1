@@ -117,13 +117,12 @@ Public Sub RollbackChange()
         Exit Sub
     End If
 
-    Dim shiftWs As Worksheet
-    Set shiftWs = ThisWorkbook.Sheets("シフト表")
-
     Dim n As Long
     n = rows.Count
+    Dim shiftWsArr() As Worksheet
     Dim shiftRows() As Long, shiftCols() As Long, beforeShifts() As String
     Dim targetPersons() As String, targetDates() As Date, afterShifts() As String
+    ReDim shiftWsArr(1 To n)
     ReDim shiftRows(1 To n)
     ReDim shiftCols(1 To n)
     ReDim beforeShifts(1 To n)
@@ -132,7 +131,8 @@ Public Sub RollbackChange()
     ReDim afterShifts(1 To n)
 
     Dim staffName As String, targetDate As Date, beforeShift As String, afterShift As String
-    Dim sRow As Long, sCol As Long
+    Dim staffCell As Range
+    Dim sCol As Long
     Dim actualCurrent As String
     Dim conflictMsg As String
     Dim idx As Long
@@ -145,20 +145,25 @@ Public Sub RollbackChange()
         beforeShift = CStr(hist.Cells(r, 6).Value)
         afterShift = CStr(hist.Cells(r, 7).Value)
 
-        sRow = FindShiftStaffRow(staffName)
-        sCol = FindShiftDayColumn(Day(targetDate))
-        If sRow = 0 Or sCol = 0 Then
+        Set staffCell = FindShiftStaffCell(staffName)
+        If staffCell Is Nothing Then
             MsgBox "シフト表の対象セルが見つかりません(" & staffName & ")。", vbCritical
             Exit Sub
         End If
-        shiftRows(idx) = sRow
+        sCol = FindShiftDayColumn(staffCell.Worksheet, Day(targetDate))
+        If sCol = 0 Then
+            MsgBox "シフト表の対象セルが見つかりません(" & staffName & ")。", vbCritical
+            Exit Sub
+        End If
+        Set shiftWsArr(idx) = staffCell.Worksheet
+        shiftRows(idx) = staffCell.Row
         shiftCols(idx) = sCol
         beforeShifts(idx) = beforeShift
         targetPersons(idx) = staffName
         targetDates(idx) = targetDate
         afterShifts(idx) = afterShift
 
-        actualCurrent = CStr(shiftWs.Cells(sRow, sCol).Value)
+        actualCurrent = CStr(shiftWsArr(idx).Cells(shiftRows(idx), sCol).Value)
         If actualCurrent <> afterShift Then
             conflictMsg = conflictMsg & staffName & "(" & Format(targetDate, "m/d") & "): 現在「" & actualCurrent & _
                           "」/ 承認時の反映値「" & afterShift & "」" & vbCrLf
@@ -179,7 +184,7 @@ Public Sub RollbackChange()
     For Each rw In rows
         idx = idx + 1
         r = CLng(rw)
-        shiftWs.Cells(shiftRows(idx), shiftCols(idx)).Value = beforeShifts(idx)
+        shiftWsArr(idx).Cells(shiftRows(idx), shiftCols(idx)).Value = beforeShifts(idx)
         hist.Cells(r, 9).Value = "取消(ロールバック)"
 
         AppendHistoryRow newId, Now, apprName, targetPersons(idx), targetDates(idx), _

@@ -17,8 +17,10 @@ from openpyxl.utils import get_column_letter
 
 TARGET_MONTH = datetime.date(2026, 8, 1)  # サンプルの対象年月(初回セットアップ時に変更してください)
 
-SAMPLE_STAFF = ["サンプル職員1", "サンプル職員2", "サンプル職員3", "サンプル職員4", "サンプル職員5"]
-SAMPLE_SHIFTS = ["日勤", "×", "夜A", "夜B", "夜C", "早", "遅", "年", "○", "研", ""]
+# 部署ごとに「シフト表_〇〇」という名前のシートを作る。
+# 部署を追加・変更したい場合はこのリストを編集してスクリプトを再実行するだけでよい
+# (VBA側はシート名が「シフト表_」で始まるシートを自動的に部署シートとして扱う)。
+DEPARTMENTS = ["入所", "上司", "通所", "事務局"]
 
 HEADER_FILL = PatternFill("solid", fgColor="305496")
 HEADER_FONT = Font(color="FFFFFF", bold=True)
@@ -44,56 +46,51 @@ def style_label_cell(cell):
 
 
 # ------------------------------------------------------------------
-# 1. シフト表
+# 1. シフト表(部署ごと)
 # ------------------------------------------------------------------
-ws = wb.create_sheet("シフト表")
-ws.sheet_view.showGridLines = False
+for dept in DEPARTMENTS:
+    ws = wb.create_sheet(f"シフト表_{dept}")
+    ws.sheet_view.showGridLines = False
 
-ws["A1"] = "シフト表"
-ws["A1"].font = TITLE_FONT
-ws.merge_cells("A1:E1")
-ws["G1"] = "対象年月(設定シートB1で変更)"
-ws["G1"].font = Font(italic=True, size=9, color="808080")
+    ws["A1"] = f"シフト表({dept})"
+    ws["A1"].font = TITLE_FONT
+    ws.merge_cells("A1:E1")
+    ws["G1"] = "対象年月(設定シートB1で変更)"
+    ws["G1"].font = Font(italic=True, size=9, color="808080")
 
-ws["A3"] = "職員氏名"
-ws["A3"].fill = HEADER_FILL
-ws["A3"].font = HEADER_FONT
-ws["A4"] = "曜日"
-ws["A4"].fill = HEADER_FILL
-ws["A4"].font = HEADER_FONT
+    ws["A3"] = "職員氏名"
+    ws["A3"].fill = HEADER_FILL
+    ws["A3"].font = HEADER_FONT
+    ws["A4"] = "曜日"
+    ws["A4"].fill = HEADER_FILL
+    ws["A4"].font = HEADER_FONT
 
-for d in range(1, 32):
-    col = get_column_letter(1 + d)  # B=1日 ... AF=31日
-    c3 = ws[f"{col}3"]
-    c3.value = d
-    c3.fill = HEADER_FILL
-    c3.font = HEADER_FONT
-    c3.alignment = Alignment(horizontal="center")
-    c4 = ws[f"{col}4"]
-    c4.value = (
-        f'=IF({col}$3<=DAY(EOMONTH(設定!$B$1,0)),'
-        f'TEXT(DATE(YEAR(設定!$B$1),MONTH(設定!$B$1),{col}$3),"aaa"),"")'
-    )
-    c4.alignment = Alignment(horizontal="center")
-    ws.column_dimensions[col].width = 5
-
-ws.column_dimensions["A"].width = 16
-
-for i, name in enumerate(SAMPLE_STAFF):
-    row = 5 + i
-    ws.cell(row=row, column=1, value=name)
     for d in range(1, 32):
-        col = 1 + d
-        val = SAMPLE_SHIFTS[(i + d) % len(SAMPLE_SHIFTS)] if d <= 20 else ""
-        ws.cell(row=row, column=col, value=val).alignment = Alignment(horizontal="center")
+        col = get_column_letter(1 + d)  # B=1日 ... AF=31日
+        c3 = ws[f"{col}3"]
+        c3.value = d
+        c3.fill = HEADER_FILL
+        c3.font = HEADER_FONT
+        c3.alignment = Alignment(horizontal="center")
+        c4 = ws[f"{col}4"]
+        c4.value = (
+            f'=IF({col}$3<=DAY(EOMONTH(設定!$B$1,0)),'
+            f'TEXT(DATE(YEAR(設定!$B$1),MONTH(設定!$B$1),{col}$3),"aaa"),"")'
+        )
+        c4.alignment = Alignment(horizontal="center")
+        ws.column_dimensions[col].width = 5
 
-# シフト表全体をロックしてシート保護(VBAのUserInterfaceOnly保護で上書き運用)
-for row in ws.iter_rows(min_row=1, max_row=60, min_col=1, max_col=33):
-    for cell in row:
-        cell.protection = openpyxl.styles.Protection(locked=True)
-ws.protection.sheet = True
-ws.protection.password = "shift-sys-2026"
-ws.freeze_panes = "B5"
+    ws.column_dimensions["A"].width = 16
+
+    # 実データは「取り込み」機能(modImport.bas)で既存Excelから読み込む想定のため、
+    # ここではサンプル職員は入れず、枠組みだけを用意する。
+    for row in ws.iter_rows(min_row=1, max_row=60, min_col=1, max_col=33):
+        for cell in row:
+            cell.protection = openpyxl.styles.Protection(locked=True)
+    ws.protection.sheet = True
+    ws.protection.password = "shift-sys-2026"
+    ws.freeze_panes = "B5"
+
 
 # ------------------------------------------------------------------
 # 2. 申請
@@ -107,8 +104,7 @@ fields = [
     (3, "申請者氏名", ""),
     (4, "パスワード", ""),
     (5, "対象日", ""),
-    (6, "現在の勤務(自動表示)", "=IFERROR(INDEX(シフト表!$B$5:$AF$200,MATCH($B$3,シフト表!$A$5:$A$200,0),"
-                          "MATCH(DAY($B$5),シフト表!$B$3:$AF$3,0)),\"-\")"),
+    (6, "現在の勤務(自動表示)", "=IFERROR(GetCurrentShift($B$3,$B$5),\"-\")"),
     (7, "変更後の勤務", ""),
     (8, "変更理由(任意)", ""),
 ]
@@ -227,15 +223,11 @@ fields = [
     (4, "パスワード", "", None),
     (6, "【対象者A】氏名", "", None),
     (7, "対象日A", "", None),
-    (8, "現在の勤務A(自動表示)",
-     '=IFERROR(INDEX(シフト表!$B$5:$AF$200,MATCH($B$7,シフト表!$A$5:$A$200,0),'
-     'MATCH(DAY($B$8),シフト表!$B$3:$AF$3,0)),"-")', None),
+    (8, "現在の勤務A(自動表示)", '=IFERROR(GetCurrentShift($B$7,$B$8),"-")', None),
     (9, "変更後の勤務A", "", None),
     (11, "【対象者B】氏名", "", None),
     (12, "対象日B", "", None),
-    (13, "現在の勤務B(自動表示)",
-     '=IFERROR(INDEX(シフト表!$B$5:$AF$200,MATCH($B$12,シフト表!$A$5:$A$200,0),'
-     'MATCH(DAY($B$13),シフト表!$B$3:$AF$3,0)),"-")', None),
+    (13, "現在の勤務B(自動表示)", '=IFERROR(GetCurrentShift($B$12,$B$13),"-")', None),
     (14, "変更後の勤務B", "", None),
     (16, "交換理由(任意)", "", None),
 ]
@@ -400,7 +392,7 @@ ws.column_dimensions["A"].width = 18
 ws.column_dimensions["B"].width = 60
 ws.sheet_state = "veryHidden"
 
-wb.active = 1  # 申請シートを既定表示に
+wb.active = len(DEPARTMENTS)  # 申請シートを既定表示に
 out_path = "/home/user/tknr1/output/勤務変更管理システム.xlsx"
 wb.save(out_path)
 print("saved:", out_path)

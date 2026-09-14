@@ -77,25 +77,33 @@ Public Sub SubmitSwapRequest()
         Exit Sub
     End If
 
-    Dim rowA As Long, colA As Long, rowB As Long, colB As Long
-    rowA = FindShiftStaffRow(nameA)
-    colA = FindShiftDayColumn(Day(dateA))
-    rowB = FindShiftStaffRow(nameB)
-    colB = FindShiftDayColumn(Day(dateB))
-    If rowA = 0 Or colA = 0 Then
-        MsgBox "シフト表に " & nameA & " の対象日が見つかりません。", vbCritical
+    Dim cellA As Range, cellB As Range
+    Set cellA = FindShiftStaffCell(nameA)
+    Set cellB = FindShiftStaffCell(nameB)
+    If cellA Is Nothing Then
+        MsgBox "シフト表に " & nameA & " の行が見つかりません。", vbCritical
         Exit Sub
     End If
-    If rowB = 0 Or colB = 0 Then
-        MsgBox "シフト表に " & nameB & " の対象日が見つかりません。", vbCritical
+    If cellB Is Nothing Then
+        MsgBox "シフト表に " & nameB & " の行が見つかりません。", vbCritical
         Exit Sub
     End If
 
-    Dim shiftWs As Worksheet
-    Set shiftWs = ThisWorkbook.Sheets("シフト表")
+    Dim colA As Long, colB As Long
+    colA = FindShiftDayColumn(cellA.Worksheet, Day(dateA))
+    colB = FindShiftDayColumn(cellB.Worksheet, Day(dateB))
+    If colA = 0 Then
+        MsgBox nameA & " の " & cellA.Worksheet.Name & " に対象日が見つかりません。", vbCritical
+        Exit Sub
+    End If
+    If colB = 0 Then
+        MsgBox nameB & " の " & cellB.Worksheet.Name & " に対象日が見つかりません。", vbCritical
+        Exit Sub
+    End If
+
     Dim currentA As String, currentB As String
-    currentA = CStr(shiftWs.Cells(rowA, colA).Value)
-    currentB = CStr(shiftWs.Cells(rowB, colB).Value)
+    currentA = CStr(cellA.Worksheet.Cells(cellA.Row, colA).Value)
+    currentB = CStr(cellB.Worksheet.Cells(cellB.Row, colB).Value)
 
     Dim reqId As String
     reqId = NextRequestId()

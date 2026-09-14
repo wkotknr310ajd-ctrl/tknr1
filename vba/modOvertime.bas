@@ -82,16 +82,23 @@ Public Sub SubmitOvertimeRequest()
         Exit Sub
     End If
 
-    Dim shiftRow As Long, shiftCol As Long
-    shiftRow = FindShiftStaffRow(reqName)
-    shiftCol = FindShiftDayColumn(Day(targetDate))
-    If shiftRow = 0 Or shiftCol = 0 Then
-        MsgBox "シフト表に対象日の列が見つかりません(設定シートの対象年月をご確認ください)。", vbCritical
+    Dim staffCell As Range
+    Set staffCell = FindShiftStaffCell(reqName)
+    If staffCell Is Nothing Then
+        MsgBox "シフト表に " & reqName & " の行が見つかりません。管理者に確認してください。", vbCritical
+        Exit Sub
+    End If
+    Dim shiftWs As Worksheet
+    Set shiftWs = staffCell.Worksheet
+    Dim shiftRow As Long
+    shiftRow = staffCell.Row
+    Dim shiftCol As Long
+    shiftCol = FindShiftDayColumn(shiftWs, Day(targetDate))
+    If shiftCol = 0 Then
+        MsgBox "対象日が " & shiftWs.Name & " の対象月と一致しません(設定シートの対象年月をご確認ください)。", vbCritical
         Exit Sub
     End If
 
-    Dim shiftWs As Worksheet
-    Set shiftWs = ThisWorkbook.Sheets("シフト表")
     Dim currentShift As String
     currentShift = CStr(shiftWs.Cells(shiftRow, shiftCol).Value)
 

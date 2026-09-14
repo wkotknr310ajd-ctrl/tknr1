@@ -57,19 +57,20 @@ Public Sub SubmitLeaveRequest()
         Exit Sub
     End If
 
-    Dim shiftRow As Long
-    shiftRow = FindShiftStaffRow(reqName)
-    If shiftRow = 0 Then
+    Dim staffCell As Range
+    Set staffCell = FindShiftStaffCell(reqName)
+    If staffCell Is Nothing Then
         MsgBox "シフト表に " & reqName & " の行が見つかりません。管理者に確認してください。", vbCritical
         Exit Sub
     End If
+    Dim shiftWs As Worksheet
+    Set shiftWs = staffCell.Worksheet
+    Dim shiftRow As Long
+    shiftRow = staffCell.Row
 
     Dim leaveCode As String
     leaveCode = Trim$(CStr(ThisWorkbook.Sheets("設定").Range("B4").Value))
     If leaveCode = "" Then leaveCode = "年"
-
-    Dim shiftWs As Worksheet
-    Set shiftWs = ThisWorkbook.Sheets("シフト表")
 
     ' 事前に対象期間の全日付でシフト表の列が見つかるか確認してから登録する
     Dim n As Long
@@ -81,9 +82,9 @@ Public Sub SubmitLeaveRequest()
     idx = 0
     For d = startDate To endDate
         idx = idx + 1
-        cols(idx) = FindShiftDayColumn(Day(d))
+        cols(idx) = FindShiftDayColumn(shiftWs, Day(d))
         If cols(idx) = 0 Then
-            MsgBox Format(d, "m/d") & " がシフト表の対象月と一致しません(設定シートの対象年月をご確認ください)。", vbCritical
+            MsgBox Format(d, "m/d") & " が " & shiftWs.Name & " の対象月と一致しません(設定シートの対象年月をご確認ください)。", vbCritical
             Exit Sub
         End If
     Next d

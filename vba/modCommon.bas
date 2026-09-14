@@ -5,20 +5,36 @@ Option Explicit
 ' 実際の承認権限はユーザーごとのパスワードハッシュ(職員マスタシート)で判定しています。
 Public Const SHEET_PROTECT_PASSWORD As String = "shift-sys-2026"
 
+' シート名が「シフト表_」で始まるシートを、すべて部署のシフト表として扱う。
+' 部署を追加したいときはシートを追加するだけでよく、コード変更は不要。
 Public Sub ApplyProtection()
-    Dim targets As Variant
-    targets = Array("シフト表", "履歴")
-    Dim t As Variant
-    For Each t In targets
-        With ThisWorkbook.Sheets(CStr(t))
+    Dim ws As Worksheet
+    For Each ws In ThisWorkbook.Worksheets
+        If IsDepartmentSheet(ws) Or ws.Name = "履歴" Then
             On Error Resume Next
-            .Unprotect Password:=SHEET_PROTECT_PASSWORD
+            ws.Unprotect Password:=SHEET_PROTECT_PASSWORD
             On Error GoTo 0
-            .Protect Password:=SHEET_PROTECT_PASSWORD, UserInterfaceOnly:=True, _
-                     AllowFiltering:=True, AllowSorting:=False
-        End With
-    Next t
+            ws.Protect Password:=SHEET_PROTECT_PASSWORD, UserInterfaceOnly:=True, _
+                       AllowFiltering:=True, AllowSorting:=False
+        End If
+    Next ws
 End Sub
+
+Public Function IsDepartmentSheet(ByVal ws As Worksheet) As Boolean
+    IsDepartmentSheet = (Left$(ws.Name, 5) = "シフト表_")
+End Function
+
+' 部署のシフト表シート名を一覧で返す(「シフト表_〇〇」という名前のシートすべて)。
+Public Function DepartmentSheetNames() As Collection
+    Dim result As New Collection
+    Dim ws As Worksheet
+    For Each ws In ThisWorkbook.Worksheets
+        If IsDepartmentSheet(ws) Then
+            result.Add ws.Name
+        End If
+    Next ws
+    Set DepartmentSheetNames = result
+End Function
 
 Public Function NextRequestId() As String
     Dim cfg As Worksheet
@@ -83,24 +99,28 @@ Public Function FindStaffMasterRow(ByVal staffName As String) As Long
     FindStaffMasterRow = 0
 End Function
 
-Public Function FindShiftStaffRow(ByVal staffName As String) As Long
-    Dim ws As Worksheet
-    Set ws = ThisWorkbook.Sheets("シフト表")
-    Dim lastRow As Long
-    lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
-    Dim r As Long
-    For r = 5 To lastRow
-        If Trim$(CStr(ws.Cells(r, 1).Value)) = Trim$(staffName) Then
-            FindShiftStaffRow = r
-            Exit Function
-        End If
-    Next r
-    FindShiftStaffRow = 0
+' 全部署のシフト表シートを横断して、氏名が一致する行を探す。
+' 見つかった場合はそのセル(A列・該当行)を返す(Worksheetは .Worksheet で取得できる)。
+' 見つからない場合は Nothing を返す。
+Public Function FindShiftStaffCell(ByVal staffName As String) As Range
+    Dim deptName As Variant
+    For Each deptName In DepartmentSheetNames()
+        Dim ws As Worksheet
+        Set ws = ThisWorkbook.Sheets(CStr(deptName))
+        Dim lastRow As Long
+        lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+        Dim r As Long
+        For r = 5 To lastRow
+            If Trim$(CStr(ws.Cells(r, 1).Value)) = Trim$(staffName) Then
+                Set FindShiftStaffCell = ws.Cells(r, 1)
+                Exit Function
+            End If
+        Next r
+    Next deptName
+    Set FindShiftStaffCell = Nothing
 End Function
 
-Public Function FindShiftDayColumn(ByVal dayNum As Integer) As Long
-    Dim ws As Worksheet
-    Set ws = ThisWorkbook.Sheets("シフト表")
+Public Function FindShiftDayColumn(ByVal ws As Worksheet, ByVal dayNum As Integer) As Long
     Dim c As Long
     For c = 2 To 32
         If IsNumeric(ws.Cells(3, c).Value) Then
@@ -111,6 +131,29 @@ Public Function FindShiftDayColumn(ByVal dayNum As Integer) As Long
         End If
     Next c
     FindShiftDayColumn = 0
+End Function
+
+' ワークシートの数式からも呼び出せるユーザー定義関数(UDF)。
+' 氏名と対象日から、その人が所属する部署のシフト表を自動的に探して現在の勤務内容を返す。
+' 見つからない場合は "-" を返す。
+Public Function GetCurrentShift(ByVal staffName As String, ByVal targetDate As Variant) As String
+    On Error GoTo Fail
+    If Trim$(staffName) = "" Then GoTo Fail
+    If Not IsDate(targetDate) Then GoTo Fail
+
+    Dim staffCell As Range
+    Set staffCell = FindShiftStaffCell(staffName)
+    If staffCell Is Nothing Then GoTo Fail
+
+    Dim col As Long
+    col = FindShiftDayColumn(staffCell.Worksheet, Day(CDate(targetDate)))
+    If col = 0 Then GoTo Fail
+
+    GetCurrentShift = CStr(staffCell.Worksheet.Cells(staffCell.Row, col).Value)
+    Exit Function
+
+Fail:
+    GetCurrentShift = "-"
 End Function
 
 ' 同じ申請IDを持つ履歴行をすべて返す。
