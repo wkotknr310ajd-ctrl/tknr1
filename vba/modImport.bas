@@ -220,22 +220,14 @@ Private Function DetectFirstDayColumn(ByVal ws As Worksheet, ByRef headerRow As 
     DetectFirstDayColumn = 0
 End Function
 
-' 氏名の桁揃え用に入っている半角・全角スペースを取り除き、比較しやすい形にする。
-Private Function NormalizeName(ByVal rawName As String) As String
-    Dim s As String
-    s = CStr(rawName)
-    s = Replace(s, " ", "")
-    s = Replace(s, Chr(12288), "")
-    s = Trim$(s)
-    NormalizeName = s
-End Function
+' 氏名の正規化(半角・全角スペースの除去)は modCommon.bas の NormalizeName を共用する。
 
 Private Function FindOrCreateShiftRow(ByVal ws As Worksheet, ByVal staffName As String) As Long
     Dim lastRow As Long
     lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
     Dim r As Long
     For r = 5 To lastRow
-        If Trim$(CStr(ws.Cells(r, 1).Value)) = Trim$(staffName) Then
+        If NormalizeName(CStr(ws.Cells(r, 1).Value)) = NormalizeName(staffName) Then
             FindOrCreateShiftRow = r
             Exit Function
         End If

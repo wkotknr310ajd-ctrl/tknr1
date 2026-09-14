@@ -4,7 +4,7 @@ Option Explicit
 ' 職員(申請者・承認者)を職員マスタへ登録する。パスワードは平文では保存されない。
 Public Sub RegisterStaff()
     Dim staffName As String
-    staffName = Trim$(InputBox("登録する職員の氏名を入力してください。", "職員登録"))
+    staffName = NormalizeName(InputBox("登録する職員の氏名を入力してください。", "職員登録"))
     If staffName = "" Then Exit Sub
 
     If FindStaffMasterRow(staffName) > 0 Then

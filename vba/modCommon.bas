@@ -24,6 +24,19 @@ Public Function IsDepartmentSheet(ByVal ws As Worksheet) As Boolean
     IsDepartmentSheet = (Left$(ws.Name, 5) = "シフト表_")
 End Function
 
+' 氏名の桁揃え用に入っている半角・全角スペースを取り除き、比較用の形に統一する。
+' 職員マスタ・シフト表・各申請フォームの氏名比較は、すべてこの関数を通してから
+' 行うことで、スペースの入れ方の違い(例:「鈴木 正一」と「鈴木正一」)を
+' 同一人物として認識できるようにする。
+Public Function NormalizeName(ByVal rawName As String) As String
+    Dim s As String
+    s = CStr(rawName)
+    s = Replace(s, " ", "")
+    s = Replace(s, Chr(12288), "")
+    s = Trim$(s)
+    NormalizeName = s
+End Function
+
 ' シートが保護されていれば一時的に解除し、解除したかどうかを返す。
 ' 呼び出し側は、書き込みが終わったら戻り値を ReprotectIfNeeded に渡して元に戻すこと。
 ' (UserInterfaceOnly保護がファイルを開くたびに正しく引き継がれるとは限らない環境が
@@ -117,7 +130,7 @@ Public Function FindStaffMasterRow(ByVal staffName As String) As Long
     lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
     Dim r As Long
     For r = 2 To lastRow
-        If Trim$(CStr(ws.Cells(r, 1).Value)) = Trim$(staffName) Then
+        If NormalizeName(CStr(ws.Cells(r, 1).Value)) = NormalizeName(staffName) Then
             FindStaffMasterRow = r
             Exit Function
         End If
@@ -137,7 +150,7 @@ Public Function FindShiftStaffCell(ByVal staffName As String) As Range
         lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
         Dim r As Long
         For r = 5 To lastRow
-            If Trim$(CStr(ws.Cells(r, 1).Value)) = Trim$(staffName) Then
+            If NormalizeName(CStr(ws.Cells(r, 1).Value)) = NormalizeName(staffName) Then
                 Set FindShiftStaffCell = ws.Cells(r, 1)
                 Exit Function
             End If
