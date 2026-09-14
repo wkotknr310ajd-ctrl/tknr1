@@ -121,6 +121,8 @@ Public Sub ProcessApproval()
     Dim r As Long
 
     If decision = "却下" Then
+        Dim histWasProtected As Boolean
+        histWasProtected = UnprotectIfNeeded(hist)
         For Each rw In rows
             r = CLng(rw)
             hist.Cells(r, 9).Value = "却下"
@@ -128,6 +130,7 @@ Public Sub ProcessApproval()
             hist.Cells(r, 11).Value = Now
             hist.Cells(r, 11).NumberFormat = "yyyy/mm/dd hh:mm:ss"
         Next rw
+        ReprotectIfNeeded hist, histWasProtected
         MsgBox "申請を却下しました。", vbInformation
     Else
         Dim n As Long
@@ -183,16 +186,23 @@ Public Sub ProcessApproval()
         End If
 
         idx = 0
+        Dim histWasProtected2 As Boolean
+        histWasProtected2 = UnprotectIfNeeded(hist)
         For Each rw In rows
             idx = idx + 1
             r = CLng(rw)
+
+            Dim shiftWasProtected As Boolean
+            shiftWasProtected = UnprotectIfNeeded(shiftWsArr(idx))
             shiftWsArr(idx).Cells(shiftRows(idx), shiftCols(idx)).Value = newShifts(idx)
+            ReprotectIfNeeded shiftWsArr(idx), shiftWasProtected
 
             hist.Cells(r, 9).Value = "承認"
             hist.Cells(r, 10).Value = apprName
             hist.Cells(r, 11).Value = Now
             hist.Cells(r, 11).NumberFormat = "yyyy/mm/dd hh:mm:ss"
         Next rw
+        ReprotectIfNeeded hist, histWasProtected2
 
         MsgBox "承認しました。シフト表に反映しました。(" & n & "件)", vbInformation
     End If

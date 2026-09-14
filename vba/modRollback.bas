@@ -181,16 +181,24 @@ Public Sub RollbackChange()
     newId = NextRequestId()
 
     idx = 0
+    Dim histWasProtected As Boolean
+    histWasProtected = UnprotectIfNeeded(hist)
     For Each rw In rows
         idx = idx + 1
         r = CLng(rw)
+
+        Dim shiftWasProtected As Boolean
+        shiftWasProtected = UnprotectIfNeeded(shiftWsArr(idx))
         shiftWsArr(idx).Cells(shiftRows(idx), shiftCols(idx)).Value = beforeShifts(idx)
+        ReprotectIfNeeded shiftWsArr(idx), shiftWasProtected
+
         hist.Cells(r, 9).Value = "取消(ロールバック)"
 
         AppendHistoryRow newId, Now, apprName, targetPersons(idx), targetDates(idx), _
                           afterShifts(idx), beforeShifts(idx), _
                           "ロールバックによる取消(元申請: " & targetId & ")", "取消完了", apprName, Now, targetId
     Next rw
+    ReprotectIfNeeded hist, histWasProtected
 
     MsgBox "取り消しました。シフト表を元の状態に戻しました。(" & n & "件)", vbInformation
 

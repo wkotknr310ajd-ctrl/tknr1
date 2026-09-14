@@ -24,6 +24,26 @@ Public Function IsDepartmentSheet(ByVal ws As Worksheet) As Boolean
     IsDepartmentSheet = (Left$(ws.Name, 5) = "シフト表_")
 End Function
 
+' シートが保護されていれば一時的に解除し、解除したかどうかを返す。
+' 呼び出し側は、書き込みが終わったら戻り値を ReprotectIfNeeded に渡して元に戻すこと。
+' (UserInterfaceOnly保護がファイルを開くたびに正しく引き継がれるとは限らない環境が
+'  あるため、実際に書き込む直前に毎回このチェックを行うことで確実に動作させる)
+Public Function UnprotectIfNeeded(ByVal ws As Worksheet) As Boolean
+    UnprotectIfNeeded = ws.ProtectContents
+    If UnprotectIfNeeded Then
+        On Error Resume Next
+        ws.Unprotect Password:=SHEET_PROTECT_PASSWORD
+        On Error GoTo 0
+    End If
+End Function
+
+Public Sub ReprotectIfNeeded(ByVal ws As Worksheet, ByVal wasProtected As Boolean)
+    If wasProtected Then
+        ws.Protect Password:=SHEET_PROTECT_PASSWORD, UserInterfaceOnly:=True, _
+                   AllowFiltering:=True, AllowSorting:=False
+    End If
+End Sub
+
 ' 部署のシフト表シート名を一覧で返す(「シフト表_〇〇」という名前のシートすべて)。
 Public Function DepartmentSheetNames() As Collection
     Dim result As New Collection
@@ -59,6 +79,10 @@ Public Sub AppendHistoryRow(ByVal reqId As String, ByVal appliedAt As Date, ByVa
                              ByVal approvedAt As Variant, ByVal origReqId As String)
     Dim hist As Worksheet
     Set hist = ThisWorkbook.Sheets("履歴")
+
+    Dim wasProtected As Boolean
+    wasProtected = UnprotectIfNeeded(hist)
+
     Dim r As Long
     r = hist.Cells(hist.Rows.Count, 1).End(xlUp).Row + 1
     If r < 2 Then r = 2
@@ -82,6 +106,8 @@ Public Sub AppendHistoryRow(ByVal reqId As String, ByVal appliedAt As Date, ByVa
         End If
     End If
     hist.Cells(r, 12).Value = origReqId
+
+    ReprotectIfNeeded hist, wasProtected
 End Sub
 
 Public Function FindStaffMasterRow(ByVal staffName As String) As Long

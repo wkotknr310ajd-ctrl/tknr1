@@ -134,12 +134,7 @@ Public Sub ImportShiftTable()
     End If
 
     Dim wasProtected As Boolean
-    wasProtected = destWs.ProtectContents
-    If wasProtected Then
-        On Error Resume Next
-        destWs.Unprotect Password:=SHEET_PROTECT_PASSWORD
-        On Error GoTo 0
-    End If
+    wasProtected = UnprotectIfNeeded(destWs)
 
     Dim importedNames As String
     Dim importedCount As Long
@@ -173,10 +168,7 @@ Public Sub ImportShiftTable()
         End If
     Next r
 
-    If wasProtected Then
-        destWs.Protect Password:=SHEET_PROTECT_PASSWORD, UserInterfaceOnly:=True, _
-                        AllowFiltering:=True, AllowSorting:=False
-    End If
+    ReprotectIfNeeded destWs, wasProtected
 
     srcWb.Close SaveChanges:=False
 

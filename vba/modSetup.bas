@@ -138,18 +138,11 @@ Private Sub SetNameValidationSafe(ByVal targetCell As Range, ByVal lastRow As Lo
     Set ws = targetCell.Worksheet
 
     Dim wasProtected As Boolean
-    wasProtected = ws.ProtectContents
-    If wasProtected Then
-        On Error Resume Next
-        ws.Unprotect Password:=SHEET_PROTECT_PASSWORD
-        On Error GoTo 0
-    End If
+    wasProtected = UnprotectIfNeeded(ws)
 
     SetNameValidation targetCell, lastRow
 
-    If wasProtected Then
-        ws.Protect Password:=SHEET_PROTECT_PASSWORD
-    End If
+    ReprotectIfNeeded ws, wasProtected
 End Sub
 
 Private Sub SetNameValidation(ByVal targetCell As Range, ByVal lastRow As Long)
@@ -187,12 +180,7 @@ Private Sub AddButton(ByVal sheetName As String, ByVal caption As String, ByVal 
     ' 図形(ボタン)の追加も、シートが保護されていると実行時エラー1004になるため、
     ' 保護されている場合は一時的に解除してから追加し、直後に再保護する。
     Dim wasProtected As Boolean
-    wasProtected = ws.ProtectContents
-    If wasProtected Then
-        On Error Resume Next
-        ws.Unprotect Password:=SHEET_PROTECT_PASSWORD
-        On Error GoTo 0
-    End If
+    wasProtected = UnprotectIfNeeded(ws)
 
     Dim btn As Button
     Set btn = ws.Buttons.Add(rng.Left, rng.Top, 170, 26)
@@ -200,7 +188,5 @@ Private Sub AddButton(ByVal sheetName As String, ByVal caption As String, ByVal 
     btn.Caption = caption
     btn.OnAction = macroName
 
-    If wasProtected Then
-        ws.Protect Password:=SHEET_PROTECT_PASSWORD
-    End If
+    ReprotectIfNeeded ws, wasProtected
 End Sub
