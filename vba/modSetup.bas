@@ -163,7 +163,26 @@ Public Sub SetupButtons()
     AddButton "交換申請", "交換を申請する", "B20", "SubmitSwapRequest"
     AddButton "有給申請", "有給を申請する", "B12", "SubmitLeaveRequest"
     AddButton "超過勤務申請", "残業を申請する", "B13", "SubmitOvertimeRequest"
+    EnsureManagementSheet
     AddButton "管理", "月初めの切り替え", "B7", "StartNewMonth"
+End Sub
+
+' 古いバージョンのファイルには「管理」シートがまだ存在しないため、
+' なければ自動的に作成する。
+Private Sub EnsureManagementSheet()
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Sheets("管理")
+    On Error GoTo 0
+    If ws Is Nothing Then
+        Set ws = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+        ws.Name = "管理"
+        ws.Range("A1").Value = "管理"
+        ws.Range("A3").Value = "月初めの切り替え"
+        ws.Range("A4").Value = "職員マスタ(氏名・パスワード)はそのまま残し、各部署のシフト表の中身だけを"
+        ws.Range("A5").Value = "消去して、新しい対象年月に切り替えます。履歴は変更されません。"
+        ws.Columns("A").ColumnWidth = 30
+    End If
 End Sub
 
 Private Sub AddButton(ByVal sheetName As String, ByVal caption As String, ByVal anchorCell As String, ByVal macroName As String)
