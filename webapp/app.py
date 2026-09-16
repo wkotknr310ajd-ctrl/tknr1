@@ -309,6 +309,18 @@ def admin_rename_staff():
     return redirect(url_for("admin"))
 
 
+@app.route("/admin/staff/delete", methods=["POST"])
+def admin_delete_staff():
+    conn = get_db()
+    try:
+        name = request.form["name"]
+        logic.delete_staff(conn, name)
+        flash(f"{normalize_name(name)} さんを職員マスタから削除しました。", "success")
+    except logic.AppError as e:
+        flash(str(e), "error")
+    return redirect(url_for("admin"))
+
+
 @app.route("/admin/month", methods=["POST"])
 def admin_start_new_month():
     conn = get_db()

@@ -15,10 +15,10 @@
 
 <div class="card">
   <h2>登録済み職員一覧</h2>
-  <p class="hint">氏名を訂正すると、シフト表・履歴に記録済みの同じ氏名もまとめて書き換わります。パスワードは変わりません。</p>
+  <p class="hint">氏名を訂正すると、シフト表・履歴に記録済みの同じ氏名もまとめて書き換わります(パスワードは変わりません)。削除すると職員マスタから消え、二度と元に戻せません(シフト表・履歴の記録はそのまま残ります)。</p>
   <div class="table-scroll">
   <table>
-    <tr><th>氏名</th><th>権限</th><th>登録日時</th><th>氏名の訂正</th></tr>
+    <tr><th>氏名</th><th>権限</th><th>登録日時</th><th>氏名の訂正</th><th>削除</th></tr>
     {% for s in staff %}
     <tr>
       <td>{{ s['name'] }}</td>
@@ -29,6 +29,13 @@
           <input type="hidden" name="old_name" value="{{ s['name'] }}">
           <input type="text" name="new_name" placeholder="正しい氏名" required style="width:auto;">
           <button type="submit">訂正する</button>
+        </form>
+      </td>
+      <td>
+        <form method="post" action="{{ url_for('admin_delete_staff') }}"
+              onsubmit="return confirm('{{ s['name'] }} さんを職員マスタから削除します。よろしいですか?');">
+          <input type="hidden" name="name" value="{{ s['name'] }}">
+          <button type="submit" class="btn-danger" style="background:#b91c1c;">削除する</button>
         </form>
       </td>
     </tr>

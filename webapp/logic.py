@@ -72,6 +72,17 @@ def rename_staff(conn, old_name: str, new_name: str):
     conn.commit()
 
 
+def delete_staff(conn, name: str):
+    """誤って登録した職員を職員マスタから削除する。シフト表・履歴の記録は残す。"""
+    name = normalize_name(name)
+    staff = find_staff(conn, name)
+    if not staff:
+        raise AppError("職員マスタに見つかりません。")
+    conn.execute("DELETE FROM staff WHERE id = ?", (staff["id"],))
+    conn.execute("DELETE FROM roster WHERE staff_name = ?", (name,))
+    conn.commit()
+
+
 def change_password(conn, name: str, old_password: str, new_password: str):
     staff = find_staff(conn, name)
     if not staff:
