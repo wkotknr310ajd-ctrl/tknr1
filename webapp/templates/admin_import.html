@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Excel取り込み — 勤務変更申請・承認システム{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>既存のExcelシフト表を取り込む</h2>
+  <p class="hint">
+    実際に使っているExcelファイル(.xlsx)をそのままアップロードして、
+    このシステムのシフト表(職員一覧・日ごとの勤務コード)に取り込むことができます。<br>
+    取り込み先の対象年月は、現在システムに設定されている年月(上のヘッダーに表示中)がそのまま使われます。<br>
+    アップロード後に内容を確認してから実際に取り込むので、この画面の操作だけでデータが変わることはありません。
+  </p>
+  <form method="post" action="{{ url_for('admin_import_preview') }}" enctype="multipart/form-data">
+    <label for="department_id">取り込み先の部署</label>
+    <select id="department_id" name="department_id" required>
+      {% for d in departments %}
+      <option value="{{ d['id'] }}">{{ d['name'] }}</option>
+      {% endfor %}
+    </select>
+    <label for="file">Excelファイル(.xlsx)</label>
+    <input type="file" id="file" name="file" accept=".xlsx,.xlsm" required>
+    <button type="submit">内容を確認する</button>
+  </form>
+</div>
+{% endblock %}

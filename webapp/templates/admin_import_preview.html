@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Excel取り込み(内容確認) — 勤務変更申請・承認システム{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h2>シートの選択</h2>
+  {% if sheet_names|length > 1 %}
+  <p class="hint">このExcelファイルには複数のシートがあります。取り込みたいシートを選んでください。</p>
+  <form method="post" action="{{ url_for('admin_import_preview') }}">
+    <input type="hidden" name="token" value="{{ token }}">
+    <input type="hidden" name="department_id" value="{{ department_id }}">
+    <label for="sheet_name">シート名</label>
+    <select id="sheet_name" name="sheet_name" onchange="this.form.submit()">
+      {% for s in sheet_names %}
+      <option value="{{ s }}" {% if s == sheet_name %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  {% else %}
+  <p>シート: <strong>{{ sheet_name }}</strong></p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>シートの中身(先頭部分)</h2>
+  {% if not header_detected %}
+  <p class="flash error">日付の並び(1,2,3...)を自動検出できませんでした。下の項目はご自身で確認して入力してください。</p>
+  {% endif %}
+  <p class="hint">
+    行番号・列(A,B,C...)を見ながら、下のフォームで「氏名の列」「日付の先頭列」
+    「日付の行」「職員の開始行・終了行」を確認・修正してください。
+  </p>
+  <div class="table-scroll">
+  <table>
+    <tr><th></th>{% for c in col_letters %}<th>{{ c }}</th>{% endfor %}</tr>
+    {% for r in rows %}
+    <tr>
+      <th>{{ r.row }}</th>
+      {% for v in r.cells %}<td>{{ v }}</td>{% endfor %}
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>取り込み内容の確認</h2>
+  <p>取り込み先の対象年月: <strong>{{ target_month_date.year }}年{{ target_month_date.month }}月</strong></p>
+  <form method="post" action="{{ url_for('admin_import_confirm') }}"
+        onsubmit="return confirm('この内容でシフト表に取り込みます。よろしいですか?');">
+    <input type="hidden" name="token" value="{{ token }}">
+    <input type="hidden" name="department_id" value="{{ department_id }}">
+    <input type="hidden" name="sheet_name" value="{{ sheet_name }}">
+
+    <label for="header_row">日付(1,2,3...)が並んでいる行番号</label>
+    <input type="number" id="header_row" name="header_row" min="1" value="{{ header_row }}" required>
+
+    <label for="day_start_col">「1日」が入っている列(例: C)</label>
+    <input type="text" id="day_start_col" name="day_start_col" value="{{ day_start_col_letter }}" required>
+
+    <label for="name_col">氏名が入っている列(例: A)</label>
+    <input type="text" id="name_col" name="name_col" value="{{ name_col_letter }}" required>
+
+    <label for="staff_start">職員の開始行</label>
+    <input type="number" id="staff_start" name="staff_start" min="1" value="{{ staff_start }}" required>
+
+    <label for="staff_end">職員の終了行</label>
+    <input type="number" id="staff_end" name="staff_end" min="1" value="{{ staff_end }}" required>
+
+    <button type="submit">この内容で取り込む</button>
+  </form>
+</div>
+{% endblock %}

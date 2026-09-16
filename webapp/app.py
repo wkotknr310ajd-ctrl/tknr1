@@ -1,15 +1,20 @@
 # -*- coding: utf-8 -*-
 """勤務変更申請・承認システム(Webアプリ版)のエントリポイント。"""
+import uuid
 from datetime import date, datetime
+from pathlib import Path
 
 from flask import Flask, flash, g, jsonify, redirect, render_template, request, url_for
 
 import db
+import excel_import
 import logic
 from security import days_in_month, month_start, normalize_name
 
 app = Flask(__name__)
 app.secret_key = "shift-change-system-local-secret"  # 社内LAN限定運用のための簡易な値
+
+IMPORT_DIR = Path(__file__).parent / "data" / "imports"
 
 
 def get_db():
@@ -319,6 +324,116 @@ def admin_delete_staff():
     except logic.AppError as e:
         flash(str(e), "error")
     return redirect(url_for("admin"))
+
+
+@app.route("/admin/import", methods=["GET"])
+def admin_import():
+    conn = get_db()
+    return render_template("admin_import.html", departments=logic.list_departments(conn))
+
+
+@app.route("/admin/import/preview", methods=["POST"])
+def admin_import_preview():
+    conn = get_db()
+    try:
+        department_id = int(request.form["department_id"])
+    except (KeyError, ValueError):
+        flash("取り込み先の部署を選択してください。", "error")
+        return redirect(url_for("admin_import"))
+
+    upload = request.files.get("file")
+    if upload and upload.filename:
+        if not upload.filename.lower().endswith((".xlsx", ".xlsm")):
+            flash("Excelファイル(.xlsx / .xlsm)を選択してください。", "error")
+            return redirect(url_for("admin_import"))
+        IMPORT_DIR.mkdir(parents=True, exist_ok=True)
+        token = uuid.uuid4().hex
+        upload.save(IMPORT_DIR / f"{token}.xlsx")
+    else:
+        token = request.form.get("token", "")
+
+    path = IMPORT_DIR / f"{token}.xlsx" if token else None
+    if not token or not path.exists():
+        flash("Excelファイルを選択してください。", "error")
+        return redirect(url_for("admin_import"))
+
+    try:
+        wb = excel_import.open_workbook(path)
+    except Exception:
+        flash("Excelファイルを読み込めませんでした。ファイル形式を確認してください。", "error")
+        return redirect(url_for("admin_import"))
+
+    sheet_names = wb.sheetnames
+    sheet_name = request.form.get("sheet_name") or sheet_names[0]
+    if sheet_name not in sheet_names:
+        sheet_name = sheet_names[0]
+    ws = wb[sheet_name]
+
+    header = excel_import.detect_day_header(ws)
+    if header:
+        header_row, day_start_col, _ = header
+        name_col = excel_import.guess_name_column(header_row, day_start_col)
+        staff_start, staff_end = excel_import.guess_staff_rows(ws, header_row, name_col)
+    else:
+        header_row, day_start_col, name_col = 1, 2, 1
+        staff_start, staff_end = 2, 2
+
+    rows, col_letters = excel_import.build_preview(ws)
+
+    return render_template(
+        "admin_import_preview.html",
+        department_id=department_id,
+        token=token,
+        sheet_names=sheet_names,
+        sheet_name=sheet_name,
+        rows=rows,
+        col_letters=col_letters,
+        header_row=header_row,
+        name_col_letter=excel_import.column_letter(name_col),
+        day_start_col_letter=excel_import.column_letter(day_start_col),
+        staff_start=staff_start,
+        staff_end=staff_end,
+        header_detected=header is not None,
+        target_month_date=current_target_month(),
+    )
+
+
+@app.route("/admin/import/confirm", methods=["POST"])
+def admin_import_confirm():
+    conn = get_db()
+    token = request.form.get("token", "")
+    path = IMPORT_DIR / f"{token}.xlsx"
+    department_id = None
+    if not token or not path.exists():
+        flash("取り込み元のファイルが見つかりません。もう一度アップロードしてください。", "error")
+        return redirect(url_for("admin_import"))
+
+    try:
+        department_id = int(request.form["department_id"])
+        sheet_name = request.form["sheet_name"]
+        header_row = int(request.form["header_row"])
+        name_col = excel_import.column_index(request.form["name_col"])
+        day_start_col = excel_import.column_index(request.form["day_start_col"])
+        staff_start = int(request.form["staff_start"])
+        staff_end = int(request.form["staff_end"])
+        if staff_end < staff_start:
+            raise ValueError("職員の行範囲が正しくありません(終了行が開始行より前です)。")
+        tm = current_target_month()
+        staff_count, filled_count = excel_import.run_import(
+            conn, logic, path, sheet_name, department_id, header_row, name_col,
+            staff_start, staff_end, day_start_col, tm.year, tm.month,
+        )
+        flash(f"{staff_count}名分の職員・{filled_count}件のシフトを取り込みました。", "success")
+    except (KeyError, ValueError) as e:
+        flash(f"取り込みに失敗しました: {e}", "error")
+        return redirect(url_for("admin_import"))
+    finally:
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+    return redirect(url_for("shift_table", department_id=department_id))
 
 
 @app.route("/admin/month", methods=["POST"])

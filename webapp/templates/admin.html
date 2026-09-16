@@ -66,6 +66,12 @@
 </div>
 
 <div class="card">
+  <h2>Excelシフト表の取り込み</h2>
+  <p class="hint">既存のExcelファイルからシフト表を読み込んで、このシステムに反映できます。</p>
+  <a href="{{ url_for('admin_import') }}"><button type="button">Excelを取り込む</button></a>
+</div>
+
+<div class="card">
   <h2>部署一覧</h2>
   <ul>
     {% for d in departments %}
