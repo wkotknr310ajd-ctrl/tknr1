@@ -5,6 +5,14 @@ Option Explicit
 ' 実際の承認権限はユーザーごとのパスワードハッシュ(職員マスタシート)で判定しています。
 Public Const SHEET_PROTECT_PASSWORD As String = "shift-sys-2026"
 
+' セルの値が日付・時刻として扱えるかを判定する。
+' DateList/TimeListのドロップダウンから選んだ値は、環境によってはIsDate単体では
+' 正しく判定できないことがあるため(値としては正しい日付・時刻でも、変換の過程で
+' 数値として渡ってくる場合がある)、IsNumericも合わせて確認する。
+Public Function IsDateOrTimeValue(ByVal v As Variant) As Boolean
+    IsDateOrTimeValue = IsDate(v) Or IsNumeric(v)
+End Function
+
 ' シート名が「シフト表_」で始まるシートを、すべて部署のシフト表として扱う。
 ' 部署を追加したいときはシートを追加するだけでよく、コード変更は不要。
 Public Sub ApplyProtection()
@@ -178,7 +186,7 @@ End Function
 Public Function GetCurrentShift(ByVal staffName As String, ByVal targetDate As Variant) As String
     On Error GoTo Fail
     If Trim$(staffName) = "" Then GoTo Fail
-    If Not IsDate(targetDate) Then GoTo Fail
+    If Not IsDateOrTimeValue(targetDate) Then GoTo Fail
 
     Dim staffCell As Range
     Set staffCell = FindShiftStaffCell(staffName)

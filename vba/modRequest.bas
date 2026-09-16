@@ -17,7 +17,7 @@ Public Sub SubmitRequest()
         MsgBox "申請者氏名を入力してください。", vbExclamation
         Exit Sub
     End If
-    If Not IsDate(ws.Range("B5").Value) Then
+    If Not IsDateOrTimeValue(ws.Range("B5").Value) Then
         MsgBox "対象日を正しく入力してください。", vbExclamation
         Exit Sub
     End If

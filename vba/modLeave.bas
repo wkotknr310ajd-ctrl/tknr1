@@ -22,7 +22,7 @@ Public Sub SubmitLeaveRequest()
         MsgBox "パスワードを入力してください。", vbExclamation
         Exit Sub
     End If
-    If Not IsDate(ws.Range("B5").Value) Or Not IsDate(ws.Range("B6").Value) Then
+    If Not IsDateOrTimeValue(ws.Range("B5").Value) Or Not IsDateOrTimeValue(ws.Range("B6").Value) Then
         MsgBox "開始日・終了日を正しく入力してください。", vbExclamation
         Exit Sub
     End If

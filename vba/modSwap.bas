@@ -34,7 +34,7 @@ Public Sub SubmitSwapRequest()
         MsgBox "対象者A・対象者Bの氏名を入力してください。", vbExclamation
         Exit Sub
     End If
-    If Not IsDate(ws.Range("B7").Value) Or Not IsDate(ws.Range("B12").Value) Then
+    If Not IsDateOrTimeValue(ws.Range("B7").Value) Or Not IsDateOrTimeValue(ws.Range("B12").Value) Then
         MsgBox "対象日A・対象日Bを正しく入力してください。", vbExclamation
         Exit Sub
     End If

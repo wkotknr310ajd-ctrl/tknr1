@@ -21,11 +21,11 @@ Public Sub SubmitOvertimeRequest()
         MsgBox "パスワードを入力してください。", vbExclamation
         Exit Sub
     End If
-    If Not IsDate(ws.Range("B5").Value) Then
+    If Not IsDateOrTimeValue(ws.Range("B5").Value) Then
         MsgBox "対象日を正しく入力してください。", vbExclamation
         Exit Sub
     End If
-    If Not IsDate(ws.Range("B6").Value) Or Not IsDate(ws.Range("B7").Value) Then
+    If Not IsDateOrTimeValue(ws.Range("B6").Value) Or Not IsDateOrTimeValue(ws.Range("B7").Value) Then
         MsgBox "開始時刻・終了時刻を正しく入力してください。", vbExclamation
         Exit Sub
     End If
