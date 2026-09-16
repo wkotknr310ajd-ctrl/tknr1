@@ -1,15 +1,24 @@
 {% extends "base.html" %}
 {% block title %}シフト表({{ dept['name'] }}) — 勤務変更申請・承認システム{% endblock %}
 {% block content %}
-<div class="card">
+<div class="card no-print">
   <h2>シフト表({{ dept['name'] }}) — {{ target_month_date.year }}年{{ target_month_date.month }}月</h2>
   <div class="tabs">
     {% for d in departments %}
     <a href="{{ url_for('shift_table', department_id=d['id']) }}" class="{{ 'active' if d['id']==dept['id'] }}">{{ d['name'] }}</a>
     {% endfor %}
   </div>
+  <p class="hint"><span class="legend-changed"></span> は勤務変更・交換・有給・残業の承認によって書き換わったセルです。</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button type="button" onclick="window.print()">印刷する</button>
+    <button type="button" onclick="copyShiftTableForExcel()">Excel用にコピー</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2 class="print-only">シフト表({{ dept['name'] }}) — {{ target_month_date.year }}年{{ target_month_date.month }}月</h2>
   <div class="table-scroll">
-  <table>
+  <table id="shift-table">
     <tr>
       <th>職員氏名</th>
       {% for d in range(1, ndays + 1) %}<th>{{ d }}</th>{% endfor %}
@@ -17,7 +26,7 @@
     {% for row in grid %}
     <tr>
       <td>{{ row['name'] }}</td>
-      {% for code in row['codes'] %}<td>{{ code }}</td>{% endfor %}
+      {% for cell in row['codes'] %}<td class="{{ 'changed-cell' if cell['changed'] }}">{{ cell['code'] }}</td>{% endfor %}
     </tr>
     {% else %}
     <tr><td colspan="{{ ndays + 1 }}"><em>まだ職員が登録されていません。下の「職員を追加」から追加してください。</em></td></tr>
@@ -26,7 +35,40 @@
   </div>
 </div>
 
-<div class="card">
+<script>
+function copyShiftTableForExcel() {
+  const table = document.getElementById('shift-table');
+  const lines = [];
+  for (const tr of table.rows) {
+    const cells = [];
+    for (const cell of tr.cells) {
+      cells.push(cell.innerText.trim());
+    }
+    lines.push(cells.join('\t'));
+  }
+  const text = lines.join('\n');
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+  document.body.removeChild(ta);
+  if (!ok && navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(
+      () => alert('コピーしました。Excelのセルに貼り付けてください。'),
+      () => alert('コピーできませんでした。表を選択して手動でコピーしてください。')
+    );
+    return;
+  }
+  alert(ok ? 'コピーしました。Excelのセルに貼り付けてください。' : 'コピーできませんでした。表を選択して手動でコピーしてください。');
+}
+</script>
+
+<div class="card no-print">
   <h2>セルを直接編集(管理者向け)</h2>
   <form method="post" action="{{ url_for('admin_set_shift_cell') }}">
     <input type="hidden" name="department_id" value="{{ dept['id'] }}">
@@ -49,7 +91,7 @@
   </form>
 </div>
 
-<div class="card">
+<div class="card no-print">
   <h2>職員を追加</h2>
   <form method="post" action="{{ url_for('admin_add_roster') }}">
     <input type="hidden" name="department_id" value="{{ dept['id'] }}">

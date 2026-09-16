@@ -135,3 +135,24 @@ small.muted { color: #6b7280; }
 }
 fieldset { border: 1px solid #dbe2ea; border-radius: 6px; margin-top: 1rem; padding: 0.8rem 1rem; }
 legend { font-weight: 700; padding: 0 0.4rem; }
+
+.changed-cell { background: #fff3b0; font-weight: 700; }
+.legend-changed {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  background: #fff3b0;
+  border: 1px solid #c9a400;
+  vertical-align: middle;
+}
+.print-only { display: none; }
+
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block; }
+  main { max-width: none; margin: 0; padding: 0; }
+  .card { box-shadow: none; padding: 0; margin-bottom: 1rem; }
+  body { background: #fff; }
+  table { font-size: 0.75rem; }
+  .changed-cell { background: #ffe27a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

@@ -164,29 +164,43 @@ def get_current_shift(conn, staff_name: str, target_date_iso: str):
 
 
 def department_shift_grid(conn, department_id, year: int, month: int):
-    """部署シフト表を職員×日付の2次元配列として返す。"""
+    """部署シフト表を職員×日付の2次元配列として返す。承認済みの変更で書き換わったセルには
+    changed フラグを立てて、シフト表の画面で色分け表示できるようにする。"""
     roster = conn.execute(
         "SELECT staff_name FROM roster WHERE department_id = ? ORDER BY sort_order, staff_name",
         (department_id,),
     ).fetchall()
     ndays = days_in_month(date(year, month, 1))
+    month_start_iso = f"{year:04d}-{month:02d}-01"
+    month_end_iso = f"{year:04d}-{month:02d}-{ndays:02d}"
     cells = conn.execute(
         "SELECT staff_name, target_date, shift_code FROM shift_cells "
         "WHERE department_id = ? AND target_date >= ? AND target_date <= ?",
-        (department_id, f"{year:04d}-{month:02d}-01", f"{year:04d}-{month:02d}-{ndays:02d}"),
+        (department_id, month_start_iso, month_end_iso),
     ).fetchall()
     by_name = {}
     for c in cells:
         by_name.setdefault(c["staff_name"], {})[c["target_date"]] = c["shift_code"]
 
+    changed_rows = conn.execute(
+        "SELECT DISTINCT target_person, target_date FROM history "
+        "WHERE status = '承認' AND target_date >= ? AND target_date <= ?",
+        (month_start_iso, month_end_iso),
+    ).fetchall()
+    changed = {(r["target_person"], r["target_date"]) for r in changed_rows}
+
     grid = []
     for r in roster:
         name = r["staff_name"]
-        row_codes = []
+        row_cells = []
         for d in range(1, ndays + 1):
             iso = f"{year:04d}-{month:02d}-{d:02d}"
-            row_codes.append(by_name.get(name, {}).get(iso, ""))
-        grid.append({"name": name, "codes": row_codes})
+            row_cells.append({
+                "date": iso,
+                "code": by_name.get(name, {}).get(iso, ""),
+                "changed": (name, iso) in changed,
+            })
+        grid.append({"name": name, "codes": row_cells})
     return grid, ndays
 
 
