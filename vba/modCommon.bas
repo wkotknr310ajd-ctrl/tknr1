@@ -39,8 +39,12 @@ End Function
 Public Function NormalizeName(ByVal rawName As String) As String
     Dim s As String
     s = CStr(rawName)
-    s = Replace(s, " ", "")
-    s = Replace(s, Chr(12288), "")
+    s = Replace(s, " ", "")        ' 半角スペース
+    s = Replace(s, Chr(12288), "") ' 全角スペース
+    s = Replace(s, Chr(9), "")     ' タブ
+    s = Replace(s, Chr(10), "")    ' 改行(LF、セル内改行)
+    s = Replace(s, Chr(13), "")    ' 改行(CR)
+    s = Replace(s, Chr(160), "")   ' 改行不可スペース(NBSP)
     s = Trim$(s)
     NormalizeName = s
 End Function
