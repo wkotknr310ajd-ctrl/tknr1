@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}ロールバック — 勤務変更申請・承認システム{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>承認済み変更の取り消し(ロールバック)</h2>
+  <p class="hint">取り消しにも承認権限者のパスワードが必要です。取り消し操作自体も新しい履歴として記録されます。</p>
+  <form method="post">
+    <label for="request_id">対象申請ID</label>
+    <select id="request_id" name="request_id" required>
+      <option value="">-- 選択してください --</option>
+      {% for id in approved_ids %}<option value="{{ id }}">{{ id }}</option>{% endfor %}
+    </select>
+
+    <label for="approver">承認者氏名</label>
+    <input list="approver-list" id="approver" name="approver" required autocomplete="off">
+    <datalist id="approver-list">
+      {% for s in staff_list %}<option value="{{ s }}">{% endfor %}
+    </datalist>
+
+    <label for="password">パスワード</label>
+    <input type="password" id="password" name="password" required>
+
+    <button type="submit" class="btn-danger" style="background:#b91c1c;">選択した変更を取り消す</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>承認済み一覧</h2>
+  <div class="table-scroll">
+  <table>
+    <tr>
+      <th>申請ID</th><th>申請者</th><th>対象者</th><th>対象日</th>
+      <th>変更前</th><th>変更後(現在値)</th><th>承認者</th><th>承認日時</th>
+    </tr>
+    {% for r in approved %}
+    <tr>
+      <td>{{ r['request_id'] }}</td>
+      <td>{{ r['applicant'] }}</td>
+      <td>{{ r['target_person'] }}</td>
+      <td>{{ r['target_date']|fmtdate }}</td>
+      <td>{{ r['before_shift'] }}</td>
+      <td>{{ r['after_shift'] }}</td>
+      <td>{{ r['approver'] }}</td>
+      <td>{{ r['approved_at'] }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8"><em>承認済みの変更はありません。</em></td></tr>
+    {% endfor %}
+  </table>
+  </div>
+</div>
+{% endblock %}

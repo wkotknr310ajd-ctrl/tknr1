@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}交換申請 — 勤務変更申請・承認システム{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>勤務交換申請(2名間の振替)</h2>
+  <form method="post">
+    <label for="applicant">申請者氏名</label>
+    <input list="staff-list" id="applicant" name="applicant" required autocomplete="off">
+    <datalist id="staff-list">
+      {% for s in staff_list %}<option value="{{ s }}">{% endfor %}
+    </datalist>
+
+    <label for="password">パスワード</label>
+    <input type="password" id="password" name="password" required>
+
+    <div class="grid-2">
+      <fieldset>
+        <legend>対象者A</legend>
+        <label for="name_a">氏名</label>
+        <input list="staff-list" id="name_a" name="name_a" required autocomplete="off">
+        <label for="date_a">対象日</label>
+        <input type="date" id="date_a" name="date_a" required>
+        <label>現在の勤務(自動表示)</label>
+        <input type="text" id="current_a" value="-" readonly style="background:#f1f5f9;">
+        <label for="new_shift_a">変更後の勤務</label>
+        <input type="text" id="new_shift_a" name="new_shift_a" required>
+      </fieldset>
+      <fieldset>
+        <legend>対象者B</legend>
+        <label for="name_b">氏名</label>
+        <input list="staff-list" id="name_b" name="name_b" required autocomplete="off">
+        <label for="date_b">対象日</label>
+        <input type="date" id="date_b" name="date_b" required>
+        <label>現在の勤務(自動表示)</label>
+        <input type="text" id="current_b" value="-" readonly style="background:#f1f5f9;">
+        <label for="new_shift_b">変更後の勤務</label>
+        <input type="text" id="new_shift_b" name="new_shift_b" required>
+      </fieldset>
+    </div>
+
+    <label for="reason">交換理由(任意)</label>
+    <textarea id="reason" name="reason"></textarea>
+
+    <button type="submit">交換を申請する</button>
+  </form>
+</div>
+
+<script>
+function bindCurrent(nameId, dateId, outId) {
+  function refresh() {
+    const name = document.getElementById(nameId).value;
+    const date = document.getElementById(dateId).value;
+    if (!name || !date) { document.getElementById(outId).value = '-'; return; }
+    fetch(`/api/current_shift?name=${encodeURIComponent(name)}&date=${date}`)
+      .then(r => r.json())
+      .then(d => { document.getElementById(outId).value = d.shift; });
+  }
+  document.getElementById(nameId).addEventListener('change', refresh);
+  document.getElementById(dateId).addEventListener('change', refresh);
+}
+bindCurrent('name_a', 'date_a', 'current_a');
+bindCurrent('name_b', 'date_b', 'current_b');
+</script>
+{% endblock %}

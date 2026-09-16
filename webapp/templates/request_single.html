@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}申請 — 勤務変更申請・承認システム{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>勤務変更申請</h2>
+  <form method="post">
+    <label for="applicant">申請者氏名</label>
+    <input list="staff-list" id="applicant" name="applicant" required autocomplete="off">
+    <datalist id="staff-list">
+      {% for s in staff_list %}<option value="{{ s }}">{% endfor %}
+    </datalist>
+
+    <label for="password">パスワード</label>
+    <input type="password" id="password" name="password" required>
+
+    <label for="target_date">対象日</label>
+    <input type="date" id="target_date" name="target_date" required>
+
+    <label>現在の勤務(自動表示)</label>
+    <input type="text" id="current_shift" value="-" readonly style="background:#f1f5f9;">
+
+    <label for="new_shift">変更後の勤務</label>
+    <input type="text" id="new_shift" name="new_shift" required placeholder="例: 日勤、×、夜A、年 など">
+
+    <label for="reason">変更理由(任意)</label>
+    <textarea id="reason" name="reason"></textarea>
+
+    <button type="submit">申請する</button>
+  </form>
+</div>
+
+<script>
+function refreshCurrentShift() {
+  const name = document.getElementById('applicant').value;
+  const date = document.getElementById('target_date').value;
+  if (!name || !date) { document.getElementById('current_shift').value = '-'; return; }
+  fetch(`/api/current_shift?name=${encodeURIComponent(name)}&date=${date}`)
+    .then(r => r.json())
+    .then(d => { document.getElementById('current_shift').value = d.shift; });
+}
+document.getElementById('applicant').addEventListener('change', refreshCurrentShift);
+document.getElementById('target_date').addEventListener('change', refreshCurrentShift);
+</script>
+{% endblock %}

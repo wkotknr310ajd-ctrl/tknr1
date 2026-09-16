@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}履歴 — 勤務変更申請・承認システム{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>履歴</h2>
+  <div class="tabs">
+    <a href="{{ url_for('history', kind='all') }}" class="{{ 'active' if group=='all' }}">すべて</a>
+    <a href="{{ url_for('history', kind='shift') }}" class="{{ 'active' if group=='shift' }}">勤務変更(単独+交換)</a>
+    <a href="{{ url_for('history', kind='leave') }}" class="{{ 'active' if group=='leave' }}">有給</a>
+    <a href="{{ url_for('history', kind='overtime') }}" class="{{ 'active' if group=='overtime' }}">残業</a>
+  </div>
+  <div class="table-scroll">
+  <table>
+    <tr>
+      <th>申請ID</th><th>申請日時</th><th>申請者</th><th>対象者</th><th>対象日</th>
+      <th>変更前</th><th>変更後</th><th>変更理由</th><th>ステータス</th><th>承認者</th><th>承認/処理日時</th>
+    </tr>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r['request_id'] }}</td>
+      <td>{{ r['applied_at'] }}</td>
+      <td>{{ r['applicant'] }}</td>
+      <td>{{ r['target_person'] }}</td>
+      <td>{{ r['target_date']|fmtdate }}</td>
+      <td>{{ r['before_shift'] }}</td>
+      <td>{{ r['after_shift'] }}</td>
+      <td>{{ r['reason'] }}</td>
+      <td><span class="badge {{ r['status'] }}">{{ r['status'] }}</span></td>
+      <td>{{ r['approver'] }}</td>
+      <td>{{ r['approved_at'] or '' }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="11"><em>該当する履歴はありません。</em></td></tr>
+    {% endfor %}
+  </table>
+  </div>
+</div>
+{% endblock %}

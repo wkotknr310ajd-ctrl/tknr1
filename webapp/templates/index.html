@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}ホーム — 勤務変更申請・承認システム{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>ホーム</h2>
+  <p>対象年月: <strong>{{ target_month_date.year }}年{{ target_month_date.month }}月</strong></p>
+  <p>承認待ちの申請: <strong>{{ pending_count }}件</strong>
+    {% if pending_count > 0 %}<a href="{{ url_for('approve') }}">→ 承認画面へ</a>{% endif %}
+  </p>
+</div>
+<div class="card">
+  <h2>できること</h2>
+  <ul>
+    <li><a href="{{ url_for('request_single') }}">勤務変更を申請する</a>(自分の勤務を変える)</li>
+    <li><a href="{{ url_for('request_swap') }}">勤務交換を申請する</a>(2名間で勤務を入れ替える)</li>
+    <li><a href="{{ url_for('request_leave') }}">有給休暇を申請する</a>(連続した日付範囲)</li>
+    <li><a href="{{ url_for('request_overtime') }}">超過勤務(残業)を申請する</a></li>
+    <li><a href="{{ url_for('approve') }}">承認する</a>(上司)</li>
+    <li><a href="{{ url_for('rollback') }}">承認済みの変更を取り消す</a></li>
+    <li><a href="{{ url_for('history') }}">履歴を見る</a></li>
+  </ul>
+</div>
+{% endblock %}

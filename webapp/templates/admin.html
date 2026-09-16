@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}管理 — 勤務変更申請・承認システム{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>職員の登録</h2>
+  <form method="post" action="{{ url_for('admin_register_staff') }}">
+    <label for="name">氏名</label>
+    <input type="text" id="name" name="name" required>
+    <label for="password">パスワード</label>
+    <input type="text" id="password" name="password" required>
+    <label><input type="checkbox" name="is_approver" style="width:auto;display:inline-block;"> 承認権限を付与する(上司)</label>
+    <button type="submit">登録する</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>登録済み職員一覧</h2>
+  <div class="table-scroll">
+  <table>
+    <tr><th>氏名</th><th>権限</th><th>登録日時</th></tr>
+    {% for s in staff %}
+    <tr><td>{{ s['name'] }}</td><td>{{ s['role'] }}</td><td>{{ s['created_at'] }}</td></tr>
+    {% endfor %}
+  </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>月初めの切り替え</h2>
+  <p class="hint">職員マスタ(氏名・パスワード)と履歴はそのまま残し、各部署のシフト表(職員名・シフト内容)だけをすべて消去して、新しい対象年月に切り替えます。</p>
+  <p>現在の対象年月: <strong>{{ target_month_date.year }}年{{ target_month_date.month }}月</strong></p>
+  <form method="post" action="{{ url_for('admin_start_new_month') }}"
+        onsubmit="return confirm('部署のシフト表(職員名・シフト内容)をすべて消去します。よろしいですか?');">
+    <label for="new_month">新しい対象年月の1日</label>
+    <input type="date" id="new_month" name="new_month" required>
+    <button type="submit" class="btn-danger" style="background:#b91c1c;">切り替える</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>有給の勤務コード</h2>
+  <form method="post" action="{{ url_for('admin_set_leave_code') }}">
+    <label for="leave_code">有給申請が承認されたときにシフト表へ入力するコード</label>
+    <input type="text" id="leave_code" name="leave_code" value="{{ leave_code }}" required>
+    <button type="submit">更新する</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>部署一覧</h2>
+  <ul>
+    {% for d in departments %}
+    <li><a href="{{ url_for('shift_table', department_id=d['id']) }}">{{ d['name'] }}</a></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

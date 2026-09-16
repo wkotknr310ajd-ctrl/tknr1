@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}シフト表({{ dept['name'] }}) — 勤務変更申請・承認システム{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>シフト表({{ dept['name'] }}) — {{ target_month_date.year }}年{{ target_month_date.month }}月</h2>
+  <div class="tabs">
+    {% for d in departments %}
+    <a href="{{ url_for('shift_table', department_id=d['id']) }}" class="{{ 'active' if d['id']==dept['id'] }}">{{ d['name'] }}</a>
+    {% endfor %}
+  </div>
+  <div class="table-scroll">
+  <table>
+    <tr>
+      <th>職員氏名</th>
+      {% for d in range(1, ndays + 1) %}<th>{{ d }}</th>{% endfor %}
+    </tr>
+    {% for row in grid %}
+    <tr>
+      <td>{{ row['name'] }}</td>
+      {% for code in row['codes'] %}<td>{{ code }}</td>{% endfor %}
+    </tr>
+    {% else %}
+    <tr><td colspan="{{ ndays + 1 }}"><em>まだ職員が登録されていません。下の「職員を追加」から追加してください。</em></td></tr>
+    {% endfor %}
+  </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>セルを直接編集(管理者向け)</h2>
+  <form method="post" action="{{ url_for('admin_set_shift_cell') }}">
+    <input type="hidden" name="department_id" value="{{ dept['id'] }}">
+    <div class="grid-2">
+      <div>
+        <label for="staff_name">職員氏名</label>
+        <select id="staff_name" name="staff_name" required>
+          {% for row in grid %}<option value="{{ row['name'] }}">{{ row['name'] }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="target_date">対象日</label>
+        <input type="date" id="target_date" name="target_date" required
+               min="{{ '%04d-%02d-01' % (target_month_date.year, target_month_date.month) }}">
+      </div>
+    </div>
+    <label for="shift_code">勤務コード(空欄でクリア)</label>
+    <input type="text" id="shift_code" name="shift_code" placeholder="例: 日勤、×、夜A、年 など">
+    <button type="submit">この内容で保存</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>職員を追加</h2>
+  <form method="post" action="{{ url_for('admin_add_roster') }}">
+    <input type="hidden" name="department_id" value="{{ dept['id'] }}">
+    <label for="new_staff_name">氏名</label>
+    <input type="text" id="new_staff_name" name="staff_name" required>
+    <button type="submit">追加</button>
+  </form>
+</div>
+{% endblock %}

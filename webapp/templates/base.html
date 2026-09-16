@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}勤務変更申請・承認システム{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header>
+  <h1>勤務変更申請・承認システム</h1>
+  <small>対象年月: {{ target_month if target_month else '' }}</small>
+</header>
+<nav>
+  <a href="{{ url_for('index') }}">ホーム</a>
+  <a href="{{ url_for('request_single') }}">申請</a>
+  <a href="{{ url_for('request_swap') }}">交換申請</a>
+  <a href="{{ url_for('request_leave') }}">有給申請</a>
+  <a href="{{ url_for('request_overtime') }}">超過勤務申請</a>
+  <a href="{{ url_for('approve') }}">承認</a>
+  <a href="{{ url_for('rollback') }}">ロールバック</a>
+  <a href="{{ url_for('history') }}">履歴</a>
+  {% for d in nav_departments %}
+  <a href="{{ url_for('shift_table', department_id=d['id']) }}">シフト表({{ d['name'] }})</a>
+  {% endfor %}
+  <a href="{{ url_for('admin') }}">管理</a>
+</nav>
+<main>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>
