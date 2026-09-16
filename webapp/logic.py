@@ -12,6 +12,7 @@ Excel/VBA版で検証済みだった設計をそのまま踏襲している:
 import sqlite3
 from datetime import date, datetime
 
+import db
 from security import (
     date_range,
     days_in_month,
@@ -221,11 +222,13 @@ def append_history_row(
     approved_at,
     original_request_id,
     kind,
+    overtime_minutes=0,
 ):
     conn.execute(
         "INSERT INTO history(request_id, applied_at, applicant, target_person, target_date, "
-        "before_shift, after_shift, reason, status, approver, approved_at, original_request_id, kind) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "before_shift, after_shift, reason, status, approver, approved_at, original_request_id, kind, "
+        "overtime_minutes) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             request_id,
             now_iso(),
@@ -240,6 +243,7 @@ def append_history_row(
             approved_at,
             original_request_id or "",
             kind,
+            overtime_minutes,
         ),
     )
 
@@ -383,7 +387,7 @@ def submit_overtime_request(conn, applicant, password, target_date_iso, start_ti
     req_id = next_request_id(conn)
     reason_text = f"【超過勤務申請】{start_time}〜{end_time}({hours_label}) {reason}"
     append_history_row(conn, req_id, applicant, applicant, target_date_iso, current_shift, new_shift,
-                        reason_text, "申請中", "", None, "", "残業")
+                        reason_text, "申請中", "", None, "", "残業", overtime_minutes=int(diff_minutes))
     conn.commit()
     return req_id, current_shift, new_shift, hours_label
 
@@ -490,3 +494,93 @@ def start_new_month(conn, new_month_iso: str):
     conn.execute("DELETE FROM roster")
     set_setting(conn, "target_month", new_month_iso)
     conn.commit()
+
+
+# ------------------------------------------------------------------
+# 有給・残業の集計
+# ------------------------------------------------------------------
+def fiscal_year_bounds(today: date, start_month: int):
+    """指定した日付が含まれる年度(start_month始まり)の開始日・終了日を返す。"""
+    if today.month >= start_month:
+        fy_start = date(today.year, start_month, 1)
+    else:
+        fy_start = date(today.year - 1, start_month, 1)
+    if start_month == 1:
+        fy_end = date(fy_start.year, 12, 31)
+    else:
+        end_year = fy_start.year + 1
+        end_month = start_month - 1
+        fy_end = date(end_year, end_month, days_in_month(date(end_year, end_month, 1)))
+    return fy_start, fy_end
+
+
+def leave_summary(conn, today=None):
+    """職員ごとの当年度の有給取得日数・残り日数を返す。承認済み(取消されていない)分のみ数える。"""
+    today = today or date.today()
+    start_month = int(db.get_setting(conn, "fiscal_year_start_month", "4"))
+    limit_days = float(db.get_setting(conn, "leave_annual_limit_days", "40"))
+    fy_start, fy_end = fiscal_year_bounds(today, start_month)
+
+    rows = conn.execute(
+        "SELECT target_person, COUNT(DISTINCT target_date) AS days FROM history "
+        "WHERE kind = '有給' AND status = '承認' AND target_date >= ? AND target_date <= ? "
+        "GROUP BY target_person",
+        (fy_start.isoformat(), fy_end.isoformat()),
+    ).fetchall()
+    taken_by_name = {r["target_person"]: r["days"] for r in rows}
+
+    staff = conn.execute("SELECT name FROM staff ORDER BY name").fetchall()
+    result = []
+    for s in staff:
+        taken = taken_by_name.get(s["name"], 0)
+        result.append({
+            "name": s["name"],
+            "taken_days": taken,
+            "remaining_days": limit_days - taken,
+            "over_limit": taken > limit_days,
+        })
+    return result, fy_start, fy_end, limit_days
+
+
+def overtime_summary(conn, today=None):
+    """職員ごとの当年度の残業時間を月別に集計する。承認済み(取消されていない)分のみ数える。"""
+    today = today or date.today()
+    start_month = int(db.get_setting(conn, "fiscal_year_start_month", "4"))
+    month_limit = float(db.get_setting(conn, "overtime_month_limit_hours", "45"))
+    year_limit = float(db.get_setting(conn, "overtime_year_limit_hours", "360"))
+    fy_start, fy_end = fiscal_year_bounds(today, start_month)
+
+    months = []
+    y, m = fy_start.year, fy_start.month
+    for _ in range(12):
+        months.append((y, m))
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+
+    rows = conn.execute(
+        "SELECT target_person, target_date, overtime_minutes FROM history "
+        "WHERE kind = '残業' AND status = '承認' AND target_date >= ? AND target_date <= ?",
+        (fy_start.isoformat(), fy_end.isoformat()),
+    ).fetchall()
+
+    minutes_by_name_month = {}
+    for r in rows:
+        y2, m2 = int(r["target_date"][:4]), int(r["target_date"][5:7])
+        by_month = minutes_by_name_month.setdefault(r["target_person"], {})
+        by_month[(y2, m2)] = by_month.get((y2, m2), 0) + r["overtime_minutes"]
+
+    staff = conn.execute("SELECT name FROM staff ORDER BY name").fetchall()
+    result = []
+    for s in staff:
+        by_month = minutes_by_name_month.get(s["name"], {})
+        month_hours = [round(by_month.get(ym, 0) / 60, 2) for ym in months]
+        year_hours = round(sum(by_month.values()) / 60, 2)
+        result.append({
+            "name": s["name"],
+            "month_hours": month_hours,
+            "year_hours": year_hours,
+            "over_year_limit": year_hours > year_limit,
+        })
+    return result, months, fy_start, fy_end, month_limit, year_limit

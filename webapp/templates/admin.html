@@ -66,6 +66,12 @@
 </div>
 
 <div class="card">
+  <h2>有給・残業の集計</h2>
+  <p class="hint">職員ごとの有給取得日数・残業時間を年度で集計し、上限に対する状況を確認できます。</p>
+  <a href="{{ url_for('admin_summary') }}"><button type="button">集計を見る</button></a>
+</div>
+
+<div class="card">
   <h2>Excelシフト表の取り込み</h2>
   <p class="hint">既存のExcelファイルからシフト表を読み込んで、このシステムに反映できます。</p>
   <a href="{{ url_for('admin_import') }}"><button type="button">Excelを取り込む</button></a>

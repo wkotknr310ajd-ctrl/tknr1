@@ -77,7 +77,17 @@ DEFAULT_SETTINGS = {
     "target_month": "",       # 'YYYY-MM-01'
     "request_counter": "0",
     "leave_code": "年",
+    "fiscal_year_start_month": "4",     # 年度の開始月(4月始まり)
+    "leave_annual_limit_days": "40",    # 有給の年間上限日数
+    "overtime_month_limit_hours": "45", # 残業の月間上限時間
+    "overtime_year_limit_hours": "360", # 残業の年間上限時間
 }
+
+# 既存のデータベース(すでに運用中のもの)にあとから追加した列。
+# init_db() でテーブル自体は作成済みの前提で、無ければ追加する。
+MIGRATIONS = [
+    ("history", "overtime_minutes", "INTEGER NOT NULL DEFAULT 0"),
+]
 
 
 def get_conn():
@@ -92,6 +102,10 @@ def init_db():
     conn = get_conn()
     try:
         conn.executescript(SCHEMA)
+        for table, column, coltype in MIGRATIONS:
+            existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+            if column not in existing:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
         for i, name in enumerate(DEFAULT_DEPARTMENTS):
             conn.execute(
                 "INSERT OR IGNORE INTO departments(name, sort_order) VALUES (?, ?)",

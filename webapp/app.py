@@ -252,6 +252,46 @@ def history():
     return render_template("history.html", rows=rows, group=group)
 
 
+@app.route("/history/export")
+def history_export():
+    conn = get_db()
+    group = request.args.get("kind", "all")
+    kinds = KIND_GROUPS.get(group)
+    rows = logic.list_history(conn, kinds)
+
+    from io import BytesIO
+
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "履歴"
+    headers = [
+        "申請ID", "登録日時", "種別", "状態", "申請者", "対象者", "対象日",
+        "変更前", "変更後", "理由", "承認者", "承認日時", "元申請ID",
+    ]
+    ws.append(headers)
+    for r in rows:
+        ws.append([
+            r["request_id"], r["applied_at"], r["kind"], r["status"],
+            r["applicant"], r["target_person"], r["target_date"],
+            r["before_shift"], r["after_shift"], r["reason"],
+            r["approver"], r["approved_at"] or "", r["original_request_id"],
+        ])
+    for col_idx in range(1, len(headers) + 1):
+        ws.column_dimensions[chr(64 + col_idx) if col_idx <= 26 else "A"].width = 16
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    filename = f"history_{group}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return app.response_class(
+        buf.read(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
 # ------------------------------------------------------------------
 # シフト表閲覧
 # ------------------------------------------------------------------
@@ -283,6 +323,48 @@ def admin():
         target_month_date=current_target_month(),
         leave_code=db.get_setting(conn, "leave_code", "年"),
     )
+
+
+@app.route("/admin/summary", methods=["GET"])
+def admin_summary():
+    conn = get_db()
+    leave_rows, leave_fy_start, leave_fy_end, leave_limit = logic.leave_summary(conn)
+    overtime_rows, months, ot_fy_start, ot_fy_end, month_limit, year_limit = logic.overtime_summary(conn)
+    return render_template(
+        "admin_summary.html",
+        leave_rows=leave_rows,
+        leave_fy_start=leave_fy_start,
+        leave_fy_end=leave_fy_end,
+        leave_limit=leave_limit,
+        overtime_rows=overtime_rows,
+        months=months,
+        ot_fy_start=ot_fy_start,
+        ot_fy_end=ot_fy_end,
+        month_limit=month_limit,
+        year_limit=year_limit,
+    )
+
+
+@app.route("/admin/limits", methods=["POST"])
+def admin_set_limits():
+    conn = get_db()
+    try:
+        fiscal_month = int(request.form["fiscal_year_start_month"])
+        leave_limit = float(request.form["leave_annual_limit_days"])
+        month_limit = float(request.form["overtime_month_limit_hours"])
+        year_limit = float(request.form["overtime_year_limit_hours"])
+        if not (1 <= fiscal_month <= 12):
+            raise ValueError("年度の開始月は1〜12で指定してください。")
+    except (KeyError, ValueError):
+        flash("数値を正しく入力してください。", "error")
+        return redirect(url_for("admin_summary"))
+    db.set_setting(conn, "fiscal_year_start_month", str(fiscal_month))
+    db.set_setting(conn, "leave_annual_limit_days", str(leave_limit))
+    db.set_setting(conn, "overtime_month_limit_hours", str(month_limit))
+    db.set_setting(conn, "overtime_year_limit_hours", str(year_limit))
+    conn.commit()
+    flash("上限の設定を更新しました。", "success")
+    return redirect(url_for("admin_summary"))
 
 
 @app.route("/admin/staff", methods=["POST"])

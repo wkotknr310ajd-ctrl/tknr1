@@ -9,6 +9,7 @@
     <a href="{{ url_for('history', kind='leave') }}" class="{{ 'active' if group=='leave' }}">有給</a>
     <a href="{{ url_for('history', kind='overtime') }}" class="{{ 'active' if group=='overtime' }}">残業</a>
   </div>
+  <a href="{{ url_for('history_export', kind=group) }}"><button type="button">この一覧をExcelでダウンロード(バックアップ)</button></a>
   <div class="table-scroll">
   <table>
     <tr>

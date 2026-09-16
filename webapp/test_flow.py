@@ -145,6 +145,24 @@ conn = db.get_conn()
 msg, warnings = logic.process_approval(conn, req_id4, "鈴木部長", "boss123", "承認")
 conn.close()
 
+# --- 有給・残業の集計 ---
+from datetime import date as _date  # noqa: E402
+
+conn = db.get_conn()
+leave_rows, fy_start, fy_end, leave_limit = logic.leave_summary(conn, today=_date(2026, 9, 25))
+tanaka_leave = next(r for r in leave_rows if r["name"] == "田中太郎")
+check("有給集計: 田中太郎の取得日数は3日", tanaka_leave["taken_days"] == 3)
+check("有給集計: 残り日数は上限-3日", tanaka_leave["remaining_days"] == leave_limit - 3)
+
+ot_rows, months, ot_fy_start, ot_fy_end, month_limit, year_limit = logic.overtime_summary(
+    conn, today=_date(2026, 9, 25)
+)
+tanaka_ot = next(r for r in ot_rows if r["name"] == "田中太郎")
+sep_index = months.index((2026, 9))
+check("残業集計: 9月の残業時間は1.25時間", tanaka_ot["month_hours"][sep_index] == 1.25)
+check("残業集計: 年度合計は1.25時間", tanaka_ot["year_hours"] == 1.25)
+conn.close()
+
 # --- 種別ごとの履歴確認 ---
 conn = db.get_conn()
 all_hist = logic.list_history(conn)
@@ -174,7 +192,7 @@ conn.close()
 
 # --- HTTPルートの疎通確認 ---
 for path in ["/", "/request", "/swap", "/leave", "/overtime", "/approve", "/rollback",
-             "/history", "/history?kind=leave", "/admin"]:
+             "/history", "/history?kind=leave", "/admin", "/admin/summary", "/admin/import"]:
     resp = client.get(path)
     check(f"GET {path} -> 200", resp.status_code == 200)
 
