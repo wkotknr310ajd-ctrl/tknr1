@@ -15,11 +15,23 @@
 
 <div class="card">
   <h2>登録済み職員一覧</h2>
+  <p class="hint">氏名を訂正すると、シフト表・履歴に記録済みの同じ氏名もまとめて書き換わります。パスワードは変わりません。</p>
   <div class="table-scroll">
   <table>
-    <tr><th>氏名</th><th>権限</th><th>登録日時</th></tr>
+    <tr><th>氏名</th><th>権限</th><th>登録日時</th><th>氏名の訂正</th></tr>
     {% for s in staff %}
-    <tr><td>{{ s['name'] }}</td><td>{{ s['role'] }}</td><td>{{ s['created_at'] }}</td></tr>
+    <tr>
+      <td>{{ s['name'] }}</td>
+      <td>{{ s['role'] }}</td>
+      <td>{{ s['created_at'] }}</td>
+      <td>
+        <form method="post" action="{{ url_for('admin_rename_staff') }}" style="display:flex;gap:4px;">
+          <input type="hidden" name="old_name" value="{{ s['name'] }}">
+          <input type="text" name="new_name" placeholder="正しい氏名" required style="width:auto;">
+          <button type="submit">訂正する</button>
+        </form>
+      </td>
+    </tr>
     {% endfor %}
   </table>
   </div>

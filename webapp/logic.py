@@ -9,6 +9,7 @@ Excel/VBA版で検証済みだった設計をそのまま踏襲している:
 - 承認・ロールバックの直前に、シフト表の実際の値と履歴上の期待値を突き合わせ、
   食い違いがあれば警告メッセージを返す(処理は続行する)
 """
+import sqlite3
 from datetime import date, datetime
 
 from security import (
@@ -45,6 +46,29 @@ def register_staff(conn, name: str, password: str, is_approver: bool):
         "INSERT INTO staff(name, role, password_hash, created_at) VALUES (?, ?, ?, ?)",
         (name, role, hash_password(password), now_iso()),
     )
+    conn.commit()
+
+
+def rename_staff(conn, old_name: str, new_name: str):
+    """入力ミスなどで登録した氏名を訂正する。シフト表・履歴上の同じ名前もすべて置き換える。"""
+    old_name = normalize_name(old_name)
+    new_name = normalize_name(new_name)
+    if not new_name:
+        raise AppError("新しい氏名を入力してください。")
+    staff = find_staff(conn, old_name)
+    if not staff:
+        raise AppError("職員マスタに見つかりません。")
+    if new_name != old_name and find_staff(conn, new_name):
+        raise AppError("その氏名はすでに登録されています。")
+    try:
+        conn.execute("UPDATE staff SET name = ? WHERE id = ?", (new_name, staff["id"]))
+        conn.execute("UPDATE roster SET staff_name = ? WHERE staff_name = ?", (new_name, old_name))
+        conn.execute("UPDATE shift_cells SET staff_name = ? WHERE staff_name = ?", (new_name, old_name))
+        conn.execute("UPDATE history SET applicant = ? WHERE applicant = ?", (new_name, old_name))
+        conn.execute("UPDATE history SET target_person = ? WHERE target_person = ?", (new_name, old_name))
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        raise AppError("その氏名はシフト表内で重複するため変更できません。")
     conn.commit()
 
 

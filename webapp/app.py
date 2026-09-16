@@ -296,6 +296,19 @@ def admin_register_staff():
     return redirect(url_for("admin"))
 
 
+@app.route("/admin/staff/rename", methods=["POST"])
+def admin_rename_staff():
+    conn = get_db()
+    try:
+        old_name = request.form["old_name"]
+        new_name = request.form["new_name"]
+        logic.rename_staff(conn, old_name, new_name)
+        flash(f"{normalize_name(old_name)} さんの氏名を {normalize_name(new_name)} に変更しました。", "success")
+    except logic.AppError as e:
+        flash(str(e), "error")
+    return redirect(url_for("admin"))
+
+
 @app.route("/admin/month", methods=["POST"])
 def admin_start_new_month():
     conn = get_db()
