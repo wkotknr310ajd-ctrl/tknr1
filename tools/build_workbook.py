@@ -367,7 +367,7 @@ ws.protection.sheet = False
 # ------------------------------------------------------------------
 ws = wb.create_sheet("履歴")
 headers = ["申請ID", "申請日時", "申請者", "対象者", "対象日", "変更前", "変更後", "変更理由",
-           "ステータス", "承認者", "承認/処理日時", "元申請ID(ロールバック用)"]
+           "ステータス", "承認者", "承認/処理日時", "元申請ID(ロールバック用)", "種別"]
 for i, h in enumerate(headers):
     c = ws.cell(row=1, column=1 + i, value=h)
     c.fill = HEADER_FILL
@@ -375,14 +375,37 @@ for i, h in enumerate(headers):
     ws.column_dimensions[get_column_letter(1 + i)].width = 18
 
 ws.freeze_panes = "A2"
-ws.auto_filter.ref = "A1:L1"
+ws.auto_filter.ref = "A1:M1"
 
-for row in ws.iter_rows(min_row=1, max_row=2000, min_col=1, max_col=12):
+for row in ws.iter_rows(min_row=1, max_row=2000, min_col=1, max_col=13):
     for cell in row:
         cell.protection = openpyxl.styles.Protection(locked=True)
 ws.protection.sheet = True
 ws.protection.password = "shift-sys-2026"
 ws.protection.autoFilter = False
+
+# ------------------------------------------------------------------
+# 9b. 勤務変更履歴 / 有給履歴 / 残業履歴 (履歴を種別ごとに絞り込んだビュー)
+# ------------------------------------------------------------------
+history_headers = ["申請ID", "申請日時", "申請者", "対象者", "対象日", "変更前", "変更後", "変更理由",
+                    "ステータス", "承認者", "承認/処理日時", "元申請ID(ロールバック用)"]
+for view_name in ["勤務変更履歴", "有給履歴", "残業履歴"]:
+    ws = wb.create_sheet(view_name)
+    for i, h in enumerate(history_headers):
+        c = ws.cell(row=1, column=1 + i, value=h)
+        c.fill = HEADER_FILL
+        c.font = HEADER_FONT
+        ws.column_dimensions[get_column_letter(1 + i)].width = 18
+
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = "A1:L1"
+
+    for row in ws.iter_rows(min_row=1, max_row=2000, min_col=1, max_col=12):
+        for cell in row:
+            cell.protection = openpyxl.styles.Protection(locked=True)
+    ws.protection.sheet = True
+    ws.protection.password = "shift-sys-2026"
+    ws.protection.autoFilter = False
 
 # ------------------------------------------------------------------
 # 10. 職員マスタ (非表示)

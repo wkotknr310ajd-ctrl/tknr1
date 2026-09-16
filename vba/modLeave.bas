@@ -100,7 +100,7 @@ Public Sub SubmitLeaveRequest()
         currentShift = CStr(shiftWs.Cells(shiftRow, cols(idx)).Value)
         AppendHistoryRow reqId, Now, reqName, reqName, d, currentShift, leaveCode, _
                           "【有給申請】" & Format(startDate, "m/d") & "〜" & Format(endDate, "m/d") & " " & reason, _
-                          "申請中", "", Empty, ""
+                          "申請中", "", Empty, "", "有給"
         summary = summary & Format(d, "m/d") & "(" & currentShift & "→" & leaveCode & ") "
     Next d
 
@@ -111,5 +111,6 @@ Public Sub SubmitLeaveRequest()
     ws.Range("B7").Value = ""
 
     RefreshPendingList
+    RefreshAllCategoryHistory
     ThisWorkbook.Save
 End Sub

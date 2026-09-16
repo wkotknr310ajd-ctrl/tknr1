@@ -122,6 +122,7 @@ Public Sub RollbackChange()
     Dim shiftWsArr() As Worksheet
     Dim shiftRows() As Long, shiftCols() As Long, beforeShifts() As String
     Dim targetPersons() As String, targetDates() As Date, afterShifts() As String
+    Dim kinds() As String
     ReDim shiftWsArr(1 To n)
     ReDim shiftRows(1 To n)
     ReDim shiftCols(1 To n)
@@ -129,6 +130,7 @@ Public Sub RollbackChange()
     ReDim targetPersons(1 To n)
     ReDim targetDates(1 To n)
     ReDim afterShifts(1 To n)
+    ReDim kinds(1 To n)
 
     Dim staffName As String, targetDate As Date, beforeShift As String, afterShift As String
     Dim staffCell As Range
@@ -144,6 +146,7 @@ Public Sub RollbackChange()
         targetDate = CDate(hist.Cells(r, 5).Value)
         beforeShift = CStr(hist.Cells(r, 6).Value)
         afterShift = CStr(hist.Cells(r, 7).Value)
+        kinds(idx) = CStr(hist.Cells(r, 13).Value)
 
         Set staffCell = FindShiftStaffCell(staffName)
         If staffCell Is Nothing Then
@@ -196,7 +199,7 @@ Public Sub RollbackChange()
 
         AppendHistoryRow newId, Now, apprName, targetPersons(idx), targetDates(idx), _
                           afterShifts(idx), beforeShifts(idx), _
-                          "ロールバックによる取消(元申請: " & targetId & ")", "取消完了", apprName, Now, targetId
+                          "ロールバックによる取消(元申請: " & targetId & ")", "取消完了", apprName, Now, targetId, kinds(idx)
     Next rw
     ReprotectIfNeeded hist, histWasProtected
 
@@ -207,5 +210,6 @@ Public Sub RollbackChange()
 
     RefreshPendingList
     RefreshApprovedList
+    RefreshAllCategoryHistory
     ThisWorkbook.Save
 End Sub

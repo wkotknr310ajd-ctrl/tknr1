@@ -213,5 +213,6 @@ Public Sub ProcessApproval()
 
     RefreshPendingList
     RefreshApprovedList
+    RefreshAllCategoryHistory
     ThisWorkbook.Save
 End Sub

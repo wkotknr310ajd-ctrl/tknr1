@@ -111,7 +111,7 @@ Public Sub SubmitOvertimeRequest()
     AppendHistoryRow reqId, Now, reqName, reqName, targetDate, currentShift, newShift, _
                       "【超過勤務申請】" & Format(startTime, "hh:mm") & "〜" & Format(endTime, "hh:mm") & _
                       "(" & hoursLabel & ") " & reason, _
-                      "申請中", "", Empty, ""
+                      "申請中", "", Empty, "", "残業"
 
     MsgBox "超過勤務申請を受け付けました。(申請ID: " & reqId & ")" & vbCrLf & _
            Format(targetDate, "m/d") & ": " & currentShift & " → " & newShift & vbCrLf & _
@@ -121,5 +121,6 @@ Public Sub SubmitOvertimeRequest()
     ws.Range("B8").Value = ""
 
     RefreshPendingList
+    RefreshAllCategoryHistory
     ThisWorkbook.Save
 End Sub

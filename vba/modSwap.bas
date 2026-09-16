@@ -110,10 +110,10 @@ Public Sub SubmitSwapRequest()
 
     AppendHistoryRow reqId, Now, reqName, nameA, dateA, currentA, newShiftA, _
                       "【交換申請】相手: " & nameB & "(" & Format(dateB, "m/d") & ") " & reason, _
-                      "申請中", "", Empty, ""
+                      "申請中", "", Empty, "", "勤務交換"
     AppendHistoryRow reqId, Now, reqName, nameB, dateB, currentB, newShiftB, _
                       "【交換申請】相手: " & nameA & "(" & Format(dateA, "m/d") & ") " & reason, _
-                      "申請中", "", Empty, ""
+                      "申請中", "", Empty, "", "勤務交換"
 
     MsgBox "交換申請を受け付けました。(申請ID: " & reqId & ")" & vbCrLf & _
            nameA & "(" & Format(dateA, "m/d") & "): " & currentA & " → " & newShiftA & vbCrLf & _
@@ -126,5 +126,6 @@ Public Sub SubmitSwapRequest()
     ws.Range("B16").Value = ""
 
     RefreshPendingList
+    RefreshAllCategoryHistory
     ThisWorkbook.Save
 End Sub

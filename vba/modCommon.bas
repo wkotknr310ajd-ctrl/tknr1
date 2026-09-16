@@ -18,7 +18,8 @@ End Function
 Public Sub ApplyProtection()
     Dim ws As Worksheet
     For Each ws In ThisWorkbook.Worksheets
-        If IsDepartmentSheet(ws) Or ws.Name = "履歴" Then
+        If IsDepartmentSheet(ws) Or ws.Name = "履歴" Or ws.Name = "勤務変更履歴" Or _
+           ws.Name = "有給履歴" Or ws.Name = "残業履歴" Then
             On Error Resume Next
             ws.Unprotect Password:=SHEET_PROTECT_PASSWORD
             On Error GoTo 0
@@ -97,11 +98,14 @@ End Function
 
 ' 申請者(誰が申請したか)と対象者(誰の勤務が変わるか)は別項目として記録する。
 ' 単独の勤務変更申請では申請者=対象者だが、2名間の交換申請では異なる場合がある。
+' kindは種別(「勤務変更」「勤務交換」「有給」「残業」)。勤務変更履歴・有給履歴・
+' 残業履歴の各ビューシートへの振り分けに使う。ロールバック記録は、元の申請の
+' 種別をそのまま引き継ぐこと(modRollback.bas参照)。
 Public Sub AppendHistoryRow(ByVal reqId As String, ByVal appliedAt As Date, ByVal applicant As String, _
                              ByVal targetPerson As String, ByVal targetDate As Date, _
                              ByVal beforeShift As String, ByVal afterShift As String, _
                              ByVal reason As String, ByVal status As String, ByVal approver As String, _
-                             ByVal approvedAt As Variant, ByVal origReqId As String)
+                             ByVal approvedAt As Variant, ByVal origReqId As String, ByVal kind As String)
     Dim hist As Worksheet
     Set hist = ThisWorkbook.Sheets("履歴")
 
@@ -131,6 +135,7 @@ Public Sub AppendHistoryRow(ByVal reqId As String, ByVal appliedAt As Date, ByVa
         End If
     End If
     hist.Cells(r, 12).Value = origReqId
+    hist.Cells(r, 13).Value = kind
 
     ReprotectIfNeeded hist, wasProtected
 End Sub

@@ -80,7 +80,7 @@ Public Sub SubmitRequest()
     Dim reqId As String
     reqId = NextRequestId()
 
-    AppendHistoryRow reqId, Now, reqName, reqName, reqDate, currentShift, newShift, reason, "申請中", "", Empty, ""
+    AppendHistoryRow reqId, Now, reqName, reqName, reqDate, currentShift, newShift, reason, "申請中", "", Empty, "", "勤務変更"
 
     MsgBox "申請を受け付けました。(申請ID: " & reqId & ")" & vbCrLf & "上司の承認をお待ちください。", vbInformation
 
@@ -89,5 +89,6 @@ Public Sub SubmitRequest()
     ws.Range("B8").Value = ""
 
     RefreshPendingList
+    RefreshAllCategoryHistory
     ThisWorkbook.Save
 End Sub
