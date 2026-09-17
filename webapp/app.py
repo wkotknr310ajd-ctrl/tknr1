@@ -411,6 +411,20 @@ def admin_set_limits():
     return redirect(url_for("admin_summary"))
 
 
+@app.route("/admin/staff/leave_limit", methods=["POST"])
+def admin_set_staff_leave_limit():
+    conn = get_db()
+    name = request.form.get("name", "")
+    raw = request.form.get("limit_days", "").strip()
+    try:
+        limit_days = float(raw) if raw != "" else None
+        logic.set_staff_leave_limit(conn, name, limit_days)
+        flash(f"{normalize_name(name)} さんの有給上限を更新しました。", "success")
+    except (ValueError, logic.AppError) as e:
+        flash(str(e) if isinstance(e, logic.AppError) else "上限日数を正しく入力してください。", "error")
+    return redirect(url_for("admin_summary"))
+
+
 @app.route("/admin/staff", methods=["POST"])
 def admin_register_staff():
     conn = get_db()

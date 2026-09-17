@@ -87,6 +87,7 @@ DEFAULT_SETTINGS = {
 # init_db() でテーブル自体は作成済みの前提で、無ければ追加する。
 MIGRATIONS = [
     ("history", "overtime_minutes", "INTEGER NOT NULL DEFAULT 0"),
+    ("staff", "leave_annual_limit_days", "REAL"),
 ]
 
 

@@ -541,10 +541,12 @@ def fiscal_year_bounds(today: date, start_month: int):
 
 
 def leave_summary(conn, today=None):
-    """職員ごとの当年度の有給取得日数・残り日数を返す。承認済み(取消されていない)分のみ数える。"""
+    """職員ごとの当年度の有給取得日数・残り日数を返す。承認済み(取消されていない)分のみ数える。
+    職員ごとに個別の上限日数(staff.leave_annual_limit_days)が設定されていればそちらを使い、
+    未設定であれば全体の初期値(leave_annual_limit_days設定)を使う。"""
     today = today or date.today()
     start_month = int(db.get_setting(conn, "fiscal_year_start_month", "4"))
-    limit_days = float(db.get_setting(conn, "leave_annual_limit_days", "40"))
+    default_limit_days = float(db.get_setting(conn, "leave_annual_limit_days", "40"))
     fy_start, fy_end = fiscal_year_bounds(today, start_month)
 
     rows = conn.execute(
@@ -555,17 +557,37 @@ def leave_summary(conn, today=None):
     ).fetchall()
     taken_by_name = {r["target_person"]: r["days"] for r in rows}
 
-    staff = conn.execute("SELECT name FROM staff ORDER BY name").fetchall()
+    staff = conn.execute(
+        "SELECT name, leave_annual_limit_days FROM staff ORDER BY name"
+    ).fetchall()
     result = []
     for s in staff:
         taken = taken_by_name.get(s["name"], 0)
+        custom_limit = s["leave_annual_limit_days"]
+        limit_days = custom_limit if custom_limit is not None else default_limit_days
         result.append({
             "name": s["name"],
             "taken_days": taken,
+            "limit_days": limit_days,
+            "is_custom_limit": custom_limit is not None,
             "remaining_days": limit_days - taken,
             "over_limit": taken > limit_days,
         })
-    return result, fy_start, fy_end, limit_days
+    return result, fy_start, fy_end, default_limit_days
+
+
+def set_staff_leave_limit(conn, name: str, limit_days):
+    """職員ごとの有給年間上限日数を個別設定する。limit_daysにNoneを渡すと、
+    全体の初期値を使う設定(個別設定なし)に戻る。"""
+    name = normalize_name(name)
+    staff = find_staff(conn, name)
+    if not staff:
+        raise AppError("職員マスタに見つかりません。")
+    conn.execute(
+        "UPDATE staff SET leave_annual_limit_days = ? WHERE id = ?",
+        (limit_days, staff["id"]),
+    )
+    conn.commit()
 
 
 def overtime_summary(conn, today=None):

@@ -169,6 +169,20 @@ check("残業集計: 9月の残業時間は1.25時間", tanaka_ot["month_hours"]
 check("残業集計: 年度合計は1.25時間", tanaka_ot["year_hours"] == 1.25)
 conn.close()
 
+# --- 有給上限の職員ごとの個別設定 ---
+conn = db.get_conn()
+logic.set_staff_leave_limit(conn, "田中太郎", 10)
+rows, *_ = logic.leave_summary(conn, today=_date(2026, 9, 25))
+tanaka = next(r for r in rows if r["name"] == "田中太郎")
+suzuki = next(r for r in rows if r["name"] == "鈴木部長")
+check("有給上限の個別設定: 対象者だけ上限が変わる", tanaka["limit_days"] == 10 and tanaka["is_custom_limit"])
+check("有給上限の個別設定: 他の職員は初期値のまま", suzuki["limit_days"] == leave_limit and not suzuki["is_custom_limit"])
+logic.set_staff_leave_limit(conn, "田中太郎", None)
+rows, *_ = logic.leave_summary(conn, today=_date(2026, 9, 25))
+tanaka = next(r for r in rows if r["name"] == "田中太郎")
+check("有給上限の個別設定: 空にすると初期値に戻る", tanaka["limit_days"] == leave_limit and not tanaka["is_custom_limit"])
+conn.close()
+
 # --- 種別ごとの履歴確認 ---
 conn = db.get_conn()
 all_hist = logic.list_history(conn)

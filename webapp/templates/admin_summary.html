@@ -12,7 +12,7 @@
                value="{{ leave_fy_start.month }}" required>
       </div>
       <div>
-        <label for="leave_annual_limit_days">有給の年間上限(日)</label>
+        <label for="leave_annual_limit_days">有給の年間上限(日)・全職員の初期値</label>
         <input type="number" id="leave_annual_limit_days" name="leave_annual_limit_days" step="0.5" min="0"
                value="{{ leave_limit }}" required>
       </div>
@@ -33,19 +33,31 @@
 
 <div class="card">
   <h2>有給休暇の取得状況(職員ごと)</h2>
-  <p class="hint">{{ leave_fy_start.year }}年{{ leave_fy_start.month }}月〜{{ leave_fy_end.year }}年{{ leave_fy_end.month }}月の年度で集計しています。ロールバックで取り消された分は含みません。</p>
+  <p class="hint">
+    {{ leave_fy_start.year }}年{{ leave_fy_start.month }}月〜{{ leave_fy_end.year }}年{{ leave_fy_end.month }}月の年度で集計しています。
+    ロールバックで取り消された分は含みません。年間上限は職員ごとに個別設定でき、空欄にすると
+    全職員共通の初期値(現在 {{ leave_limit }}日)に戻ります。
+  </p>
   <div class="table-scroll">
   <table>
-    <tr><th>氏名</th><th>取得日数</th><th>年間上限</th><th>残り日数</th></tr>
+    <tr><th>氏名</th><th>取得日数</th><th>年間上限</th><th>残り日数</th><th>上限の個別設定</th></tr>
     {% for r in leave_rows %}
     <tr class="{{ 'changed-cell' if r['over_limit'] }}">
       <td>{{ r['name'] }}</td>
       <td>{{ r['taken_days'] }}日</td>
-      <td>{{ leave_limit }}日</td>
+      <td>{{ r['limit_days'] }}日{{ '(個別)' if r['is_custom_limit'] }}</td>
       <td>{{ r['remaining_days'] }}日</td>
+      <td>
+        <form method="post" action="{{ url_for('admin_set_staff_leave_limit') }}" style="display:flex;gap:4px;">
+          <input type="hidden" name="name" value="{{ r['name'] }}">
+          <input type="number" name="limit_days" step="0.5" min="0" style="width:auto;"
+                 placeholder="初期値を使う" value="{{ r['limit_days'] if r['is_custom_limit'] else '' }}">
+          <button type="submit">設定する</button>
+        </form>
+      </td>
     </tr>
     {% else %}
-    <tr><td colspan="4"><em>登録済みの職員がいません。</em></td></tr>
+    <tr><td colspan="5"><em>登録済みの職員がいません。</em></td></tr>
     {% endfor %}
   </table>
   </div>
