@@ -15,7 +15,13 @@ db.init_db()
 import app as appmod  # noqa: E402
 import logic  # noqa: E402
 
+conn = db.get_conn()
+logic.ensure_default_admin_password(conn)
+conn.close()
+
 client = appmod.app.test_client()
+with client.session_transaction() as sess:
+    sess["admin_authed"] = True
 
 
 def check(label, cond):
@@ -188,6 +194,27 @@ check("月初め切り替え後、シフト表はリセットされる", shift_r
 check("月初め切り替え後も職員マスタは残る", staff_after_reset is not None)
 hist_after_reset = logic.list_history(conn)
 check("月初め切り替え後も履歴は残る", len(hist_after_reset) > 0)
+conn.close()
+
+# --- 管理画面のパスワード保護 ---
+unauth_client = appmod.app.test_client()
+r = unauth_client.get("/admin", follow_redirects=False)
+check("未ログインでは/adminにアクセスできない(ログイン画面へリダイレクト)", r.status_code in (301, 302))
+
+r = unauth_client.post("/admin/login", data={"password": "wrong-password"}, follow_redirects=True)
+check("誤った管理パスワードではログインできない", "パスワードが正しくありません" in r.get_data(as_text=True))
+
+r = unauth_client.post("/admin/login", data={"password": logic.DEFAULT_ADMIN_PASSWORD}, follow_redirects=True)
+check("初期パスワードでログインできる", r.status_code == 200 and "職員の登録" in r.get_data(as_text=True))
+
+conn = db.get_conn()
+try:
+    logic.change_admin_password(conn, "wrong-password", "newpass123")
+    check("誤った現在パスワードでは変更できない", False)
+except logic.AppError:
+    check("誤った現在パスワードでは変更できない", True)
+logic.change_admin_password(conn, logic.DEFAULT_ADMIN_PASSWORD, "newpass123")
+check("正しい現在パスワードで管理パスワードを変更できる", logic.verify_admin_password(conn, "newpass123"))
 conn.close()
 
 # --- HTTPルートの疎通確認 ---

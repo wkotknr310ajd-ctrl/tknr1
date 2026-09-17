@@ -15,7 +15,13 @@ db.init_db()
 import app as appmod  # noqa: E402
 import logic  # noqa: E402
 
+conn = db.get_conn()
+logic.ensure_default_admin_password(conn)
+conn.close()
+
 client = appmod.app.test_client()
+with client.session_transaction() as sess:
+    sess["admin_authed"] = True
 
 
 def check(label, cond, extra=""):

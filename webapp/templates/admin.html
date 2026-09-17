@@ -85,4 +85,18 @@
     {% endfor %}
   </ul>
 </div>
+
+<div class="card">
+  <h2>管理者パスワードの変更</h2>
+  <form method="post" action="{{ url_for('admin_change_password') }}">
+    <label for="current_password">現在の管理者パスワード</label>
+    <input type="password" id="current_password" name="current_password" required>
+    <label for="new_password">新しい管理者パスワード</label>
+    <input type="password" id="new_password" name="new_password" required>
+    <button type="submit">変更する</button>
+  </form>
+  <form method="post" action="{{ url_for('admin_logout') }}" style="margin-top:0.9rem;">
+    <button type="submit" class="btn-secondary">管理画面からログアウト</button>
+  </form>
+</div>
 {% endblock %}

@@ -84,6 +84,32 @@ def delete_staff(conn, name: str):
     conn.commit()
 
 
+# ------------------------------------------------------------------
+# 管理画面のパスワード
+# ------------------------------------------------------------------
+DEFAULT_ADMIN_PASSWORD = "admin1234"
+
+
+def ensure_default_admin_password(conn):
+    """管理パスワードが未設定の場合、初期パスワードを設定する。"""
+    if not db.get_setting(conn, "admin_password_hash"):
+        db.set_setting(conn, "admin_password_hash", hash_password(DEFAULT_ADMIN_PASSWORD))
+        conn.commit()
+
+
+def verify_admin_password(conn, password: str) -> bool:
+    return verify_password(password, db.get_setting(conn, "admin_password_hash", ""))
+
+
+def change_admin_password(conn, current_password: str, new_password: str):
+    if not verify_admin_password(conn, current_password):
+        raise AppError("現在の管理パスワードが正しくありません。")
+    if not new_password:
+        raise AppError("新しいパスワードを入力してください。")
+    db.set_setting(conn, "admin_password_hash", hash_password(new_password))
+    conn.commit()
+
+
 def change_password(conn, name: str, old_password: str, new_password: str):
     staff = find_staff(conn, name)
     if not staff:

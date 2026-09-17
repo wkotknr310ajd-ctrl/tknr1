@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime
 from pathlib import Path
 
-from flask import Flask, flash, g, jsonify, redirect, render_template, request, url_for
+from flask import Flask, flash, g, jsonify, redirect, render_template, request, session, url_for
 
 import db
 import excel_import
@@ -28,6 +28,17 @@ def close_db(exception=None):
     conn = g.pop("db", None)
     if conn is not None:
         conn.close()
+
+
+ADMIN_LOGIN_EXEMPT_ENDPOINTS = {"admin_login", "static"}
+
+
+@app.before_request
+def require_admin_login():
+    if request.path.startswith("/admin") and request.endpoint not in ADMIN_LOGIN_EXEMPT_ENDPOINTS:
+        if not session.get("admin_authed"):
+            return redirect(url_for("admin_login", next=request.path))
+    return None
 
 
 @app.template_filter("fmtdate")
@@ -311,6 +322,39 @@ def shift_table(department_id):
 
 
 # ------------------------------------------------------------------
+# 管理(パスワードによる保護)
+# ------------------------------------------------------------------
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    conn = get_db()
+    next_url = request.values.get("next") or url_for("admin")
+    if request.method == "POST":
+        if logic.verify_admin_password(conn, request.form.get("password", "")):
+            session["admin_authed"] = True
+            return redirect(request.form.get("next") or url_for("admin"))
+        flash("パスワードが正しくありません。", "error")
+    return render_template("admin_login.html", next_url=next_url)
+
+
+@app.route("/admin/logout", methods=["POST"])
+def admin_logout():
+    session.pop("admin_authed", None)
+    flash("管理画面からログアウトしました。", "success")
+    return redirect(url_for("index"))
+
+
+@app.route("/admin/change_password", methods=["POST"])
+def admin_change_password():
+    conn = get_db()
+    try:
+        logic.change_admin_password(conn, request.form["current_password"], request.form["new_password"])
+        flash("管理パスワードを変更しました。", "success")
+    except logic.AppError as e:
+        flash(str(e), "error")
+    return redirect(url_for("admin"))
+
+
+# ------------------------------------------------------------------
 # 管理
 # ------------------------------------------------------------------
 @app.route("/admin", methods=["GET"])
@@ -578,4 +622,6 @@ def list_staff_names(conn, approvers_only=False):
 
 if __name__ == "__main__":
     db.init_db()
+    with app.app_context():
+        logic.ensure_default_admin_password(get_db())
     app.run(host="0.0.0.0", port=5000, debug=False)

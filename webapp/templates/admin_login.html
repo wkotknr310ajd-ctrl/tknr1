@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}管理者ログイン — 勤務変更申請・承認システム{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>管理者ログイン</h2>
+  <p class="hint">「管理」ページを開くには、管理者パスワードの入力が必要です。</p>
+  <form method="post" action="{{ url_for('admin_login') }}">
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <label for="password">管理者パスワード</label>
+    <input type="password" id="password" name="password" required autofocus>
+    <button type="submit">ログイン</button>
+  </form>
+</div>
+{% endblock %}
