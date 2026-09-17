@@ -147,6 +147,19 @@ legend { font-weight: 700; padding: 0 0.4rem; }
 }
 .print-only { display: none; }
 
+/* シフト表: 職員氏名の列を横スクロールしても固定表示し、
+   行にカーソルを合わせるとその行全体が分かるようにハイライトする */
+#shift-table th:first-child,
+#shift-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #fff;
+}
+#shift-table th:first-child { background: #eef2f7; z-index: 3; }
+#shift-table tr:hover td:not(.changed-cell) { background: #eaf1ff; }
+#shift-table tr:hover td:first-child:not(.changed-cell) { background: #d7e6ff; }
+
 @media print {
   .no-print { display: none !important; }
   .print-only { display: block; }
