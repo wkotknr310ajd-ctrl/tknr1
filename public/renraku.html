@@ -252,18 +252,92 @@
     #app-root { flex-direction: column; }
     .thread-pane { width: 100%; min-width: 0; max-height: 45vh; border-right: none; border-bottom: 1px solid var(--border); }
   }
+  .password-gate {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .password-card {
+    width: 100%;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.5rem;
+  }
+  .password-card h2 {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+  .password-card label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    font-size: 0.9rem;
+  }
+  .password-card input[type="password"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 0.55rem 0.7rem;
+  }
+  .password-error {
+    color: var(--danger);
+    font-size: 0.85rem;
+    margin: 0;
+  }
+  .password-note {
+    font-size: 0.8rem;
+    margin: 0;
+    color: var(--text-muted);
+  }
+  .password-actions {
+    display: flex;
+    gap: 0.6rem;
+  }
+  .password-actions button {
+    flex: 1;
+  }
+  .lock-bar {
+    position: fixed;
+    top: 0.6rem;
+    right: 0.6rem;
+    display: flex;
+    gap: 0.5rem;
+    z-index: 10;
+  }
+  .lock-bar button {
+    font-size: 0.78rem;
+    padding: 0.35rem 0.6rem;
+  }
 </style>
 </head>
 <body>
 <div id="app-root"></div>
+<div id="lock-bar"></div>
 <script>
 (function () {
   'use strict';
   const root = document.getElementById('app-root');
+  const lockBarEl = document.getElementById('lock-bar');
   const PRESET_NAMES = ['田巻', '羽田', '咲香', '智恵'];
   const THREADS_KEY = 'renraku-note-threads-v1';
   const CURRENT_KEY = 'renraku-note-current-thread-v1';
   const NAME_KEY = 'renraku-note-whoami-v1';
+  const PASSWORD_HASH_KEY = 'renraku-note-password-hash-v1';
+  const MIN_PW_LENGTH = 4;
+
+  async function sha256Hex(text) {
+    const data = new TextEncoder().encode(text);
+    const digest = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(digest)).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+  }
 
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -537,7 +611,113 @@
     }
   }
 
-  render();
+  // ---------------- password gate ----------------
+
+  function enterApp() {
+    lockBarEl.innerHTML =
+      '<button type="button" id="lock-change-btn">パスワードを変更</button>' +
+      '<button type="button" id="lock-lock-btn">🔒 ロックする</button>';
+    document.getElementById('lock-change-btn').addEventListener('click', renderChangePassword);
+    document.getElementById('lock-lock-btn').addEventListener('click', renderUnlock);
+    render();
+  }
+
+  function renderCreatePassword() {
+    lockBarEl.innerHTML = '';
+    root.innerHTML =
+      '<div class="password-gate"><form class="password-card" id="pw-form">' +
+        '<h2>🔒 パスワードを設定してください</h2>' +
+        '<p class="password-note">このパソコンで初めて使うときに、パスワードを1つ決めてください。以降、開くたびにこのパスワードの入力が必要になります(4人で共有してお使いください)。</p>' +
+        '<label>パスワード(' + MIN_PW_LENGTH + '文字以上)<input type="password" id="pw-new" autofocus /></label>' +
+        '<label>パスワード(確認)<input type="password" id="pw-confirm" /></label>' +
+        '<div id="pw-error"></div>' +
+        '<button type="submit" class="primary">設定する</button>' +
+      '</form></div>';
+    document.getElementById('pw-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const pw = document.getElementById('pw-new').value;
+      const confirmPw = document.getElementById('pw-confirm').value;
+      const errEl = document.getElementById('pw-error');
+      if (pw.length < MIN_PW_LENGTH) {
+        errEl.innerHTML = '<p class="password-error">パスワードは' + MIN_PW_LENGTH + '文字以上で設定してください。</p>';
+        return;
+      }
+      if (pw !== confirmPw) {
+        errEl.innerHTML = '<p class="password-error">2つのパスワードが一致しません。</p>';
+        return;
+      }
+      const hash = await sha256Hex(pw);
+      localStorage.setItem(PASSWORD_HASH_KEY, hash);
+      enterApp();
+    });
+  }
+
+  function renderUnlock() {
+    lockBarEl.innerHTML = '';
+    root.innerHTML =
+      '<div class="password-gate"><form class="password-card" id="pw-form">' +
+        '<h2>🔒 パスワードを入力してください</h2>' +
+        '<label>パスワード<input type="password" id="pw-input" autofocus /></label>' +
+        '<div id="pw-error"></div>' +
+        '<button type="submit" class="primary">ロック解除</button>' +
+        '<p class="password-note">パスワードを忘れた場合は、ブラウザの設定でこのファイルのサイトデータを削除してください(スレッドの内容もすべて消えます)。</p>' +
+      '</form></div>';
+    document.getElementById('pw-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const pw = document.getElementById('pw-input').value;
+      const hash = await sha256Hex(pw);
+      if (hash === localStorage.getItem(PASSWORD_HASH_KEY)) {
+        enterApp();
+      } else {
+        document.getElementById('pw-error').innerHTML = '<p class="password-error">パスワードが違います。</p>';
+      }
+    });
+  }
+
+  function renderChangePassword() {
+    root.innerHTML =
+      '<div class="password-gate"><form class="password-card" id="pw-form">' +
+        '<h2>パスワードを変更</h2>' +
+        '<label>現在のパスワード<input type="password" id="pw-current" autofocus /></label>' +
+        '<label>新しいパスワード<input type="password" id="pw-new" /></label>' +
+        '<label>新しいパスワード(確認)<input type="password" id="pw-confirm" /></label>' +
+        '<div id="pw-error"></div>' +
+        '<div class="password-actions">' +
+          '<button type="submit" class="primary">変更する</button>' +
+          '<button type="button" id="pw-cancel">キャンセル</button>' +
+        '</div>' +
+      '</form></div>';
+    document.getElementById('pw-cancel').addEventListener('click', enterApp);
+    document.getElementById('pw-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const current = document.getElementById('pw-current').value;
+      const pw = document.getElementById('pw-new').value;
+      const confirmPw = document.getElementById('pw-confirm').value;
+      const errEl = document.getElementById('pw-error');
+      const currentHash = await sha256Hex(current);
+      if (currentHash !== localStorage.getItem(PASSWORD_HASH_KEY)) {
+        errEl.innerHTML = '<p class="password-error">現在のパスワードが違います。</p>';
+        return;
+      }
+      if (pw.length < MIN_PW_LENGTH) {
+        errEl.innerHTML = '<p class="password-error">新しいパスワードは' + MIN_PW_LENGTH + '文字以上で設定してください。</p>';
+        return;
+      }
+      if (pw !== confirmPw) {
+        errEl.innerHTML = '<p class="password-error">2つのパスワードが一致しません。</p>';
+        return;
+      }
+      const newHash = await sha256Hex(pw);
+      localStorage.setItem(PASSWORD_HASH_KEY, newHash);
+      enterApp();
+    });
+  }
+
+  if (localStorage.getItem(PASSWORD_HASH_KEY)) {
+    renderUnlock();
+  } else {
+    renderCreatePassword();
+  }
 })();
 </script>
 </body>
