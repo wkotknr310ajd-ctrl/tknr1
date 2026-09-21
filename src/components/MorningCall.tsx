@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { deleteAudio, loadAudio, saveAudio } from "../audioStore";
 
+interface DateRule {
+  id: string;
+  startDate: string; // "YYYY-MM-DD"
+  endDate: string; // "YYYY-MM-DD"
+  patternId: string;
+  customMessage: string;
+}
+
 interface MorningSettings {
   enabled: boolean;
   time: string; // "HH:MM" (この端末のローカル時計基準)
@@ -8,6 +16,7 @@ interface MorningSettings {
   voiceSource: "tts" | "upload";
   patternId: string;
   customMessage: string;
+  dateRules: DateRule[];
   voiceURI: string;
   rate: number;
   pitch: number;
@@ -34,6 +43,7 @@ const DEFAULT_SETTINGS: MorningSettings = {
   voiceSource: "tts",
   patternId: "notice",
   customMessage: "おはようございます。起きる時間です。",
+  dateRules: [],
   voiceURI: "",
   rate: 1,
   pitch: 1
@@ -54,12 +64,26 @@ function localDateStr(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function messageFor(settings: MorningSettings) {
-  const template =
-    settings.patternId === "custom"
-      ? settings.customMessage
-      : PATTERNS.find((p) => p.id === settings.patternId)?.template ?? "";
-  return template.split("{time}").join(settings.time);
+function textForPattern(patternId: string, customMessage: string, time: string) {
+  const template = patternId === "custom" ? customMessage : PATTERNS.find((p) => p.id === patternId)?.template ?? "";
+  return template.split("{time}").join(time);
+}
+
+function findActiveDateRule(rules: DateRule[], date: Date): DateRule | null {
+  const dateStr = localDateStr(date);
+  return rules.find((r) => r.startDate && r.endDate && r.startDate <= dateStr && dateStr <= r.endDate) ?? null;
+}
+
+function messageFor(settings: MorningSettings, date: Date = new Date()) {
+  const activeRule = findActiveDateRule(settings.dateRules, date);
+  if (activeRule) {
+    return textForPattern(activeRule.patternId, activeRule.customMessage, settings.time);
+  }
+  return textForPattern(settings.patternId, settings.customMessage, settings.time);
+}
+
+function newRuleId() {
+  return Math.random().toString(36).slice(2, 9);
 }
 
 function nextFireLabel(settings: MorningSettings): string | null {
@@ -226,6 +250,27 @@ export default function MorningCall() {
 
   const setAllDays = (days: number[]) => setSettings((prev) => ({ ...prev, days }));
 
+  const addDateRule = () => {
+    setSettings((prev) => ({
+      ...prev,
+      dateRules: [
+        ...prev.dateRules,
+        { id: newRuleId(), startDate: "", endDate: "", patternId: "standard", customMessage: "" }
+      ]
+    }));
+  };
+
+  const updateDateRule = (id: string, patch: Partial<DateRule>) => {
+    setSettings((prev) => ({
+      ...prev,
+      dateRules: prev.dateRules.map((r) => (r.id === id ? { ...r, ...patch } : r))
+    }));
+  };
+
+  const removeDateRule = (id: string) => {
+    setSettings((prev) => ({ ...prev, dateRules: prev.dateRules.filter((r) => r.id !== id) }));
+  };
+
   const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -251,9 +296,10 @@ export default function MorningCall() {
     setAudioInfo(null);
   };
 
-  const preview = useMemo(() => messageFor(settings), [settings]);
+  const preview = useMemo(() => messageFor(settings), [settings, nowLabel]);
   const nextFire = useMemo(() => nextFireLabel(settings), [settings, nowLabel]);
   const firedToday = useMemo(() => lastFired !== "" && lastFired === localDateStr(new Date()), [lastFired, nowLabel]);
+  const todayActiveRule = useMemo(() => findActiveDateRule(settings.dateRules, new Date()), [settings.dateRules, nowLabel]);
 
   const japaneseVoices = voices.filter((v) => v.lang.startsWith("ja"));
   const voiceOptions = japaneseVoices.length > 0 ? japaneseVoices : voices;
@@ -389,6 +435,57 @@ export default function MorningCall() {
                   placeholder="読み上げたいメッセージを入力してください（{time} と書くとその位置に時刻が入ります）"
                 />
               )}
+            </div>
+
+            <div className="morning-row date-rules-section">
+              <span className="muted">期間ごとのメッセージ（任意）</span>
+              <p className="muted note-text date-rules-hint">
+                指定した期間中は、上の「メッセージパターン」の代わりにここで設定したメッセージが使われます。
+                期間外の日は上のパターンのままです。1日だけ変えたい場合は開始日と終了日に同じ日を指定してください。
+                {todayActiveRule && "（本日はいずれかの期間設定が適用されています）"}
+              </p>
+              {settings.dateRules.map((rule) => (
+                <div className="date-rule-row" key={rule.id}>
+                  <div className="date-rule-dates">
+                    <input
+                      type="date"
+                      value={rule.startDate}
+                      onChange={(e) => updateDateRule(rule.id, { startDate: e.target.value })}
+                    />
+                    <span className="muted">〜</span>
+                    <input
+                      type="date"
+                      value={rule.endDate}
+                      onChange={(e) => updateDateRule(rule.id, { endDate: e.target.value })}
+                    />
+                    <button type="button" className="phase-remove" onClick={() => removeDateRule(rule.id)} aria-label="削除">
+                      ✕
+                    </button>
+                  </div>
+                  <select value={rule.patternId} onChange={(e) => updateDateRule(rule.id, { patternId: e.target.value })}>
+                    {PATTERNS.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                  {rule.patternId === "custom" && (
+                    <textarea
+                      className="custom-message-input"
+                      rows={2}
+                      value={rule.customMessage}
+                      onChange={(e) => updateDateRule(rule.id, { customMessage: e.target.value })}
+                      placeholder="この期間中に読み上げるメッセージ（{time} で時刻を挿入できます）"
+                    />
+                  )}
+                  <span className="muted date-rule-preview">
+                    「{textForPattern(rule.patternId, rule.customMessage, settings.time)}」
+                  </span>
+                </div>
+              ))}
+              <button type="button" onClick={addDateRule}>
+                + 期間を追加
+              </button>
             </div>
 
             {voiceOptions.length > 0 && (
