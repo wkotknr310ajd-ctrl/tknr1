@@ -86,6 +86,13 @@ function newRuleId() {
   return Math.random().toString(36).slice(2, 9);
 }
 
+function addDaysToDateStr(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  date.setDate(date.getDate() + days);
+  return localDateStr(date);
+}
+
 function nextFireLabel(settings: MorningSettings): string | null {
   if (!settings.enabled || settings.days.length === 0) return null;
   const [h, m] = settings.time.split(":").map(Number);
@@ -110,6 +117,8 @@ export default function MorningCall() {
   const [audioInfo, setAudioInfo] = useState<{ name: string; url: string } | null>(null);
   const [audioError, setAudioError] = useState("");
   const [lastFired, setLastFired] = useState<string>(localStorage.getItem(LAST_FIRED_KEY) ?? "");
+  const [bulkStartDate, setBulkStartDate] = useState("");
+  const [bulkText, setBulkText] = useState("");
   const audioCtxRef = useRef<AudioContext | null>(null);
   const lastFiredRef = useRef<string>(lastFired);
   const audioInfoRef = useRef<{ name: string; url: string } | null>(null);
@@ -269,6 +278,25 @@ export default function MorningCall() {
 
   const removeDateRule = (id: string) => {
     setSettings((prev) => ({ ...prev, dateRules: prev.dateRules.filter((r) => r.id !== id) }));
+  };
+
+  const bulkLines = useMemo(
+    () =>
+      bulkText
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0),
+    [bulkText]
+  );
+
+  const applyBulkMessages = () => {
+    if (!bulkStartDate || bulkLines.length === 0) return;
+    const newRules: DateRule[] = bulkLines.map((line, i) => {
+      const dateStr = addDaysToDateStr(bulkStartDate, i);
+      return { id: newRuleId(), startDate: dateStr, endDate: dateStr, patternId: "custom", customMessage: line };
+    });
+    setSettings((prev) => ({ ...prev, dateRules: [...prev.dateRules, ...newRules] }));
+    setBulkText("");
   };
 
   const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -486,6 +514,37 @@ export default function MorningCall() {
               <button type="button" onClick={addDateRule}>
                 + 期間を追加
               </button>
+
+              <div className="date-rules-bulk">
+                <span className="muted">まとめて入力（毎日ちがうメッセージを一括登録）</span>
+                <p className="muted note-text date-rules-hint">
+                  開始日を選び、1行に1日分のメッセージを入力してください。1行目が開始日、2行目がその翌日…と、
+                  入力した行数ぶん自動的に1日1件ずつ登録されます（例: 30行入力すれば30日分をまとめて登録できます）。
+                </p>
+                <label htmlFor="bulk-start-date">開始日</label>
+                <input
+                  id="bulk-start-date"
+                  type="date"
+                  value={bulkStartDate}
+                  onChange={(e) => setBulkStartDate(e.target.value)}
+                />
+                <textarea
+                  className="custom-message-input"
+                  rows={6}
+                  value={bulkText}
+                  onChange={(e) => setBulkText(e.target.value)}
+                  placeholder={"1日目のメッセージ\n2日目のメッセージ\n3日目のメッセージ\n..."}
+                />
+                {bulkLines.length > 0 && bulkStartDate && (
+                  <span className="muted">
+                    {bulkStartDate} 〜 {addDaysToDateStr(bulkStartDate, bulkLines.length - 1)} の {bulkLines.length}
+                    日分を登録します
+                  </span>
+                )}
+                <button type="button" onClick={applyBulkMessages} disabled={!bulkStartDate || bulkLines.length === 0}>
+                  この内容で一括登録
+                </button>
+              </div>
             </div>
 
             {voiceOptions.length > 0 && (

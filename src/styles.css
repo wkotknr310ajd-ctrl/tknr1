@@ -341,3 +341,21 @@ button.danger {
 .date-rule-preview {
   font-size: 0.85rem;
 }
+
+.date-rules-bulk {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+}
+
+.date-rules-bulk input[type="date"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+  align-self: flex-start;
+}
