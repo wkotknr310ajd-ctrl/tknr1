@@ -112,15 +112,6 @@
   }
   .thread-item:hover .thread-del { opacity: 1; }
   .thread-item .thread-del:hover { color: var(--danger); }
-  .thread-badge {
-    background: var(--primary);
-    color: white;
-    font-size: 0.72rem;
-    font-weight: 600;
-    border-radius: 999px;
-    padding: 0.1rem 0.45rem;
-    flex-shrink: 0;
-  }
   .new-thread-box {
     padding: 0.6rem;
     border-top: 1px solid var(--border);
@@ -408,7 +399,7 @@
 
   function createThread(name) {
     if (!requireWhoAmI()) return;
-    const t = { id: uid(), name: name, createdBy: whoAmI, createdAt: Date.now(), messages: [], readBy: {} };
+    const t = { id: uid(), name: name, createdBy: whoAmI, createdAt: Date.now(), messages: [] };
     threads.push(t);
     saveThreads(threads);
     currentId = t.id;
@@ -434,29 +425,9 @@
     render();
   }
 
-  function unreadCountFor(t, person) {
-    if (!person || !t) return 0;
-    const lastRead = (t.readBy && t.readBy[person]) || 0;
-    return t.messages.filter(function (m) { return m.from !== person && m.createdAt > lastRead; }).length;
-  }
-
-  function markThreadRead(t, person) {
-    if (!t || !person) return;
-    if (!t.readBy) t.readBy = {};
-    t.readBy[person] = Date.now();
-    saveThreads(threads);
-  }
-
-  function totalUnreadFor(person) {
-    if (!person) return 0;
-    return threads.reduce(function (sum, t) { return sum + unreadCountFor(t, person); }, 0);
-  }
-
   function selectThread(id) {
     currentId = id;
     saveCurrentId(currentId);
-    const t = currentThread();
-    if (t) markThreadRead(t, whoAmI);
     render();
   }
 
@@ -510,15 +481,12 @@
       .sort(function (a, b) { return b.createdAt - a.createdAt; })
       .map(function (t) {
         const active = t.id === currentId ? ' active' : '';
-        const unread = unreadCountFor(t, whoAmI);
-        const badge = unread > 0 ? '<span class="thread-badge">' + unread + '</span>' : '';
         return (
           '<div class="thread-item' + active + '" data-thread-id="' + t.id + '">' +
             '<div class="thread-item-main">' +
               '<span class="thread-name">' + esc(t.name) + '</span>' +
               '<span class="thread-creator">' + esc(t.createdBy) + 'さんが作成</span>' +
             '</div>' +
-            badge +
             '<button class="thread-del" data-del-thread="' + t.id + '" title="削除(作成者のみ)">✕</button>' +
           '</div>'
         );
@@ -548,8 +516,6 @@
 
   function render() {
     const t = currentThread();
-    const totalUnread = totalUnreadFor(whoAmI);
-    document.title = totalUnread > 0 ? '(' + totalUnread + ') 連絡ノート' : '連絡ノート';
 
     root.innerHTML =
       '<div class="thread-pane">' +
@@ -585,9 +551,6 @@
 
     const whoamiSelect = document.getElementById('whoami-select');
     const whoamiCustom = document.getElementById('whoami-custom');
-    function onWhoAmIChanged() {
-      render();
-    }
     whoamiSelect.addEventListener('change', function () {
       if (whoamiSelect.value === '__custom__') {
         whoamiCustom.style.display = 'block';
@@ -596,13 +559,12 @@
         whoamiCustom.style.display = 'none';
         whoAmI = whoamiSelect.value;
         saveWhoAmI(whoAmI);
-        onWhoAmIChanged();
+        render();
       }
     });
     whoamiCustom.addEventListener('change', function () {
       whoAmI = whoamiCustom.value.trim();
       saveWhoAmI(whoAmI);
-      onWhoAmIChanged();
     });
     whoamiCustom.addEventListener('blur', function () {
       whoAmI = whoamiCustom.value.trim();
