@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>印刷枚数のお願い</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1f2328;
+    --sub: #57606a;
+    --red: #d1242f;
+    --red-soft: #fff1f0;
+    --blue: #0a5cc2;
+    --blue-soft: #eef5ff;
+    --gray: #b8c0c8;
+    --line: #d8dee4;
+    --paper: #ffffff;
+  }
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #e9ecef; color: var(--ink); }
+  body {
+    font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", "Meiryo", "WenQuanYi Zen Hei", sans-serif;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .page {
+    width: 210mm; height: 297mm; margin: 0 auto; background: var(--paper);
+    padding: 9mm 14mm 7mm; display: flex; flex-direction: column; gap: 3.5mm;
+    overflow: hidden;
+  }
+  @media screen and (max-width: 760px) {
+    .page { width: 100%; height: auto; padding: 16px; }
+  }
+  @media print { html, body { background: #fff; } }
+
+  header { border-bottom: 4px solid var(--red); padding-bottom: 3mm; }
+  .tag {
+    display: inline-block; background: var(--red); color: #fff; font-weight: 700;
+    font-size: 11pt; padding: 1mm 4mm; border-radius: 2mm; letter-spacing: .1em;
+  }
+  h1 { font-size: 26pt; font-weight: 900; margin: 1.5mm 0 1mm; line-height: 1.2; }
+  h1 em { font-style: normal; color: var(--red); }
+  .lead { font-size: 12pt; margin: 0; color: var(--sub); line-height: 1.6; }
+
+  /* 枚数比較 */
+  .compare { display: grid; grid-template-columns: 1fr 1.25fr; gap: 6mm; align-items: center; }
+  .bars { display: flex; flex-direction: column; gap: 3mm; }
+  .bar-row { display: grid; grid-template-columns: 20mm 1fr; align-items: center; gap: 3mm; font-size: 11pt; }
+  .bar-row .label { font-weight: 700; text-align: right; }
+  .bar { height: 10mm; border-radius: 2mm; display: flex; align-items: center; justify-content: flex-end;
+         padding-right: 3mm; font-weight: 900; font-size: 14pt; color: #fff; }
+  .bar.normal { background: var(--gray); width: 49%; color: var(--ink); }
+  .bar.sep { background: var(--red); width: 100%; }
+  .big {
+    background: var(--red-soft); border: 2px solid var(--red); border-radius: 4mm;
+    padding: 3mm; text-align: center;
+  }
+  .big .num { font-size: 32pt; font-weight: 900; color: var(--red); line-height: 1; }
+  .big .num small { font-size: 18pt; }
+  .big p { margin: 2mm 0 0; font-size: 11pt; line-height: 1.5; }
+
+  .note {
+    background: #f6f8fa; border-left: 5px solid var(--sub); padding: 3mm 4mm;
+    font-size: 10.5pt; line-height: 1.6; margin: 0;
+  }
+
+  h2 {
+    font-size: 15pt; font-weight: 900; margin: 0; padding: 2mm 4mm; color: #fff;
+    background: var(--blue); border-radius: 2mm;
+  }
+  .steps { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+  .step { border: 2px solid var(--blue); border-radius: 3mm; overflow: hidden; display: flex; flex-direction: column; }
+  .step .head { background: var(--blue-soft); padding: 2mm 3mm; font-size: 11pt; line-height: 1.5; }
+  .step .head b { color: var(--blue); font-size: 13pt; }
+  .step img { width: 100%; display: block; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .step .check { padding: 2mm 3mm; font-size: 11pt; line-height: 1.5; }
+  .step .check strong { color: var(--red); }
+
+  .checklist {
+    border: 3px solid var(--red); border-radius: 3mm; padding: 3mm 5mm;
+  }
+  .checklist h3 { margin: 0 0 1mm; font-size: 14pt; color: var(--red); }
+  .checklist ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 4mm; }
+  .checklist li { font-size: 10.5pt; line-height: 1.8; white-space: nowrap; }
+  .checklist li::before { content: "☐ "; font-size: 13pt; }
+
+  footer { margin-top: auto; text-align: right; font-size: 10pt; color: var(--sub); }
+
+  @media screen and (max-width: 760px) {
+    h1 { font-size: 24pt; }
+    .compare, .steps { grid-template-columns: 1fr; }
+    .checklist ul { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main class="page">
+  <header>
+    <span class="tag">お願い</span>
+    <h1>9月の印刷枚数が<br><em>いつもの約2倍</em>になっていました</h1>
+    <p class="lead">レーザープリンター（iR-ADV C3935）の印刷枚数についてのお知らせです。</p>
+  </header>
+
+  <section class="compare">
+    <div class="bars" aria-label="月間印刷枚数の比較">
+      <div class="bar-row"><span class="label">いつもの月</span><div class="bar normal">約240枚</div></div>
+      <div class="bar-row"><span class="label">9月</span><div class="bar sep">490枚</div></div>
+    </div>
+    <div class="big">
+      <div class="num">+250<small>枚</small></div>
+      <p>毎月およそ240枚のところ、<br>9月は<strong>490枚</strong>でした。</p>
+    </div>
+  </section>
+
+  <p class="note">
+    業務で必要な印刷はもちろん問題ありません。<br>
+    ただ、<b>試し刷り・不要なカラー印刷・部数の設定ミス</b>などがないか、いま一度ご確認をお願いします。
+  </p>
+
+  <h2>印刷するときは、必ずこの2か所を確認してください</h2>
+
+  <div class="steps">
+    <div class="step">
+      <div class="head"><b>確認① 印刷画面</b><br>「グレースケール（白黒）で印刷」</div>
+      <img src="print-dialog.png" alt="印刷画面。右上の「グレースケール（白黒）で印刷」のチェックボックスが赤丸で囲まれている">
+      <div class="check">赤丸のチェックが<strong>入っているか</strong>確認。<br>カラーが必要なとき以外は白黒で。</div>
+    </div>
+    <div class="step">
+      <div class="head"><b>確認② プロパティ</b><br>「基本設定」タブ ＞ カラーモード</div>
+      <img src="printer-properties.png" alt="プリンターのプロパティ画面。基本設定タブ下部のカラーモードが「白黒」になっている部分が赤丸で囲まれている">
+      <div class="check">赤丸のカラーモードが<strong>「白黒」</strong>になっているか確認。</div>
+    </div>
+  </div>
+
+  <div class="checklist">
+    <h3>印刷ボタンを押す前のチェック</h3>
+    <ul>
+      <li>本当に紙で必要か？</li>
+      <li>部数は正しいか？</li>
+      <li>印刷ページは合っているか？</li>
+      <li>白黒になっているか？</li>
+      <li>プレビューで確認したか？</li>
+      <li>試し刷りしすぎていないか？</li>
+    </ul>
+  </div>
+
+  <footer>ご協力よろしくお願いいたします。</footer>
+</main>
+</body>
+</html>
