@@ -1,0 +1,330 @@
+{
+  "title": "補助金カレンダー",
+  "fiscal_start_year": 2026,
+  "last_updated": "2026-10-06",
+  "subsidies": [
+    {
+      "id": "kaigo-tech-koureisha",
+      "category": "ALL",
+      "name": "介護テクノロジー補助金　高齢　100万？",
+      "calendar": {"8": "申請", "9": "申請"},
+      "periods": [
+        {"label": "宮城県（例）", "start": "2026-07-08", "end": "2026-08-18"},
+        {"label": "愛知県（例）", "start": "2026-07-31", "end": "2026-08-31"}
+      ],
+      "confidence": "確認済",
+      "note": "都道府県ごとに募集。令和8年度は補助率最大3/4（組み合わせにより4/5）に拡充。所在地の都道府県ページで要確認。",
+      "official_url": "https://hojyokin-portal.jp/columns/kaigo_technology",
+      "sources": [
+        "https://www.pref.miyagi.jp/soshiki/chouju/r8kaigo-technology.html",
+        "https://hojyokin-portal.jp/columns/kaigo_technology"
+      ],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "kaigo-tech-shogai",
+      "category": "ALL",
+      "name": "介護テクノロジー補助金　障害　100万？",
+      "calendar": {"6": "申請？"},
+      "periods": [],
+      "confidence": "要確認",
+      "note": "障害福祉分野は都道府県・政令市ごとに時期がばらばら（大阪府は令和8年度分を終了、長野県は前年9月締切の例）。所在地の自治体で要確認。",
+      "official_url": "https://www.pref.osaka.lg.jp/o090080/kaigotechnology.html",
+      "sources": [
+        "https://www.pref.osaka.lg.jp/o090080/kaigotechnology.html",
+        "https://www.city.hiroshima.lg.jp/business/shogai/1026871/1048266.html"
+      ],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "age-friendly",
+      "category": "ALL",
+      "name": "エイジフレンドリー補助金（中小規模）100万",
+      "calendar": {"7": "申請", "8": "申請", "9": "申請", "10": "申請", "5": "申請", "6": "申請"},
+      "periods": [
+        {"label": "令和8年度", "start": "2026-05-20", "end": "2026-10-31"}
+      ],
+      "confidence": "確認済",
+      "note": "専門家総合対策コースの第1段階は8/31締切。予算到達で早期終了の可能性あり。",
+      "official_url": "https://hojyokin-portal.jp/subsidies/75372",
+      "sources": ["https://hojyokin-portal.jp/subsidies/75372"],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "jka",
+      "category": "ALL",
+      "name": "JKA（競輪・オートレース）（福祉なら何でも）500万",
+      "calendar": {"7": "申請", "8": "申請", "9": "申請", "5": "申請", "6": "申請"},
+      "periods": [
+        {"label": "2027年度 一般", "start": "2026-07-01", "end": "2026-09-11"},
+        {"label": "2027年度 福祉機器・車両 第2回", "start": "2027-05-24", "end": "2027-06-18"}
+      ],
+      "confidence": "確認済",
+      "note": "一般の補助事業は7/1〜9/11（15時）。福祉機器・福祉車両の第2回は翌5〜6月。",
+      "official_url": "https://hojo.keirin-autorace.or.jp/",
+      "sources": ["https://kyodonewsprwire.jp/release/202606301783"],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "morimura",
+      "category": "ALL",
+      "name": "森村豊明会（福祉なら何でも）　300万",
+      "calendar": {"10": "申請", "5": "申請"},
+      "periods": [
+        {"label": "前期", "start": "2026-05-01", "end": "2026-05-29"},
+        {"label": "後期", "start": "2026-10-01", "end": "2026-10-30"}
+      ],
+      "confidence": "確認済",
+      "note": "財団必着。1案件原則300万円まで。",
+      "official_url": "https://morimura-houmeikai.jp/recruitment/",
+      "sources": [
+        "https://www.nagano-shimin.net/2026/10/03/202609291619",
+        "https://www.akita-kenmin.jp/docs/2026091700016"
+      ],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "nenga-kifukin",
+      "category": "ALL",
+      "name": "日本郵便年賀寄付金配分（福祉なら何でも）250万",
+      "calendar": {"9": "申請", "10": "申請", "11": "申請"},
+      "periods": [
+        {"label": "2027年度配分", "start": "2026-09-29", "end": "2026-11-18"}
+      ],
+      "confidence": "確認済",
+      "note": "2027年度は熊本地震（2026年7月）の被災者支援・復旧事業の特別枠あり。採否は2027年3月末頃。",
+      "official_url": "https://www.post.japanpost.jp/kifu/",
+      "sources": ["https://www.post.japanpost.jp/about/csr/society/donation/topics/r080326_01.html"],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "marubeni",
+      "category": "ALL",
+      "name": "丸紅基金（福祉なら何でも）300万",
+      "calendar": {"5": "申請", "6": "申請"},
+      "periods": [
+        {"label": "2026年度（第52回）", "start": "2026-05-01", "end": "2026-06-30"}
+      ],
+      "confidence": "確認済",
+      "note": "WEB応募のみ。決定は10月下旬。",
+      "official_url": "https://www.marubeni.or.jp/application/",
+      "sources": ["https://www.marubeni.com/jp/news/2026/release/00017.html"],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "hoshinkai",
+      "category": "ALL",
+      "name": "芳心会（高齢・障害）　100万",
+      "calendar": {"7": "申請", "8": "申請", "10": "申請", "11": "申請", "4": "申請", "5": "申請"},
+      "periods": [
+        {"label": "第1期", "start": "2026-04-01", "end": "2026-05-15"},
+        {"label": "第2期", "start": "2026-07-01", "end": "2026-08-15"},
+        {"label": "第3期", "start": "2026-10-01", "end": "2026-11-15"}
+      ],
+      "confidence": "確認済",
+      "note": "2026年度から各期の応募期間が1か月半に延長（必着）。同一団体は年度内1回まで。",
+      "official_url": "",
+      "sources": ["https://www.city.kurume.fukuoka.jp/1050kurashi/2110volunteer/3010network/files/422.7.pdf"],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "nippon-foundation",
+      "category": "ALL",
+      "name": "日本財団 公益・福祉募集（医療的ケア児、障害児、高齢ノーリフティング）200万？",
+      "calendar": {"10": "申請"},
+      "periods": [
+        {"label": "2027年度 公益・福祉募集", "start": "2026-10-01", "end": "2026-10-30"}
+      ],
+      "confidence": "確認済",
+      "note": "締切は10/30 17:00。助成額は対象事業費の80%以内。",
+      "official_url": "https://nippon-foundation.my.site.com/GrantPrograms/s/",
+      "sources": [
+        "https://www.npo-nagano.org/2026/09/25/7610/",
+        "https://www.aiinanpo.org/info/20261005_57207/"
+      ],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "chiiki-kaigo-kukan",
+      "category": "ALL",
+      "name": "地域介護・福祉空間整備等施設整備交付金（高齢施設水害対策など）3/4助成",
+      "calendar": {"7": "申請"},
+      "periods": [],
+      "confidence": "要確認",
+      "note": "市町村・都道府県経由の協議。令和8年度は北九州市で4/16締切など、前年度末〜春に協議締切の自治体あり。所在地の自治体で時期を要確認。",
+      "official_url": "https://www.city.kitakyushu.lg.jp/contents/16800560_00003.html",
+      "sources": [
+        "https://www.city.kitakyushu.lg.jp/contents/16800560_00003.html",
+        "https://web.pref.hyogo.lg.jp/kf05/kukankofukin.html"
+      ],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "sharyo-kyogi",
+      "category": "障害",
+      "name": "車両競技公益資金記念財団（障害施設バリアフリー）500万",
+      "calendar": {"6": "申請"},
+      "periods": [
+        {"label": "令和8年度 障害者支援施設の整備", "end": "2026-06-30"}
+      ],
+      "confidence": "確認済",
+      "note": "締切6/30必着。補助率3/4以内、上限500万円。令和9年度の募集は未発表。",
+      "official_url": "https://www.syakyou.jp/",
+      "sources": ["https://ohmi-net.com/jyoseiinfo/2026jyosei-55/"],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "magara",
+      "category": "障害",
+      "name": "真柄福祉財団（障害）100万　指定管理NG",
+      "calendar": {"9": "申請", "10": "申請", "5": "申請", "6": "申請"},
+      "periods": [
+        {"label": "令和8年度 下期 備品等・施設整備", "start": "2026-09-01", "end": "2026-10-16"}
+      ],
+      "confidence": "確認済",
+      "note": "新潟県内の障害福祉団体が対象。上期は5月に募集開始。",
+      "official_url": "https://magarafukushizaidan.jp/service/service01/",
+      "sources": ["https://magarafukushizaidan.jp/2026/09/01/630/"],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "shimizu-shafuku",
+      "category": "障害",
+      "name": "清水基金（障害）1500万",
+      "calendar": {"7": "申請", "6": "申請"},
+      "periods": [
+        {"label": "2026年度 社会福祉法人助成", "start": "2026-06-01", "end": "2026-07-10"}
+      ],
+      "confidence": "確認済",
+      "note": "申請受付は7/20まで。1法人80万〜1,500万円。",
+      "official_url": "https://www.shimizu-kikin.or.jp/",
+      "sources": ["https://www.city.okayama.jp/soshiki/23-1-5-0-0_47.html"],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "mizuho",
+      "category": "障害",
+      "name": "公益財団法人みずほ福祉助成財団（障害）200万",
+      "calendar": {"7": "申請", "4": "申請", "5": "申請", "6": "申請"},
+      "periods": [],
+      "confidence": "要確認",
+      "note": "社会福祉助成金は例年7月上旬締切（消印有効）。直近要項では1件20万〜150万円。2026年度の確定日程は未確認。",
+      "official_url": "",
+      "sources": ["https://www.kyoshakyo.or.jp/cms/wp-content/uploads/2025/05/募集要項-1.pdf"],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "susaki",
+      "category": "障害",
+      "name": "洲崎福祉財団（障害）200万",
+      "calendar": {"1": "申請", "2": "申請"},
+      "periods": [
+        {"label": "上期（首都圏・西日本）", "start": "2026-07-01", "end": "2026-08-15"},
+        {"label": "下期（東日本ほか）※前年度実績", "start": "2027-01-05", "end": "2027-02-14", "estimated": true}
+      ],
+      "confidence": "推定",
+      "note": "上期と下期で対象地域が分かれる。新潟県は下期（1〜2月）の対象地域（令和7年度実績）。福祉車両400万・備品200万など種類別に上限あり。",
+      "official_url": "",
+      "sources": [
+        "https://hojyokin-portal.jp/subsidies/64606",
+        "https://www.pref.osaka.lg.jp/o070040/fukatsu/v-npo/jyosei.html"
+      ],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "maekawa",
+      "category": "障害",
+      "name": "前川報恩会（障害）100万",
+      "calendar": {"7": "申請", "8": "申請"},
+      "periods": [
+        {"label": "2026年度 福祉助成", "start": "2026-07-01", "end": "2026-08-31"}
+      ],
+      "confidence": "確認済",
+      "note": "Web申請のみ、8/31 17時締切。総額1,200万円、1件上限100万円。",
+      "official_url": "https://www.mayekawa.org/category/grant/welfare_grant",
+      "sources": ["https://www.tsunasaga.jp/plaza/news/subsidy-info/041506.html"],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "asunaro",
+      "category": "障害",
+      "name": "あすなろ福祉財団（障害）250万",
+      "calendar": {"10": "申請", "11": "申請", "12": "申請"},
+      "periods": [],
+      "confidence": "要確認",
+      "note": "2027年度分の募集期間は未確認（2026年度分は前年12月に公開）。領域Ⅳ（職員表彰）は4/6〜7/24で終了。",
+      "official_url": "https://www.asunaro-zaidan.or.jp/subsidy/index.html",
+      "sources": ["https://www.asunaro-zaidan.or.jp/"],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "ogyaa",
+      "category": "障害",
+      "name": "日母おぎゃー献金基金（障害児施設）300万",
+      "calendar": {"8": "申請", "9": "申請", "10": "申請", "11": "申請"},
+      "periods": [
+        {"label": "2027年度助成（前年実績から推定）", "start": "2026-08-01", "end": "2026-11-30", "estimated": true}
+      ],
+      "confidence": "推定",
+      "note": "前年は8/1〜11/30受付。今年度の要項は未確認。他の公的・民間補助と重複不可、過去3年以内の受給施設は原則対象外。",
+      "official_url": "https://www.ogyaa.or.jp/",
+      "sources": ["https://biz.stayway.jp/?p=65387"],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "shimizu-npo",
+      "category": "NPO",
+      "name": "清水基金　NPO法人助成事業（障害のNPO）1500万",
+      "calendar": {"1": "結果", "5": "申請", "6": "申請"},
+      "periods": [
+        {"label": "2026年度 申請URL取得", "start": "2026-05-01", "end": "2026-06-10"},
+        {"label": "2026年度 申請受付", "start": "2026-05-01", "end": "2026-06-20"}
+      ],
+      "confidence": "確認済",
+      "note": "結果通知は2027年1月下旬（メール）。",
+      "official_url": "https://www.shimizu-kikin.or.jp/",
+      "sources": ["https://www.city.okayama.jp/soshiki/23-1-5-0-0_47.html"],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "niigata-rokin",
+      "category": "NPO",
+      "name": "新潟ろうきん福祉財団（NPO）100万",
+      "calendar": {"2": "申請", "3": "申請"},
+      "periods": [],
+      "confidence": "要確認",
+      "note": "NPO等地域活動団体助成（新潟県内）。2027年度の募集期間は未発表。",
+      "official_url": "https://www.zaidan-hukushi.or.jp/",
+      "sources": ["https://zaidan-hukushi.heteml.net/acpb/upload/20260121142842022096300.pdf"],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "shoohkai",
+      "category": "NPO",
+      "name": "松翁会（医療的ケア児向け）50万",
+      "calendar": {"7": "申請", "6": "申請"},
+      "periods": [
+        {"label": "2026年度 社会福祉助成", "end": "2026-07-31"}
+      ],
+      "confidence": "確認済",
+      "note": "締切7/31必着。医療的ケア児者の福祉向上案件が対象。",
+      "official_url": "https://shouohkai.or.jp/zaidanhojin_shououkai/business/downlord.html",
+      "sources": ["https://shouohkai.or.jp/zaidanhojin_shououkai/business/downlord.html"],
+      "last_checked": "2026-10-06"
+    },
+    {
+      "id": "jiko-higaisha",
+      "category": "NPO",
+      "name": "自動車事故被害者受入環境整備事業　1500万",
+      "calendar": {"7": "申請", "8": "申請", "6": "申請"},
+      "periods": [
+        {"label": "令和8年度", "start": "2026-06-22", "end": "2026-08-28"}
+      ],
+      "confidence": "確認済",
+      "note": "国土交通省。障害者支援施設・グループホームが対象、開設（増設）年度上限1,500万円。",
+      "official_url": "https://www.mlit.go.jp/jidosha/jidosha_tk2_000203.html",
+      "sources": ["https://www.mlit.go.jp/jidosha/jidosha_tk2_000203.html"],
+      "last_checked": "2026-10-06"
+    }
+  ]
+}

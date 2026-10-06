@@ -1,0 +1,29 @@
+[
+  {
+    "date": "2026-10-06",
+    "id": "jka",
+    "field": "calendar",
+    "before": "9月・10月・5月・6月",
+    "after": "7月・8月・9月・5月・6月",
+    "reason": "2027年度の一般補助事業は2026/7/1〜9/11。10月は研究補助（9/24〜10/30）の期間で福祉施設向けではないため外した。",
+    "source": "https://kyodonewsprwire.jp/release/202606301783"
+  },
+  {
+    "date": "2026-10-06",
+    "id": "hoshinkai",
+    "field": "calendar",
+    "before": "7月・10月・4月",
+    "after": "7〜8月・10〜11月・4〜5月",
+    "reason": "2026年度から各期の応募期間が1か月半（第1期4/1〜5/15、第2期7/1〜8/15、第3期10/1〜11/15）に延長。",
+    "source": "https://www.city.kurume.fukuoka.jp/1050kurashi/2110volunteer/3010network/files/422.7.pdf"
+  },
+  {
+    "date": "2026-10-06",
+    "id": "susaki",
+    "field": "calendar",
+    "before": "12月",
+    "after": "1月・2月",
+    "reason": "東日本（新潟県を含む）が対象の下期一般助成は1/5〜2/14（令和7年度実績）。上期7〜8月は首都圏・西日本のみ対象。",
+    "source": "https://hojyokin-portal.jp/subsidies/64606"
+  }
+]
