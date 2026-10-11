@@ -43,6 +43,22 @@
     margin: 0;
     padding: 0.9rem 1rem 0.5rem;
   }
+  .thread-pane-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-right: 0.7rem;
+  }
+  .thread-pane-head h1 { flex: 1; }
+  #thread-trash-toggle-btn {
+    font-size: 0.72rem;
+    padding: 0.25rem 0.5rem;
+  }
+  .trashed-thread {
+    cursor: default;
+    opacity: 0.8;
+  }
+  .trashed-thread:hover { background: transparent; }
   .whoami-box {
     padding: 0 1rem 0.8rem;
     border-bottom: 1px solid var(--border);
@@ -411,15 +427,22 @@
   let threads = loadThreads();
   purgeOldTrash();
   let currentId = loadCurrentId();
-  if (!threads.find(function (t) { return t.id === currentId; })) {
-    currentId = threads.length ? threads[0].id : null;
+  if (!threads.find(function (t) { return t.id === currentId && !t.deletedAt; })) {
+    const firstActive = threads.find(function (t) { return !t.deletedAt; });
+    currentId = firstActive ? firstActive.id : null;
   }
   let whoAmI = loadWhoAmI();
   let showTrash = false;
+  let showThreadTrash = false;
 
   function purgeOldTrash() {
     const threshold = Date.now() - TRASH_MS;
     let changed = false;
+    const beforeThreadCount = threads.length;
+    threads = threads.filter(function (t) {
+      return !(t.deletedAt && t.deletedAt < threshold);
+    });
+    if (threads.length !== beforeThreadCount) changed = true;
     threads.forEach(function (t) {
       const before = t.messages.length;
       t.messages = t.messages.filter(function (m) {
@@ -460,13 +483,42 @@
       alert('このスレッドを削除できるのは、作成した「' + t.createdBy + '」さんだけです。');
       return;
     }
-    if (!confirm('スレッド「' + t.name + '」を削除します。中のやり取りもすべて消えます。よろしいですか?')) return;
-    threads = threads.filter(function (x) { return x.id !== id; });
+    if (!confirm('スレッド「' + t.name + '」を削除します。削除後' + TRASH_DAYS + '日間はゴミ箱に残り、元に戻せます。よろしいですか?')) return;
+    t.deletedAt = Date.now();
+    t.deletedBy = whoAmI;
     saveThreads(threads);
     if (currentId === id) {
-      currentId = threads.length ? threads[0].id : null;
+      const remaining = activeThreads();
+      currentId = remaining.length ? remaining[0].id : null;
       saveCurrentId(currentId);
     }
+    render();
+  }
+
+  function restoreThread(id) {
+    const t = threads.find(function (x) { return x.id === id; });
+    if (!t) return;
+    delete t.deletedAt;
+    delete t.deletedBy;
+    saveThreads(threads);
+    render();
+  }
+
+  function purgeThreadNow(id) {
+    const t = threads.find(function (x) { return x.id === id; });
+    if (!t) return;
+    if (!confirm('スレッド「' + t.name + '」を完全に削除します。元に戻せなくなります。よろしいですか?')) return;
+    threads = threads.filter(function (x) { return x.id !== id; });
+    saveThreads(threads);
+    render();
+  }
+
+  function activeThreads() {
+    return threads.filter(function (t) { return !t.deletedAt; });
+  }
+
+  function toggleThreadTrash() {
+    showThreadTrash = !showThreadTrash;
     render();
   }
 
@@ -547,10 +599,11 @@
   }
 
   function threadListHtml() {
-    if (!threads.length) {
+    const list = activeThreads();
+    if (!list.length) {
       return '<div class="empty-state" style="margin-top:1rem;">まだスレッドがありません。<br>下から作成してください。</div>';
     }
-    return threads
+    return list
       .slice()
       .sort(function (a, b) { return b.createdAt - a.createdAt; })
       .map(function (t) {
@@ -562,6 +615,32 @@
               '<span class="thread-creator">' + esc(t.createdBy) + 'さんが作成</span>' +
             '</div>' +
             '<button class="thread-del" data-del-thread="' + t.id + '" title="削除(作成者のみ)">✕</button>' +
+          '</div>'
+        );
+      })
+      .join('');
+  }
+
+  function threadTrashHtml() {
+    const deleted = threads.filter(function (t) { return !!t.deletedAt; });
+    if (!deleted.length) {
+      return '<div class="empty-state" style="margin-top:1rem;">ゴミ箱は空です。</div>';
+    }
+    return deleted
+      .slice()
+      .sort(function (a, b) { return b.deletedAt - a.deletedAt; })
+      .map(function (t) {
+        const daysLeft = Math.max(0, Math.ceil((t.deletedAt + TRASH_MS - Date.now()) / 86400000));
+        return (
+          '<div class="thread-item trashed-thread">' +
+            '<div class="thread-item-main">' +
+              '<span class="thread-name">' + esc(t.name) + '</span>' +
+              '<span class="thread-creator">' + esc(t.deletedBy || '不明') + 'さんが削除・あと' + daysLeft + '日</span>' +
+            '</div>' +
+            '<div class="trash-actions">' +
+              '<button data-restore-thread="' + t.id + '">戻す</button>' +
+              '<button data-purge-thread="' + t.id + '">完全削除</button>' +
+            '</div>' +
           '</div>'
         );
       })
@@ -619,16 +698,25 @@
 
   function render() {
     const t = currentThread();
+    const deletedThreadCount = threads.filter(function (x) { return !!x.deletedAt; }).length;
 
     root.innerHTML =
       '<div class="thread-pane">' +
-        '<h1>💬 連絡ノート</h1>' +
-        whoAmIBoxHtml() +
-        '<div class="thread-list">' + threadListHtml() + '</div>' +
-        '<div class="new-thread-box">' +
-          '<input type="text" id="new-thread-input" placeholder="新しいスレッド名" />' +
-          '<button id="new-thread-btn">作成</button>' +
+        '<div class="thread-pane-head">' +
+          '<h1>💬 連絡ノート</h1>' +
+          '<button id="thread-trash-toggle-btn" title="スレッドのゴミ箱">' + (showThreadTrash ? '← 戻る' : '🗑(' + deletedThreadCount + ')') + '</button>' +
         '</div>' +
+        whoAmIBoxHtml() +
+        '<div class="thread-list">' + (showThreadTrash ? threadTrashHtml() : threadListHtml()) + '</div>' +
+        (showThreadTrash
+          ? ''
+          : (
+            '<div class="new-thread-box">' +
+              '<input type="text" id="new-thread-input" placeholder="新しいスレッド名" />' +
+              '<button id="new-thread-btn">作成</button>' +
+            '</div>'
+          )
+        ) +
       '</div>' +
       '<div class="chat-pane">' +
         (t
@@ -695,6 +783,16 @@
         deleteThread(el.getAttribute('data-del-thread'));
       });
     });
+    root.querySelectorAll('[data-restore-thread]').forEach(function (el) {
+      el.addEventListener('click', function () { restoreThread(el.getAttribute('data-restore-thread')); });
+    });
+    root.querySelectorAll('[data-purge-thread]').forEach(function (el) {
+      el.addEventListener('click', function () { purgeThreadNow(el.getAttribute('data-purge-thread')); });
+    });
+    const threadTrashToggleBtn = document.getElementById('thread-trash-toggle-btn');
+    if (threadTrashToggleBtn) {
+      threadTrashToggleBtn.addEventListener('click', toggleThreadTrash);
+    }
     root.querySelectorAll('[data-del-msg]').forEach(function (el) {
       el.addEventListener('click', function () { deleteMessage(el.getAttribute('data-del-msg')); });
     });
@@ -711,15 +809,17 @@
 
     const newThreadInput = document.getElementById('new-thread-input');
     const newThreadBtn = document.getElementById('new-thread-btn');
-    newThreadBtn.addEventListener('click', function () {
-      const name = newThreadInput.value.trim();
-      if (!name) { newThreadInput.focus(); return; }
-      newThreadInput.value = '';
-      createThread(name);
-    });
-    newThreadInput.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') newThreadBtn.click();
-    });
+    if (newThreadBtn) {
+      newThreadBtn.addEventListener('click', function () {
+        const name = newThreadInput.value.trim();
+        if (!name) { newThreadInput.focus(); return; }
+        newThreadInput.value = '';
+        createThread(name);
+      });
+      newThreadInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') newThreadBtn.click();
+      });
+    }
 
     const sendBtn = document.getElementById('c-send');
     const textEl = document.getElementById('c-text');
