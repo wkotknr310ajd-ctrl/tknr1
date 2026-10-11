@@ -84,6 +84,18 @@
     color: var(--blue-deep); text-decoration: underline;
     font-size: 13px; cursor: pointer;
   }
+  #trash-toggle-btn {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    color: var(--amber-deep);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 15px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  #trash-toggle-btn:hover { background: #FBEED2; }
   .compose {
     background: var(--paper);
     border-radius: 10px;
@@ -594,7 +606,7 @@
         '<div class="name-bar"><span>あなたは <b>' + esc(username) + '</b> として利用中</span>' +
           '<button class="link" id="rename-btn">名前を変更</button>' +
           '<button class="link" id="reload-btn">今すぐ最新を読み込む</button>' +
-          '<button class="link" id="trash-toggle-btn">' + (showTrash ? '← メモ板に戻る' : '🗑 ゴミ箱(' + trashedMemos.length + ')') + '</button>' +
+          '<button id="trash-toggle-btn">' + (showTrash ? '← メモ板に戻る' : '🗑️ ゴミ箱(' + trashedMemos.length + ')') + '</button>' +
           notifyBtnHtml +
         '</div>' +
         autoWarnBanner + unreadBanner +
