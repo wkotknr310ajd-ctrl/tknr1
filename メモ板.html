@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>メモ板</title>
+<link rel="icon" type="image/svg+xml" href="/icon.svg" />
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#4F7C5D" />
+<style>
+  :root {
+    --ink: #24312B;
+    --ink-soft: #4A5A50;
+    --paper: #FBFAF4;
+    --board: #E7EBE0;
+    --amber: #E8A33D;
+    --amber-deep: #7A4F0F;
+    --green: #4F7C5D;
+    --green-deep: #1F3A28;
+    --blue: #5B7A99;
+    --blue-deep: #223142;
+    --line: #C9D0C2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
+    color: var(--ink);
+    background: #F4F3EC;
+    margin: 0;
+    padding: 24px 16px 60px;
+  }
+  #app-root {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-family: "Hiragino Mincho ProN", "Noto Serif JP", serif;
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin: 0 0 4px;
+  }
+  .sub {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin: 0 0 20px;
+    line-height: 1.6;
+  }
+  .board {
+    background: var(--board);
+    border-radius: 14px;
+    padding: 18px;
+  }
+  .name-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .name-bar b { color: var(--ink); font-weight: 600; }
+  .unread-banner {
+    background: #FBEED2;
+    color: var(--amber-deep);
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 14px;
+  }
+  .warn-banner {
+    background: #FBEED2;
+    color: var(--amber-deep);
+    font-size: 12.5px;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 14px;
+    line-height: 1.6;
+  }
+  button.link {
+    background: none; border: none; padding: 0;
+    color: var(--blue-deep); text-decoration: underline;
+    font-size: 13px; cursor: pointer;
+  }
+  .compose {
+    background: var(--paper);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+    border: 1px solid var(--line);
+  }
+  .compose-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .compose-row > div { flex: 1; }
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  input[type=text], textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fff;
+    color: var(--ink);
+  }
+  textarea { min-height: 64px; resize: vertical; }
+  .post-btn {
+    background: var(--green);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .post-btn:hover { background: var(--green-deep); }
+  .post-btn:disabled { opacity: 0.5; cursor: default; }
+  .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    margin: 18px 0 8px;
+  }
+  .empty {
+    font-size: 13px;
+    color: var(--ink-soft);
+    padding: 14px 4px;
+  }
+  .card {
+    position: relative;
+    background: var(--paper);
+    border-radius: 8px;
+    border-left: 4px solid var(--line);
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.05);
+    transition: transform 0.35s ease, opacity 0.35s ease;
+  }
+  .card.to-me { border-left-color: var(--amber); }
+  .card.to-me.confirmed { border-left-color: #B7B7AC; }
+  .card.mine { border-left-color: var(--blue); }
+  .card.trashed { border-left-color: var(--line); opacity: 0.8; border-style: dashed; }
+  .card.fold {
+    transform: scale(0.9) translateY(6px);
+    opacity: 0;
+  }
+  .card .meta {
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .card .title {
+    font-family: "Hiragino Mincho ProN", "Noto Serif JP", serif;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 6px;
+  }
+  .card .body {
+    font-size: 13.5px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    margin: 0 0 10px;
+  }
+  .card .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .card .actions button {
+    font-size: 12px;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    border: 1px solid var(--line);
+    background: #fff;
+  }
+  .card .actions .confirm {
+    background: var(--green);
+    color: #fff;
+    border: none;
+    font-weight: 600;
+  }
+  .card .actions .confirm:hover { background: var(--green-deep); }
+  .card .actions .delete:hover { background: #f0efe8; }
+  .card .confirmed-note { font-size: 12px; color: var(--ink-soft); margin-bottom: 8px; }
+  .trash-meta { font-size: 11px; color: var(--ink-soft); margin: 4px 0 8px; }
+  .setup-wrap {
+    background: var(--board);
+    border-radius: 14px;
+    padding: 24px 20px;
+  }
+  .setup-wrap input[type=text] { max-width: 280px; }
+  .setup-note {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin: 10px 0 18px;
+    line-height: 1.7;
+  }
+  .loading { font-size: 13px; color: var(--ink-soft); padding: 20px 4px; }
+  .lock-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .lock-check input { width: auto; }
+  .pin-note {
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-top: 6px;
+    max-width: 420px;
+    line-height: 1.5;
+  }
+  .lock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--amber-deep);
+    background: #FBEED2;
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-left: 6px;
+  }
+  .pin-unlock-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .pin-unlock-row input { width: 90px; }
+  .pin-error {
+    font-size: 12px;
+    color: var(--amber-deep);
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+<div id="app-root"></div>
+<script>
+(function(){
+  'use strict';
+  const root = document.getElementById('app-root');
+  const ORIGINAL_TITLE = 'メモ板';
+  const PRESET_NAMES = ['工藤', '鈴木', '木村', '遠山', '石川', '恭成'];
+  const POLL_MS = 4000;
+  const SUPPRESS_MS = 2000;
+  const TRASH_DAYS = 10;
+  const TRASH_MS = TRASH_DAYS * 24 * 60 * 60 * 1000;
+
+  let username = null;
+  let memos = [];
+  let pollTimer = null;
+  let pollFailCount = 0;
+  let suppressRefreshUntil = 0;
+  let autoWarning = '';
+  let seenIds = new Set();
+  const unlockedIds = new Set();
+  const pinErrorIds = new Set();
+  let showTrash = false;
+
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function fmtTime(ts){
+    const d = new Date(ts);
+    const mo = d.getMonth()+1, da = d.getDate();
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mm = String(d.getMinutes()).padStart(2,'0');
+    return mo + '/' + da + ' ' + hh + ':' + mm;
+  }
+  function updateTitle(unreadCount){
+    document.title = unreadCount > 0 ? '(' + unreadCount + ') ' + ORIGINAL_TITLE : ORIGINAL_TITLE;
+  }
+
+  function loadUsername(){
+    try { return localStorage.getItem('memoita_username'); } catch(e){ return null; }
+  }
+  function saveUsername(name){
+    try { localStorage.setItem('memoita_username', name); } catch(e){}
+  }
+
+  function computeToMe(list){
+    return list.filter(function(m){ return m.from !== username && (m.to === username || m.to === '全員'); });
+  }
+  // ---- tracking which memos this browser has already notified about ----
+  function loadSeenIds(){
+    try {
+      const raw = localStorage.getItem('memoita_seen_' + username);
+      const arr = raw ? JSON.parse(raw) : [];
+      return new Set(Array.isArray(arr) ? arr : []);
+    } catch(e){ return new Set(); }
+  }
+  function saveSeenIds(){
+    try { localStorage.setItem('memoita_seen_' + username, JSON.stringify(Array.from(seenIds))); } catch(e){}
+  }
+
+  // ---- notifications: tab title badge + sound + desktop notification ----
+  function playBeep(){
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new Ctx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = 880;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.18);
+      osc.onended = function(){ ctx.close(); };
+    } catch(e){}
+  }
+  function notifySupported(){
+    return typeof Notification !== 'undefined';
+  }
+  function notifyNewMemo(m){
+    if (document.hidden) playBeep();
+    if (notifySupported() && Notification.permission === 'granted' && document.hidden) {
+      try {
+        const n = new Notification(ORIGINAL_TITLE, {
+          body: m.from + 'さんから新着メモ: ' + (m.title || '(無題)')
+        });
+        n.onclick = function(){ window.focus(); };
+      } catch(e){}
+    }
+  }
+  function checkForNewMemos(toMeList, silent){
+    let changed = false;
+    toMeList.forEach(function(m){
+      if (!seenIds.has(m.id)) {
+        seenIds.add(m.id);
+        changed = true;
+        if (!silent) notifyNewMemo(m);
+      }
+    });
+    if (changed) saveSeenIds();
+  }
+
+  // ---- trash (soft delete) ----
+  function purgeOldTrash(){
+    const threshold = Date.now() - TRASH_MS;
+    const before = memos.length;
+    memos = memos.filter(function(m){ return !(m.deletedAt && m.deletedAt < threshold); });
+    return memos.length !== before;
+  }
+
+  // ---- talking to the server ----
+  async function apiLoad(){
+    const res = await fetch('/api/memos', { cache: 'no-store' });
+    if (!res.ok) throw new Error('サーバーからの読み込みに失敗しました(status ' + res.status + ')');
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  }
+  async function apiSave(arr){
+    const res = await fetch('/api/memos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(arr)
+    });
+    if (!res.ok) throw new Error('サーバーへの保存に失敗しました(status ' + res.status + ')');
+  }
+  async function saveMemos(arr){
+    try {
+      await apiSave(arr);
+      if (autoWarning) { autoWarning = ''; render(); }
+      return true;
+    } catch(e){
+      autoWarning = 'サーバーへの保存に失敗しました。ネットワークの状態をご確認のうえ、「今すぐ最新を読み込む」をお試しください。';
+      render();
+      return false;
+    }
+  }
+
+  // ---------------- setup / connection screens ----------------
+
+  function renderSetup(prefillName, errorMsg){
+    const isPreset = PRESET_NAMES.indexOf(prefillName) !== -1;
+    root.innerHTML =
+      '<h1>メモ板</h1>' +
+      '<p class="sub">社内サーバーで動いている、貼り紙代わりのメモ板です。名前を選ぶだけで使えます。</p>' +
+      '<div class="setup-wrap">' +
+        '<label>あなたの名前</label>' +
+        '<select id="name-select">' +
+          PRESET_NAMES.map(function(n){ return '<option value="' + esc(n) + '"' + (n === prefillName ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') +
+          '<option value="__custom__"' + (prefillName && !isPreset ? ' selected' : '') + '>その他(自由記述)</option>' +
+        '</select>' +
+        '<input type="text" id="name-custom" placeholder="名前を入力" value="' + (!isPreset ? esc(prefillName || '') : '') + '" style="margin-top:6px; display:' + (!isPreset && prefillName ? 'block' : 'none') + ';" />' +
+        '<div style="margin-top:14px;"><button class="post-btn" id="start-btn">はじめる</button></div>' +
+        (errorMsg ? '<div class="warn-banner" style="margin-top:14px;">' + esc(errorMsg) + '</div>' : '') +
+        '<div id="setup-error"></div>' +
+      '</div>';
+
+    const nameSelect = document.getElementById('name-select');
+    const nameCustom = document.getElementById('name-custom');
+    nameSelect.addEventListener('change', function(){
+      nameCustom.style.display = nameSelect.value === '__custom__' ? 'block' : 'none';
+      if (nameSelect.value === '__custom__') nameCustom.focus();
+    });
+    document.getElementById('start-btn').addEventListener('click', async function(){
+      const name = nameSelect.value === '__custom__' ? nameCustom.value.trim() : nameSelect.value;
+      if (!name) { nameCustom.focus(); return; }
+      const btn = document.getElementById('start-btn');
+      btn.disabled = true;
+      btn.textContent = '接続中...';
+      try {
+        memos = await apiLoad();
+        purgeOldTrash();
+        username = name;
+        saveUsername(name);
+        await enterApp();
+      } catch(e){
+        btn.disabled = false;
+        btn.textContent = 'はじめる';
+        const el = document.getElementById('setup-error');
+        if (el) el.innerHTML = '<div class="warn-banner" style="margin-top:14px;">サーバーに接続できませんでした。サーバーが起動しているか、管理者にご確認ください。<br>詳細: ' + esc(e && e.message ? e.message : e) + '</div>';
+      }
+    });
+  }
+
+  function renderConnectError(err){
+    root.innerHTML =
+      '<h1>メモ板</h1>' +
+      '<div class="setup-wrap">' +
+        '<div class="warn-banner">サーバーに接続できませんでした。サーバーが起動しているか、ネットワークの状態を管理者にご確認ください。<br>詳細: ' + esc(err && err.message ? err.message : String(err)) + '</div>' +
+        '<button class="post-btn" id="retry-btn">もう一度試す</button>' +
+      '</div>';
+    document.getElementById('retry-btn').addEventListener('click', function(){ init(); });
+  }
+
+  // ---------------- main app ----------------
+
+  function cardHtml(m, kind){
+    const confirmedBy = Array.isArray(m.confirmedBy) ? m.confirmedBy : [];
+    const iConfirmed = confirmedBy.indexOf(username) !== -1;
+    const isAuthor = m.from === username;
+    const isLocked = !!m.locked;
+    const isRevealed = isAuthor || !isLocked || unlockedIds.has(m.id);
+    const toLabel = m.to === '全員' ? '全員宛て' : ('宛先: ' + esc(m.to));
+    const cardClass = kind === 'to-me' ? ('to-me' + (iConfirmed ? ' confirmed' : '')) : 'mine';
+    const lockBadge = isLocked
+      ? '<span class="lock-badge">暗証番号ロック' + (isAuthor ? ' (' + esc(m.pin) + ')' : '') + '</span>'
+      : '';
+
+    let titleHtml, bodyHtml, actions;
+
+    if (!isRevealed) {
+      titleHtml = '秘匿メモ(暗証番号が必要です)';
+      const errorHtml = pinErrorIds.has(m.id) ? '<div class="pin-error">暗証番号が違います。</div>' : '';
+      bodyHtml =
+        '<div class="pin-unlock-row">' +
+          '<input type="text" maxlength="3" inputmode="numeric" placeholder="暗証番号" data-pin-input="' + m.id + '" />' +
+          '<button class="delete" data-action="unlock" data-id="' + m.id + '">開く</button>' +
+        '</div>' + errorHtml;
+      actions = '';
+    } else {
+      titleHtml = esc(m.title || '(無題)');
+      bodyHtml = '<div class="body">' + esc(m.body || '') + '</div>';
+      if (kind === 'to-me') {
+        const confirmBtn = iConfirmed
+          ? '<span style="font-size:12px; color: var(--green-deep); padding: 6px 4px;">確認済み</span>'
+          : '<button class="confirm" data-action="confirm" data-id="' + m.id + '">確認済みにする</button>';
+        actions = '<div class="actions">' + confirmBtn + '<button class="delete" data-action="delete" data-id="' + m.id + '">削除する</button></div>';
+      } else {
+        const confirmedNote = confirmedBy.length
+          ? '<div class="confirmed-note">確認済み: ' + confirmedBy.map(esc).join('、') + '</div>'
+          : '';
+        actions = confirmedNote + '<div class="actions"><button class="delete" data-action="delete" data-id="' + m.id + '">削除する</button></div>';
+      }
+    }
+
+    return (
+      '<div class="card ' + cardClass + '" data-card-id="' + m.id + '">' +
+        '<div class="meta">' + esc(m.from) + ' ・ ' + toLabel + ' ・ ' + fmtTime(m.createdAt) + lockBadge + '</div>' +
+        '<div class="title">' + titleHtml + '</div>' +
+        bodyHtml +
+        actions +
+      '</div>'
+    );
+  }
+
+  function trashCardHtml(m){
+    const daysLeft = Math.max(0, Math.ceil((m.deletedAt + TRASH_MS - Date.now()) / 86400000));
+    const toLabel = m.to === '全員' ? '全員宛て' : ('宛先: ' + esc(m.to));
+    const titleText = m.locked ? '秘匿メモ' : esc(m.title || '(無題)');
+    return (
+      '<div class="card trashed" data-card-id="' + m.id + '">' +
+        '<div class="meta">' + esc(m.from) + ' ・ ' + toLabel + ' ・ ' + fmtTime(m.createdAt) + '</div>' +
+        '<div class="title">' + titleText + '</div>' +
+        '<div class="trash-meta">' + esc(m.deletedBy || '不明') + 'さんが削除・あと' + daysLeft + '日で完全削除</div>' +
+        '<div class="actions">' +
+          '<button data-action="restore" data-id="' + m.id + '">元に戻す</button>' +
+          '<button class="delete" data-action="purge" data-id="' + m.id + '">今すぐ完全に削除</button>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function tryUnlock(id){
+    const inp = root.querySelector('[data-pin-input="' + id + '"]');
+    if (!inp) return;
+    const val = inp.value.trim();
+    const m = memos.find(function(x){ return x.id === id; });
+    if (!m) return;
+    if (val && val === m.pin) {
+      unlockedIds.add(id);
+      pinErrorIds.delete(id);
+    } else {
+      pinErrorIds.add(id);
+    }
+    render();
+  }
+
+  function render(){
+    const activeMemos = memos.filter(function(m){ return !m.deletedAt; });
+    const trashedMemos = memos.filter(function(m){ return !!m.deletedAt; });
+    const toMe = computeToMe(activeMemos);
+    const mine = activeMemos.filter(function(m){ return m.from === username; });
+    const unreadCount = toMe.filter(function(m){
+      return !(Array.isArray(m.confirmedBy) && m.confirmedBy.indexOf(username) !== -1);
+    }).length;
+    updateTitle(unreadCount);
+
+    const unreadBanner = unreadCount > 0
+      ? '<div class="unread-banner">未確認のメモが ' + unreadCount + ' 件あります</div>'
+      : '';
+    const autoWarnBanner = autoWarning
+      ? '<div class="warn-banner">' + esc(autoWarning) + '</div>'
+      : '';
+
+    let notifyBtnHtml = '';
+    if (notifySupported()) {
+      if (Notification.permission === 'granted') {
+        notifyBtnHtml = '<span style="font-size:12px; color: var(--green-deep);">デスクトップ通知: 有効</span>';
+      } else if (Notification.permission === 'denied') {
+        notifyBtnHtml = '<span style="font-size:12px; color: var(--ink-soft);">デスクトップ通知はブロックされています</span>';
+      } else {
+        notifyBtnHtml = '<button class="link" id="notify-btn">デスクトップ通知を有効にする</button>';
+      }
+    }
+
+    const bodyHtml = showTrash
+      ? (
+          '<div class="section-title">ゴミ箱(' + trashedMemos.length + ')</div>' +
+          (trashedMemos.length ? trashedMemos.map(trashCardHtml).join('') : '<div class="empty">ゴミ箱は空です。</div>')
+        )
+      : (
+          '<div class="compose">' +
+            '<div class="compose-row">' +
+              '<div><label>宛先</label>' +
+                '<select id="c-to-select">' +
+                  '<option value="全員">全員</option>' +
+                  PRESET_NAMES.map(function(n){ return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('') +
+                  '<option value="__custom__">その他(自由記述)</option>' +
+                '</select>' +
+                '<input type="text" id="c-to-custom" placeholder="宛先を入力" style="margin-top:6px; display:none;" />' +
+              '</div>' +
+            '</div>' +
+            '<div class="compose-row">' +
+              '<div><label>件名</label><input type="text" id="c-title" placeholder="例: 会議室変更のお知らせ" /></div>' +
+            '</div>' +
+            '<div class="compose-row">' +
+              '<div><label>本文</label><textarea id="c-body" placeholder="内容を入力"></textarea></div>' +
+            '</div>' +
+            '<div class="compose-row">' +
+              '<div>' +
+                '<label class="lock-check"><input type="checkbox" id="c-lock" /> 秘匿性が高い内容(暗証番号でロックする)</label>' +
+                '<div id="c-pin-wrap" style="display:none; margin-top:8px;">' +
+                  '<input type="text" id="c-pin" maxlength="3" inputmode="numeric" placeholder="任意の3桁" style="width:100px;" />' +
+                  '<div class="pin-note">この番号は直接、宛先の方に伝えてください。簡易的な目隠しであり、厳重な保護ではありません。</div>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+            '<button class="post-btn" id="c-submit">貼り出す</button>' +
+          '</div>' +
+          '<div class="section-title">あなた宛てのメモ (' + toMe.length + ')</div>' +
+          (toMe.length ? toMe.map(function(m){ return cardHtml(m, 'to-me'); }).join('') : '<div class="empty">今のところ新しいメモはありません。</div>') +
+          '<div class="section-title">自分が貼った分 (' + mine.length + ')</div>' +
+          (mine.length ? mine.map(function(m){ return cardHtml(m, 'mine'); }).join('') : '<div class="empty">まだ何も貼っていません。</div>')
+        );
+
+    root.innerHTML =
+      '<h1>メモ板</h1>' +
+      '<p class="sub">社内サーバーで動いている、貼り紙代わりのメモ板です。</p>' +
+      '<div class="board">' +
+        '<div class="name-bar"><span>あなたは <b>' + esc(username) + '</b> として利用中</span>' +
+          '<button class="link" id="rename-btn">名前を変更</button>' +
+          '<button class="link" id="reload-btn">今すぐ最新を読み込む</button>' +
+          '<button class="link" id="trash-toggle-btn">' + (showTrash ? '← メモ板に戻る' : '🗑 ゴミ箱(' + trashedMemos.length + ')') + '</button>' +
+          notifyBtnHtml +
+        '</div>' +
+        autoWarnBanner + unreadBanner +
+        bodyHtml +
+      '</div>';
+
+    if (notifySupported() && Notification.permission === 'default') {
+      const notifyBtn = document.getElementById('notify-btn');
+      if (notifyBtn) {
+        notifyBtn.addEventListener('click', function(){
+          Notification.requestPermission().then(function(){ render(); });
+        });
+      }
+    }
+    document.getElementById('rename-btn').addEventListener('click', function(){
+      const name = prompt('新しい名前を入力してください', username || '');
+      if (name && name.trim()) {
+        username = name.trim();
+        saveUsername(username);
+        render();
+      }
+    });
+    document.getElementById('reload-btn').addEventListener('click', function(){ refreshFromServer(true); });
+    document.getElementById('trash-toggle-btn').addEventListener('click', function(){
+      showTrash = !showTrash;
+      render();
+    });
+
+    const toSelect = document.getElementById('c-to-select');
+    if (toSelect) {
+      const toCustom = document.getElementById('c-to-custom');
+      toSelect.addEventListener('change', function(){
+        toCustom.style.display = toSelect.value === '__custom__' ? 'block' : 'none';
+        if (toSelect.value === '__custom__') toCustom.focus();
+      });
+    }
+
+    const lockCheck = document.getElementById('c-lock');
+    if (lockCheck) {
+      const pinWrap = document.getElementById('c-pin-wrap');
+      lockCheck.addEventListener('change', function(){
+        pinWrap.style.display = lockCheck.checked ? 'block' : 'none';
+        if (lockCheck.checked) document.getElementById('c-pin').focus();
+      });
+    }
+
+    const submitBtn = document.getElementById('c-submit');
+    if (submitBtn) submitBtn.addEventListener('click', onSubmit);
+
+    root.querySelectorAll('[data-action]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        const id = btn.getAttribute('data-id');
+        const action = btn.getAttribute('data-action');
+        if (action === 'confirm') confirmMemo(id);
+        else if (action === 'delete') removeMemo(id);
+        else if (action === 'unlock') tryUnlock(id);
+        else if (action === 'restore') restoreMemo(id);
+        else if (action === 'purge') purgeMemoNow(id);
+      });
+    });
+    root.querySelectorAll('[data-pin-input]').forEach(function(inp){
+      inp.addEventListener('keydown', function(e){
+        if (e.key === 'Enter') tryUnlock(inp.getAttribute('data-pin-input'));
+      });
+    });
+  }
+
+  async function onSubmit(){
+    const toSelect = document.getElementById('c-to-select');
+    const toCustom = document.getElementById('c-to-custom');
+    const titleEl = document.getElementById('c-title');
+    const bodyEl = document.getElementById('c-body');
+    const lockCheck = document.getElementById('c-lock');
+    const pinEl = document.getElementById('c-pin');
+    const to = toSelect.value === '__custom__'
+      ? (toCustom.value.trim() || '全員')
+      : toSelect.value;
+    const title = titleEl.value.trim();
+    const body = bodyEl.value.trim();
+    if (!title && !body) return;
+    let locked = false;
+    let pin = null;
+    if (lockCheck.checked) {
+      const pinVal = pinEl.value.trim();
+      if (!/^[0-9]{3}$/.test(pinVal)) { pinEl.focus(); return; }
+      locked = true;
+      pin = pinVal;
+    }
+    const memo = {
+      id: 'm' + Date.now() + '-' + Math.random().toString(36).slice(2,7),
+      from: username,
+      to: to,
+      title: title,
+      body: body,
+      createdAt: Date.now(),
+      locked: locked,
+      pin: pin,
+      confirmedBy: []
+    };
+    memos.push(memo);
+    suppressRefreshUntil = Date.now() + SUPPRESS_MS;
+    render();
+    await saveMemos(memos);
+  }
+
+  async function confirmMemo(id){
+    const m = memos.find(function(x){ return x.id === id; });
+    if (!m) return;
+    if (!Array.isArray(m.confirmedBy)) m.confirmedBy = [];
+    if (m.confirmedBy.indexOf(username) === -1) m.confirmedBy.push(username);
+    suppressRefreshUntil = Date.now() + SUPPRESS_MS;
+    render();
+    await saveMemos(memos);
+  }
+
+  async function removeMemo(id){
+    const m = memos.find(function(x){ return x.id === id; });
+    if (!m) return;
+    if (!confirm('このメモを削除します。削除後' + TRASH_DAYS + '日間はゴミ箱に残り、元に戻せます。よろしいですか?')) return;
+    const card = root.querySelector('[data-card-id="' + id + '"]');
+    if (card) card.classList.add('fold');
+    suppressRefreshUntil = Date.now() + SUPPRESS_MS;
+    m.deletedAt = Date.now();
+    m.deletedBy = username;
+    await saveMemos(memos);
+    setTimeout(function(){ render(); }, 350);
+  }
+
+  async function restoreMemo(id){
+    const m = memos.find(function(x){ return x.id === id; });
+    if (!m) return;
+    delete m.deletedAt;
+    delete m.deletedBy;
+    render();
+    await saveMemos(memos);
+  }
+
+  async function purgeMemoNow(id){
+    const m = memos.find(function(x){ return x.id === id; });
+    if (!m) return;
+    if (!confirm('このメモを完全に削除します。元に戻せなくなります。よろしいですか?')) return;
+    memos = memos.filter(function(x){ return x.id !== id; });
+    render();
+    await saveMemos(memos);
+  }
+
+  async function refreshFromServer(manualTrigger){
+    if (!manualTrigger && Date.now() < suppressRefreshUntil) return;
+    try {
+      const latest = await apiLoad();
+      pollFailCount = 0;
+      if (autoWarning) { autoWarning = ''; }
+      const currentIds = memos.map(function(m){ return m.id; }).sort().join(',');
+      const latestIds = latest.map(function(m){ return m.id; }).sort().join(',');
+      if (currentIds !== latestIds) {
+        memos = latest;
+        checkForNewMemos(computeToMe(memos.filter(function(m){ return !m.deletedAt; })), false);
+        if (purgeOldTrash()) await saveMemos(memos);
+        render();
+      } else if (manualTrigger) {
+        render();
+      }
+    } catch(e){
+      pollFailCount++;
+      if (pollFailCount >= 2) {
+        autoWarning = 'サーバーに接続できません。ネットワークの状態をご確認のうえ、「今すぐ最新を読み込む」をお試しください。';
+        render();
+      }
+    }
+  }
+
+  async function enterApp(){
+    seenIds = loadSeenIds();
+    checkForNewMemos(computeToMe(memos.filter(function(m){ return !m.deletedAt; })), true);
+    render();
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(function(){ refreshFromServer(false); }, POLL_MS);
+  }
+
+  async function init(){
+    username = loadUsername();
+    if (!username) {
+      renderSetup(null, null);
+      return;
+    }
+    root.innerHTML = '<h1>メモ板</h1><div class="loading">読み込み中...</div>';
+    try {
+      memos = await apiLoad();
+      purgeOldTrash();
+    } catch(e){
+      renderConnectError(e);
+      return;
+    }
+    await enterApp();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
