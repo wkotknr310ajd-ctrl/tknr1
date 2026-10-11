@@ -151,6 +151,34 @@
     font-size: 0.75rem;
     color: var(--text-muted);
   }
+  .chat-sub-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .chat-sub-row #trash-toggle-btn {
+    font-size: 0.72rem;
+    padding: 0.25rem 0.55rem;
+  }
+  .msg.trashed {
+    opacity: 0.75;
+    border-style: dashed;
+  }
+  .trash-meta {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 0.4rem;
+  }
+  .trash-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+  }
+  .trash-actions button {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.6rem;
+  }
   .chat-messages {
     flex: 1;
     overflow-y: auto;
@@ -332,6 +360,8 @@
   const NAME_KEY = 'renraku-note-whoami-v1';
   const PASSWORD_HASH_KEY = 'renraku-note-password-hash-v1';
   const MIN_PW_LENGTH = 4;
+  const TRASH_DAYS = 10;
+  const TRASH_MS = TRASH_DAYS * 24 * 60 * 60 * 1000;
 
   async function sha256Hex(text) {
     const data = new TextEncoder().encode(text);
@@ -379,11 +409,26 @@
   }
 
   let threads = loadThreads();
+  purgeOldTrash();
   let currentId = loadCurrentId();
   if (!threads.find(function (t) { return t.id === currentId; })) {
     currentId = threads.length ? threads[0].id : null;
   }
   let whoAmI = loadWhoAmI();
+  let showTrash = false;
+
+  function purgeOldTrash() {
+    const threshold = Date.now() - TRASH_MS;
+    let changed = false;
+    threads.forEach(function (t) {
+      const before = t.messages.length;
+      t.messages = t.messages.filter(function (m) {
+        return !(m.deletedAt && m.deletedAt < threshold);
+      });
+      if (t.messages.length !== before) changed = true;
+    });
+    if (changed) saveThreads(threads);
+  }
 
   function currentThread() {
     return threads.find(function (t) { return t.id === currentId; }) || null;
@@ -427,6 +472,7 @@
 
   function selectThread(id) {
     currentId = id;
+    showTrash = false;
     saveCurrentId(currentId);
     render();
   }
@@ -444,9 +490,37 @@
   function deleteMessage(msgId) {
     const t = currentThread();
     if (!t) return;
-    if (!confirm('このメッセージを削除します。よろしいですか?')) return;
+    const m = t.messages.find(function (x) { return x.id === msgId; });
+    if (!m) return;
+    if (!confirm('このメッセージを削除します。削除後' + TRASH_DAYS + '日間はゴミ箱に残り、元に戻せます。よろしいですか?')) return;
+    m.deletedAt = Date.now();
+    m.deletedBy = whoAmI || '';
+    saveThreads(threads);
+    render();
+  }
+
+  function restoreMessage(msgId) {
+    const t = currentThread();
+    if (!t) return;
+    const m = t.messages.find(function (x) { return x.id === msgId; });
+    if (!m) return;
+    delete m.deletedAt;
+    delete m.deletedBy;
+    saveThreads(threads);
+    render();
+  }
+
+  function purgeMessageNow(msgId) {
+    const t = currentThread();
+    if (!t) return;
+    if (!confirm('このメッセージを完全に削除します。元に戻せなくなります。よろしいですか?')) return;
     t.messages = t.messages.filter(function (m) { return m.id !== msgId; });
     saveThreads(threads);
+    render();
+  }
+
+  function toggleTrash() {
+    showTrash = !showTrash;
     render();
   }
 
@@ -495,10 +569,11 @@
   }
 
   function messagesHtml(t) {
-    if (!t.messages.length) {
+    const active = t.messages.filter(function (m) { return !m.deletedAt; });
+    if (!active.length) {
       return '<div class="empty-state">まだやり取りがありません。<br>下から投稿してください。</div>';
     }
-    return t.messages
+    return active
       .map(function (m) {
         return (
           '<div class="msg">' +
@@ -508,6 +583,34 @@
               '<button class="msg-del" data-del-msg="' + m.id + '">削除</button>' +
             '</div>' +
             '<div class="msg-text">' + esc(m.text) + '</div>' +
+          '</div>'
+        );
+      })
+      .join('');
+  }
+
+  function trashHtml(t) {
+    const deleted = t.messages.filter(function (m) { return !!m.deletedAt; });
+    if (!deleted.length) {
+      return '<div class="empty-state">ゴミ箱は空です。</div>';
+    }
+    return deleted
+      .slice()
+      .sort(function (a, b) { return b.deletedAt - a.deletedAt; })
+      .map(function (m) {
+        const daysLeft = Math.max(0, Math.ceil((m.deletedAt + TRASH_MS - Date.now()) / 86400000));
+        return (
+          '<div class="msg trashed">' +
+            '<div class="msg-meta">' +
+              '<span class="msg-name">' + esc(m.from) + '</span>' +
+              '<span>' + fmtTime(m.createdAt) + '</span>' +
+            '</div>' +
+            '<div class="msg-text">' + esc(m.text) + '</div>' +
+            '<div class="trash-meta">' + esc(m.deletedBy || '不明') + 'さんが削除・あと' + daysLeft + '日で完全削除</div>' +
+            '<div class="trash-actions">' +
+              '<button data-restore-msg="' + m.id + '">元に戻す</button>' +
+              '<button data-purge-msg="' + m.id + '">今すぐ完全に削除</button>' +
+            '</div>' +
           '</div>'
         );
       })
@@ -529,20 +632,32 @@
       '</div>' +
       '<div class="chat-pane">' +
         (t
-          ? (
-            '<div class="chat-header">' +
-              '<div class="chat-title">' +
-                '<span>' + esc(t.name) + '</span>' +
-                '<span style="font-size:0.75rem; color: var(--text-muted); font-weight:400;">' + t.messages.length + '件</span>' +
-              '</div>' +
-              '<span class="chat-sub">作成者: ' + esc(t.createdBy) + '(削除できるのは本人のみ)</span>' +
-            '</div>' +
-            '<div class="chat-messages">' + messagesHtml(t) + '</div>' +
-            '<div class="composer">' +
-              '<textarea id="c-text" placeholder="メッセージを入力(Ctrl+Enterで送信)"></textarea>' +
-              '<button class="primary" id="c-send">送信</button>' +
-            '</div>'
-          )
+          ? (function () {
+              const activeCount = t.messages.filter(function (m) { return !m.deletedAt; }).length;
+              const trashCount = t.messages.filter(function (m) { return !!m.deletedAt; }).length;
+              return (
+                '<div class="chat-header">' +
+                  '<div class="chat-title">' +
+                    '<span>' + esc(t.name) + '</span>' +
+                    '<span style="font-size:0.75rem; color: var(--text-muted); font-weight:400;">' + activeCount + '件</span>' +
+                  '</div>' +
+                  '<div class="chat-sub-row">' +
+                    '<span class="chat-sub">作成者: ' + esc(t.createdBy) + '(削除できるのは本人のみ)</span>' +
+                    '<button id="trash-toggle-btn">' + (showTrash ? '← 戻る' : '🗑 ゴミ箱(' + trashCount + ')') + '</button>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="chat-messages">' + (showTrash ? trashHtml(t) : messagesHtml(t)) + '</div>' +
+                (showTrash
+                  ? ''
+                  : (
+                    '<div class="composer">' +
+                      '<textarea id="c-text" placeholder="メッセージを入力(Ctrl+Enterで送信)"></textarea>' +
+                      '<button class="primary" id="c-send">送信</button>' +
+                    '</div>'
+                  )
+                )
+              );
+            })()
           : '<div class="no-thread">左のスレッド一覧から選ぶか、<br>新しいスレッドを作成してください。</div>'
         ) +
       '</div>';
@@ -583,6 +698,16 @@
     root.querySelectorAll('[data-del-msg]').forEach(function (el) {
       el.addEventListener('click', function () { deleteMessage(el.getAttribute('data-del-msg')); });
     });
+    root.querySelectorAll('[data-restore-msg]').forEach(function (el) {
+      el.addEventListener('click', function () { restoreMessage(el.getAttribute('data-restore-msg')); });
+    });
+    root.querySelectorAll('[data-purge-msg]').forEach(function (el) {
+      el.addEventListener('click', function () { purgeMessageNow(el.getAttribute('data-purge-msg')); });
+    });
+    const trashToggleBtn = document.getElementById('trash-toggle-btn');
+    if (trashToggleBtn) {
+      trashToggleBtn.addEventListener('click', toggleTrash);
+    }
 
     const newThreadInput = document.getElementById('new-thread-input');
     const newThreadBtn = document.getElementById('new-thread-btn');
