@@ -1,12 +1,12 @@
-# 補助金カレンダー 自動更新手順（Claude 用）
+# 補助金カレンダー 更新手順（Claude 用）
 
-定期実行の Claude がこの手順で `subsidies/data/subsidies.json` を最新化し、
-`subsidies/補助金カレンダー.xlsx` を作り直してコミットする。人が手で回すときも同じ手順でよい。
+Claude がこの手順で `subsidies/data/subsidies.json` を最新化し、
+`subsidies/補助金カレンダー.xlsx` を作り直してコミットする。手動更新のときに Claude に読ませる。
 
 ## 1. 準備
 
 ```bash
-pip install -q -r subsidies/requirements.txt
+python3 -m pip install -q -r subsidies/requirements.txt
 ```
 
 今日の日付（日本時間）を確認し、`subsidies.json` と `history.json` を読む。
