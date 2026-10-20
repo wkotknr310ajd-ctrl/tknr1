@@ -115,6 +115,38 @@
     margin-bottom: 0;
   }
   .to-check input { width: auto; margin-right: 4px; }
+  .attachments { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .attachment {
+    display: inline-block;
+    font-size: 13px;
+    color: var(--ink);
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 4px 8px;
+    text-decoration: none;
+  }
+  .attachment:hover { border-color: var(--green); }
+  .pending-attachments { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .pending-attachment {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 4px 8px;
+  }
+  .pending-attachment button {
+    border: none;
+    background: none;
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-size: 13px;
+    padding: 0;
+  }
+  .attach-note { font-size: 12px; color: var(--ink-soft); margin-top: 6px; }
   label {
     display: block;
     font-size: 12px;
@@ -275,6 +307,7 @@
   const SUPPRESS_MS = 2000;
   const TRASH_DAYS = 10;
   const TRASH_MS = TRASH_DAYS * 24 * 60 * 60 * 1000;
+  const ATTACH_MAX_BYTES = 3 * 1024 * 1024;
 
   let username = null;
   let memos = [];
@@ -286,11 +319,39 @@
   const unlockedIds = new Set();
   const pinErrorIds = new Set();
   let showTrash = false;
+  let pendingAttachments = [];
 
   function esc(s){
     return String(s).replace(/[&<>"']/g, function(c){
       return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
     });
+  }
+
+  function fmtSize(bytes){
+    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + 'MB';
+    if (bytes >= 1024) return Math.round(bytes / 1024) + 'KB';
+    return bytes + 'B';
+  }
+
+  function readFileAsDataUrl(file){
+    return new Promise(function(resolve, reject){
+      const reader = new FileReader();
+      reader.onload = function(){ resolve(reader.result); };
+      reader.onerror = function(){ reject(reader.error); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function attachmentsHtml(m){
+    const list = Array.isArray(m.attachments) ? m.attachments : [];
+    if (!list.length) return '';
+    return (
+      '<div class="attachments">' +
+        list.map(function(a, i){
+          return '<a class="attachment" href="' + a.dataUrl + '" download="' + esc(a.name) + '">📎 ' + esc(a.name) + ' (' + fmtSize(a.size) + ')</a>';
+        }).join('') +
+      '</div>'
+    );
   }
   function fmtTime(ts){
     const d = new Date(ts);
@@ -498,7 +559,7 @@
       actions = '';
     } else {
       titleHtml = esc(m.title || '(無題)');
-      bodyHtml = '<div class="body">' + esc(m.body || '') + '</div>';
+      bodyHtml = '<div class="body">' + esc(m.body || '') + '</div>' + attachmentsHtml(m);
       if (kind === 'to-me') {
         const confirmBtn = iConfirmed
           ? '<span style="font-size:12px; color: var(--green-deep); padding: 6px 4px;">確認済み</span>'
@@ -613,6 +674,18 @@
                 '</div>' +
               '</div>' +
             '</div>' +
+            '<div class="compose-row">' +
+              '<div><label>ファイルを添付(1ファイルあたり' + fmtSize(ATTACH_MAX_BYTES) + 'まで)</label>' +
+                '<input type="file" id="c-attach" multiple />' +
+                (pendingAttachments.length
+                  ? '<div class="pending-attachments">' +
+                      pendingAttachments.map(function(a, i){
+                        return '<span class="pending-attachment">📎 ' + esc(a.name) + ' (' + fmtSize(a.size) + ')<button type="button" data-remove-attachment="' + i + '">✕</button></span>';
+                      }).join('') +
+                    '</div>'
+                  : '') +
+              '</div>' +
+            '</div>' +
             '<button class="post-btn" id="c-submit">貼り出す</button>' +
           '</div>' +
           '<div class="section-title">あなた宛てのメモ (' + toMe.length + ')</div>' +
@@ -682,6 +755,33 @@
       });
     }
 
+    const attachInput = document.getElementById('c-attach');
+    if (attachInput) {
+      attachInput.addEventListener('change', async function(){
+        const files = Array.prototype.slice.call(attachInput.files || []);
+        for (const file of files) {
+          if (file.size > ATTACH_MAX_BYTES) {
+            alert('「' + file.name + '」は上限(' + fmtSize(ATTACH_MAX_BYTES) + ')を超えているため添付できません。');
+            continue;
+          }
+          try {
+            const dataUrl = await readFileAsDataUrl(file);
+            pendingAttachments.push({ name: file.name, type: file.type || 'application/octet-stream', size: file.size, dataUrl: dataUrl });
+          } catch(e){
+            alert('「' + file.name + '」の読み込みに失敗しました。');
+          }
+        }
+        render();
+      });
+    }
+    root.querySelectorAll('[data-remove-attachment]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        const idx = Number(btn.getAttribute('data-remove-attachment'));
+        pendingAttachments.splice(idx, 1);
+        render();
+      });
+    });
+
     const submitBtn = document.getElementById('c-submit');
     if (submitBtn) submitBtn.addEventListener('click', onSubmit);
 
@@ -740,9 +840,11 @@
       createdAt: Date.now(),
       locked: locked,
       pin: pin,
-      confirmedBy: []
+      confirmedBy: [],
+      attachments: pendingAttachments.slice()
     };
     memos.push(memo);
+    pendingAttachments = [];
     suppressRefreshUntil = Date.now() + SUPPRESS_MS;
     render();
     await saveMemos(memos);

@@ -103,7 +103,7 @@ const server = http.createServer(async function(req, res){
       return;
     }
     if (url.pathname === '/api/memos' && req.method === 'POST') {
-      const text = await readBody(req, 5 * 1024 * 1024);
+      const text = await readBody(req, 60 * 1024 * 1024);
       let arr;
       try { arr = JSON.parse(text); } catch(e){ sendJson(res, 400, { error: '不正なデータです' }); return; }
       if (!Array.isArray(arr)) { sendJson(res, 400, { error: 'データは配列である必要があります' }); return; }
