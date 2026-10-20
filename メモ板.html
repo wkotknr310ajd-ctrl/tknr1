@@ -105,6 +105,16 @@
   }
   .compose-row { display: flex; gap: 10px; margin-bottom: 10px; }
   .compose-row > div { flex: 1; }
+  .to-checks { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .to-check {
+    display: inline-flex;
+    align-items: center;
+    width: auto;
+    font-size: 14px;
+    color: var(--ink);
+    margin-bottom: 0;
+  }
+  .to-check input { width: auto; margin-right: 4px; }
   label {
     display: block;
     font-size: 12px;
@@ -300,8 +310,21 @@
     try { localStorage.setItem('memoita_username', name); } catch(e){}
   }
 
+  // 宛先は配列(複数人)で保存するが、過去のデータ(文字列1件)も読めるようにする
+  function toArray(m){
+    return Array.isArray(m.to) ? m.to : [m.to];
+  }
+  function toLabelFor(m){
+    const to = toArray(m);
+    if (to.indexOf('全員') !== -1) return '全員宛て';
+    return '宛先: ' + to.map(esc).join('、');
+  }
   function computeToMe(list){
-    return list.filter(function(m){ return m.from !== username && (m.to === username || m.to === '全員'); });
+    return list.filter(function(m){
+      if (m.from === username) return false;
+      const to = toArray(m);
+      return to.indexOf('全員') !== -1 || to.indexOf(username) !== -1;
+    });
   }
   // ---- tracking which memos this browser has already notified about ----
   function loadSeenIds(){
@@ -456,7 +479,7 @@
     const isAuthor = m.from === username;
     const isLocked = !!m.locked;
     const isRevealed = isAuthor || !isLocked || unlockedIds.has(m.id);
-    const toLabel = m.to === '全員' ? '全員宛て' : ('宛先: ' + esc(m.to));
+    const toLabel = toLabelFor(m);
     const cardClass = kind === 'to-me' ? ('to-me' + (iConfirmed ? ' confirmed' : '')) : 'mine';
     const lockBadge = isLocked
       ? '<span class="lock-badge">暗証番号ロック' + (isAuthor ? ' (' + esc(m.pin) + ')' : '') + '</span>'
@@ -501,7 +524,7 @@
 
   function trashCardHtml(m){
     const daysLeft = Math.max(0, Math.ceil((m.deletedAt + TRASH_MS - Date.now()) / 86400000));
-    const toLabel = m.to === '全員' ? '全員宛て' : ('宛先: ' + esc(m.to));
+    const toLabel = toLabelFor(m);
     const titleText = m.locked ? '秘匿メモ' : esc(m.title || '(無題)');
     return (
       '<div class="card trashed" data-card-id="' + m.id + '">' +
@@ -567,13 +590,12 @@
       : (
           '<div class="compose">' +
             '<div class="compose-row">' +
-              '<div><label>宛先</label>' +
-                '<select id="c-to-select">' +
-                  '<option value="全員">全員</option>' +
-                  PRESET_NAMES.map(function(n){ return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('') +
-                  '<option value="__custom__">その他(自由記述)</option>' +
-                '</select>' +
-                '<input type="text" id="c-to-custom" placeholder="宛先を入力" style="margin-top:6px; display:none;" />' +
+              '<div><label>宛先(複数選択できます)</label>' +
+                '<div class="to-checks">' +
+                  '<label class="to-check"><input type="checkbox" class="c-to-all" value="全員" /> 全員</label>' +
+                  PRESET_NAMES.map(function(n){ return '<label class="to-check"><input type="checkbox" class="c-to-check" value="' + esc(n) + '" /> ' + esc(n) + '</label>'; }).join('') +
+                '</div>' +
+                '<input type="text" id="c-to-custom" placeholder="その他の宛先(複数の場合はカンマ区切り)" style="margin-top:6px;" />' +
               '</div>' +
             '</div>' +
             '<div class="compose-row">' +
@@ -635,12 +657,19 @@
       render();
     });
 
-    const toSelect = document.getElementById('c-to-select');
-    if (toSelect) {
-      const toCustom = document.getElementById('c-to-custom');
-      toSelect.addEventListener('change', function(){
-        toCustom.style.display = toSelect.value === '__custom__' ? 'block' : 'none';
-        if (toSelect.value === '__custom__') toCustom.focus();
+    const toAllCheck = root.querySelector('.c-to-all');
+    if (toAllCheck) {
+      const toChecks = Array.prototype.slice.call(root.querySelectorAll('.c-to-check'));
+      toAllCheck.addEventListener('change', function(){
+        toChecks.forEach(function(cb){
+          cb.checked = false;
+          cb.disabled = toAllCheck.checked;
+        });
+      });
+      toChecks.forEach(function(cb){
+        cb.addEventListener('change', function(){
+          if (cb.checked) toAllCheck.checked = false;
+        });
       });
     }
 
@@ -675,15 +704,22 @@
   }
 
   async function onSubmit(){
-    const toSelect = document.getElementById('c-to-select');
+    const toAllCheck = document.querySelector('.c-to-all');
+    const toChecks = Array.prototype.slice.call(document.querySelectorAll('.c-to-check'));
     const toCustom = document.getElementById('c-to-custom');
     const titleEl = document.getElementById('c-title');
     const bodyEl = document.getElementById('c-body');
     const lockCheck = document.getElementById('c-lock');
     const pinEl = document.getElementById('c-pin');
-    const to = toSelect.value === '__custom__'
-      ? (toCustom.value.trim() || '全員')
-      : toSelect.value;
+    let to;
+    if (toAllCheck && toAllCheck.checked) {
+      to = ['全員'];
+    } else {
+      to = toChecks.filter(function(cb){ return cb.checked; }).map(function(cb){ return cb.value; });
+      const customNames = toCustom.value.split(',').map(function(s){ return s.trim(); }).filter(function(s){ return s; });
+      customNames.forEach(function(n){ if (to.indexOf(n) === -1) to.push(n); });
+      if (!to.length) to = ['全員'];
+    }
     const title = titleEl.value.trim();
     const body = bodyEl.value.trim();
     if (!title && !body) return;
