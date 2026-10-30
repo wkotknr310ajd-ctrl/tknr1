@@ -396,6 +396,7 @@ function emptyData() {
     settings: { roles: ["園長", "課長", "入所サビ管", "そよかぜ"], rolesAdded: ["そよかぜ"], currentRole: "園長", org: "", fyStart: 4, remindEnabled: true, remindTime: "16:00", remindWeekdaysOnly: true },
     tasks: [],
     records: [],
+    imports: [],
     updatedAt: null
   };
 }
@@ -412,7 +413,10 @@ const ui = {
   journalTask: "",
   journalQuery: "",
   manualTask: "",
-  taskQuery: ""
+  taskQuery: "",
+  sel: new Set(),    // 選択中の記録
+  selT: new Set(),   // 選択中の業務
+  undo: null         // 直前に削除したもの（元に戻す用）
 };
 
 function loadLocal() {
@@ -429,6 +433,7 @@ function normalize(d) {
   out.settings = Object.assign(emptyData().settings, (d && d.settings) || {});
   out.tasks = Array.isArray(out.tasks) ? out.tasks : [];
   out.records = Array.isArray(out.records) ? out.records : [];
+  out.imports = Array.isArray(out.imports) ? out.imports : [];
   // 役職ごとに業務と記録を分ける（旧データは「役職」欄の値か先頭の役職に入れる）
   const st = out.settings;
   if (!Array.isArray(st.roles) || !st.roles.length) st.roles = emptyData().settings.roles;
@@ -730,6 +735,11 @@ function categories() {
 }
 
 function fileBanner() {
+  const undo = ui.undo ? `<div class="banner" style="background:var(--ng-soft);border-color:#f2c4c4;color:#7f1d1d">🗑 ${esc(ui.undo.msg)}
+      <button class="btn" data-action="undoDelete">元に戻す</button><button class="btn small" data-action="undoClose">閉じる</button></div>` : "";
+  return undo + fileBannerMain();
+}
+function fileBannerMain() {
   if (ui.reminding) {
     return `<div class="banner remind">🔔 ${esc(data.settings.remindTime)} になりました。今日の業務を記録しましょう。
       <button class="btn primary" data-action="remindRecord">今日の業務を記録</button>
@@ -849,7 +859,7 @@ function recordList(recs, opts = {}) {
   return `<ul class="items">${recs.map(r => {
     const t = taskById(r.taskId);
     const period = r.endDate && r.endDate !== r.date ? `${fmtDate(r.date)} 〜 ${fmtDate(r.endDate)}` : fmtDate(r.date);
-    return `<li><div class="body">
+    return `<li>${opts.select ? `<input type="checkbox" class="selRec" value="${r.id}" ${ui.sel.has(r.id) ? "checked" : ""} style="margin-top:6px;transform:scale(1.3)">` : ""}<div class="body">
       <div>${t ? `<span class="tag cat">${esc(t.category || "未分類")}</span>` : '<span class="tag warn">業務未登録</span>'}
         <span class="title">${esc(recordTitle(r))}</span>
         ${r.partial ? '<span class="tag warn">途中</span>' : ""}
@@ -985,8 +995,14 @@ function viewJournal() {
         <span class="muted">${recs.length}件${totalHours ? ` / 合計 ${round1(totalHours)} 時間` : ""}</span>
       </div>
     </div>
+    ${recs.length ? `<div class="toolbar">
+      <button class="btn small" data-action="selAllRec">表示中の ${recs.length} 件をすべて選択</button>
+      <button class="btn small" data-action="selNone">選択を解除</button>
+      <button class="btn small danger" data-action="deleteSelRec">選択した <b id="selCount">${[...ui.sel].filter(id => recs.some(r => r.id === id)).length}</b> 件を削除</button>
+      <span class="muted">左のチェックで選べます。月・業務・キーワードで絞り込んでから「すべて選択」すると、まとめて削除できます。</span>
+    </div>` : ""}
     ${Object.keys(groups).length ? Object.keys(groups).sort().reverse().map(k =>
-      `<div class="panel"><h3>${fmtMonthKey(k)}</h3>${recordList(groups[k])}</div>`).join("")
+      `<div class="panel"><h3>${fmtMonthKey(k)}</h3>${recordList(groups[k], { select: true })}</div>`).join("")
       : '<div class="panel"><div class="empty">該当する記録はありません</div></div>'}`;
 }
 
@@ -1017,11 +1033,17 @@ function viewTasks() {
     ${loose ? `<div class="banner" style="background:var(--accent-soft);border-color:#c7d7fe;color:#1e3a8a">
       業務一覧に登録されていない日誌が ${loose} 件あります。繰り返し行う業務なら「業務に登録」しておくと、年間予定とマニュアルに反映されます。
       <button class="btn" data-action="showLoose">確認する</button></div>` : ""}
+    ${tasks.length ? `<div class="toolbar">
+      <button class="btn small" data-action="selAllTask">表示中の ${tasks.length} 件をすべて選択</button>
+      <button class="btn small" data-action="selNone">選択を解除</button>
+      <button class="btn small danger" data-action="deleteSelTask">選択した <b id="selCount">${[...ui.selT].filter(id => tasks.some(t => t.id === id)).length}</b> 件を削除</button>
+      <span class="muted">左のチェックで選べます（検索で絞り込んでから「すべて選択」も可）。</span>
+    </div>` : ""}
     ${Object.keys(byCat).sort((a, b) => a.localeCompare(b, "ja")).map(c => `
       <div class="panel"><h3>${esc(c)}</h3><ul class="items">
       ${byCat[c].sort((a, b) => a.title.localeCompare(b.title, "ja")).map(t => {
         const st = taskStats(t);
-        return `<li><div class="body">
+        return `<li><input type="checkbox" class="selTask" value="${t.id}" ${ui.selT.has(t.id) ? "checked" : ""} style="margin-top:6px;transform:scale(1.3)"><div class="body">
           <div><span class="title">${esc(t.title)}</span> ${t.archived ? '<span class="tag">廃止</span>' : ""}</div>
           <div class="muted">${esc(scheduleText(t))}　/　実施記録 ${st.count} 回${st.last ? `（最終 ${fmtDate(st.last)}）` : ""}</div>
         </div>
@@ -1194,6 +1216,17 @@ function viewData() {
         <button class="btn" data-action="exportTemplate">取り込み用のひな形（Excel）</button>
       </div>
     </div>
+
+    ${data.imports.length ? `<div class="panel">
+      <h3>取り込みの履歴</h3>
+      <p class="muted">間違えて取り込んだときは「この取り込みを取り消す」で、そのとき新しく登録された業務・記録をまとめて削除できます。</p>
+      <ul class="items">${data.imports.slice().reverse().map(im => {
+        const nT = data.tasks.filter(t => t.importId === im.id).length, nR = data.records.filter(r => r.importId === im.id).length;
+        return `<li><div class="body"><b>${esc(im.file || "（ファイル名なし）")}</b>
+          <div class="muted">${fmtDateTime(im.at)} 取り込み　/　いま残っているもの: 業務 ${nT} 件・記録 ${nR} 件</div></div>
+          <button class="btn small danger" data-action="undoImport" data-id="${im.id}" ${nT + nR ? "" : "disabled"}>この取り込みを取り消す</button></li>`;
+      }).join("")}</ul>
+    </div>` : ""}
 
     <div class="panel">
       <h3>バックアップ・引き継ぎ</h3>
@@ -2121,6 +2154,7 @@ function candidatesFromSheet(sheet) {
 }
 
 let importCandidates = [];
+let importFileName = "";
 /** 取り込む担当者（前回選んだものを覚えておく） */
 function importPersons() {
   try { return JSON.parse(localStorage.getItem("gyomu-manual-import-persons") || "[]"); } catch (e) { return []; }
@@ -2158,6 +2192,7 @@ async function importOffice(file) {
 }
 
 function openImportDialog(fileName) {
+  importFileName = fileName;
   const dlg = document.getElementById("importDialog");
   document.getElementById("importFileName").textContent = fileName;
   renderImportRows();
@@ -2201,6 +2236,7 @@ function applyImport() {
   let newT = 0, updT = 0, newR = 0, skipR = 0;
   const now = new Date().toISOString();
   const findTask = (role, title) => data.tasks.find(t => t.role === role && t.title === title);
+  const importId = uid();
   importCandidates.filter(c => c.checked && c.title.trim()).forEach(c => {
     const title = c.title.trim();
     if (!data.settings.roles.includes(c.role)) data.settings.roles.push(c.role);
@@ -2215,7 +2251,7 @@ function applyImport() {
         if (c.structured && c.everyN) t.everyN = c.everyN;
         updT++;
       } else {
-        data.tasks.push({ id: uid(), role: c.role, title, category: c.category || "取り込み", months, day: day || "", everyN: c.everyN || 1,
+        data.tasks.push({ id: uid(), importId, role: c.role, title, category: c.category || "取り込み", months, day: day || "", everyN: c.everyN || 1,
           baseYear: c.baseYear || fyOf(c.date ? parseYmd(c.date) : today()), leadDays: c.leadDays || "", durationDays: c.durationDays || "",
           hours: c.structured ? c.hours || "" : "", purpose: c.purpose || (!c.structured && c.content !== title ? c.content || "" : ""),
           steps: c.steps || "", tips: c.tips || "", related: c.related || "", archived: false, createdAt: now });
@@ -2225,12 +2261,13 @@ function applyImport() {
       const t = findTask(c.role, title);
       if (data.records.some(r => r.role === c.role && r.date === c.date && recordTitle(r) === title && (r.content || "") === (c.content || ""))) { skipR++; return; }
       const content = [c.content || "", c.person ? `（予定表の担当: ${c.person}）` : ""].filter(Boolean).join("\n");
-      data.records.push({ id: uid(), role: c.role, taskId: t ? t.id : "", title: t ? "" : title, date: c.date, endDate: c.endDate || "",
+      data.records.push({ id: uid(), importId, role: c.role, taskId: t ? t.id : "", title: t ? "" : title, date: c.date, endDate: c.endDate || "",
         hours: c.hours || "", occ: t ? c.date.slice(0, 7) : "", content,
         notes: c.notes || "", partial: false, createdAt: now });
       newR++;
     }
   });
+  if (newT || newR) data.imports.push({ id: importId, file: importFileName, at: now, tasks: newT, records: newR });
   save();
   document.getElementById("importDialog").close();
   render();
@@ -2327,6 +2364,31 @@ function loadSample() {
   render();
 }
 
+/** 業務と記録をまとめて削除する（「元に戻す」用に控えておく） */
+function deleteItems(taskIds, recordIds, msg) {
+  const tSet = new Set(taskIds), rSet = new Set(recordIds);
+  const tasks = data.tasks.filter(t => tSet.has(t.id));
+  const records = data.records.filter(r => rSet.has(r.id));
+  // 残す記録のうち、削除する業務に紐付いていたものは「業務未登録」にする
+  const unlinked = [];
+  data.records.forEach(r => {
+    if (!rSet.has(r.id) && tSet.has(r.taskId)) {
+      unlinked.push([r.id, r.taskId, r.title]);
+      r.title = r.title || (taskById(r.taskId) || {}).title || "";
+      r.taskId = "";
+    }
+  });
+  data.tasks = data.tasks.filter(t => !tSet.has(t.id));
+  data.records = data.records.filter(r => !rSet.has(r.id));
+  taskIds.forEach(id => ui.selT.delete(id));
+  recordIds.forEach(id => ui.sel.delete(id));
+  if (tSet.has(ui.manualTask)) ui.manualTask = "";
+  ui.undo = { tasks, records, unlinked, msg };
+  save();
+  render();
+  window.scrollTo(0, 0);
+}
+
 /* ===================== イベント ===================== */
 
 document.getElementById("roleLabel").addEventListener("change", e => {
@@ -2377,6 +2439,7 @@ document.getElementById("nav").addEventListener("click", e => {
   const b = e.target.closest("button[data-view]");
   if (!b) return;
   ui.view = b.dataset.view;
+  ui.sel.clear(); ui.selT.clear(); ui.undo = null;
   render();
   window.scrollTo(0, 0);
 });
@@ -2389,6 +2452,46 @@ document.getElementById("main").addEventListener("click", async e => {
     case "addTask": openTaskDialog(null); break;
     case "editTask": openTaskDialog(taskById(el.dataset.id)); break;
     case "addRecord": openRecordDialog(null, { taskId: el.dataset.task || "", occ: el.dataset.occ || "" }); break;
+    case "selAllRec": filteredRecords().forEach(r => ui.sel.add(r.id)); render(); break;
+    case "selAllTask": {
+      const q = ui.taskQuery.trim().toLowerCase();
+      myTasks().filter(t => !q || [t.title, t.category, t.purpose, t.steps, t.tips].join(" ").toLowerCase().includes(q)).forEach(t => ui.selT.add(t.id));
+      render(); break;
+    }
+    case "selNone": ui.sel.clear(); ui.selT.clear(); render(); break;
+    case "deleteSelRec": {
+      const ids = [...ui.sel].filter(id => data.records.some(r => r.id === id));
+      if (!ids.length) { alert("削除する記録にチェックを入れてください。"); break; }
+      if (!confirm(`選択した記録 ${ids.length} 件を削除します。よろしいですか？`)) break;
+      deleteItems([], ids, `記録 ${ids.length} 件を削除しました。`);
+      break;
+    }
+    case "deleteSelTask": {
+      const ids = [...ui.selT].filter(id => taskById(id));
+      if (!ids.length) { alert("削除する業務にチェックを入れてください。"); break; }
+      if (!confirm(`選択した業務 ${ids.length} 件を削除します。よろしいですか？`)) break;
+      const linked = data.records.filter(r => ids.includes(r.taskId)).map(r => r.id);
+      const withRecs = linked.length && confirm(`この業務の実施記録が ${linked.length} 件あります。記録もいっしょに削除しますか？\n\n［OK］記録も削除する　［キャンセル］記録は「業務未登録」として残す`);
+      deleteItems(ids, withRecs ? linked : [], `業務 ${ids.length} 件${withRecs ? `と記録 ${linked.length} 件` : ""}を削除しました。`);
+      break;
+    }
+    case "undoImport": {
+      const im = data.imports.find(x => x.id === el.dataset.id);
+      const tIds = data.tasks.filter(t => t.importId === im.id).map(t => t.id);
+      const rIds = data.records.filter(r => r.importId === im.id).map(r => r.id);
+      if (!confirm(`「${im.file}」の取り込みで登録された 業務 ${tIds.length} 件・記録 ${rIds.length} 件を削除します。よろしいですか？`)) break;
+      deleteItems(tIds, rIds, `取り込み「${im.file}」を取り消しました（業務 ${tIds.length} 件・記録 ${rIds.length} 件）。`);
+      break;
+    }
+    case "undoDelete": {
+      const u = ui.undo;
+      data.tasks.push(...u.tasks.filter(t => !taskById(t.id)));
+      u.records.forEach(r => { if (!data.records.some(x => x.id === r.id)) data.records.push(r); });
+      u.unlinked.forEach(([id, taskId, title]) => { const r = data.records.find(x => x.id === id); if (r) { r.taskId = taskId; r.title = title; } });
+      ui.undo = null;
+      save(); render(); break;
+    }
+    case "undoClose": ui.undo = null; render(); break;
     case "addRecordOn": openRecordDialog(null, { date: el.dataset.date }); break;
     case "editRecord": openRecordDialog(data.records.find(r => r.id === el.dataset.id)); break;
     case "taskFromRecord": {
@@ -2476,6 +2579,14 @@ document.getElementById("main").addEventListener("click", async e => {
 });
 
 document.getElementById("main").addEventListener("change", e => {
+  if (e.target.classList.contains("selRec") || e.target.classList.contains("selTask")) {
+    const set = e.target.classList.contains("selRec") ? ui.sel : ui.selT;
+    if (e.target.checked) set.add(e.target.value); else set.delete(e.target.value);
+    const shown = [...document.querySelectorAll(e.target.classList.contains("selRec") ? ".selRec" : ".selTask")].filter(x => x.checked).length;
+    const c = document.getElementById("selCount");
+    if (c) c.textContent = shown;
+    return;
+  }
   const id = e.target.id;
   if (id === "jMonth") { ui.journalMonth = e.target.value; render(); }
   else if (id === "jTask") { ui.journalTask = e.target.value; render(); }
