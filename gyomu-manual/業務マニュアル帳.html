@@ -1,0 +1,1528 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>業務マニュアル帳</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --text: #1f2933;
+    --muted: #66788a;
+    --line: #dde2e8;
+    --accent: #2563eb;
+    --accent-soft: #e8efff;
+    --ok: #15803d;
+    --ok-soft: #e6f6ea;
+    --warn: #b45309;
+    --warn-soft: #fff4e0;
+    --ng: #b91c1c;
+    --ng-soft: #fdecec;
+    --plan-soft: #eef2f7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Yu Gothic UI", "Meiryo", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  header {
+    background: #1e293b;
+    color: #fff;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 18px; margin: 0; white-space: nowrap; }
+  header .role { color: #cbd5e1; font-size: 14px; }
+  header .save-status { margin-left: auto; font-size: 12px; color: #cbd5e1; }
+  nav {
+    background: #fff;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    flex-wrap: wrap;
+    padding: 0 12px;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+  nav button {
+    border: none;
+    background: none;
+    padding: 12px 16px;
+    font: inherit;
+    cursor: pointer;
+    color: var(--muted);
+    border-bottom: 3px solid transparent;
+  }
+  nav button.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: bold; }
+  main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 60px; }
+  h2 { font-size: 20px; margin: 0 0 12px; }
+  h3 { font-size: 16px; margin: 0 0 8px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .toolbar .spacer { flex: 1; }
+  button.btn, a.btn, label.btn {
+    display: inline-block;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  button.btn:hover, label.btn:hover { background: #f0f3f7; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: #1d4ed8; }
+  button.danger { color: var(--ng); border-color: #f2c4c4; }
+  button.small { padding: 2px 8px; font-size: 13px; }
+  input, select, textarea {
+    font: inherit;
+    padding: 6px 8px;
+    border: 1px solid #c7ced6;
+    border-radius: 6px;
+    background: #fff;
+    color: var(--text);
+  }
+  textarea { width: 100%; min-height: 80px; resize: vertical; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .empty { color: var(--muted); padding: 12px 0; }
+  .tag {
+    display: inline-block;
+    font-size: 12px;
+    padding: 0 8px;
+    border-radius: 10px;
+    background: var(--plan-soft);
+    color: #44515f;
+    margin-right: 4px;
+    white-space: nowrap;
+  }
+  .tag.ok { background: var(--ok-soft); color: var(--ok); }
+  .tag.warn { background: var(--warn-soft); color: var(--warn); }
+  .tag.ng { background: var(--ng-soft); color: var(--ng); }
+  .tag.cat { background: var(--accent-soft); color: var(--accent); }
+  ul.items { list-style: none; margin: 0; padding: 0; }
+  ul.items li {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  ul.items li:last-child { border-bottom: none; }
+  ul.items .body { flex: 1; min-width: 0; }
+  ul.items .title { font-weight: bold; }
+  .link { color: var(--accent); cursor: pointer; text-decoration: underline; background: none; border: none; font: inherit; padding: 0; }
+  .pre { white-space: pre-wrap; word-break: break-word; }
+
+  /* 年間予定表 */
+  .year-table-wrap { overflow-x: auto; }
+  table.year { border-collapse: collapse; width: 100%; min-width: 900px; background: #fff; }
+  table.year th, table.year td { border: 1px solid var(--line); padding: 4px; font-size: 13px; vertical-align: top; }
+  table.year thead th { background: #f0f3f7; position: sticky; top: 0; }
+  table.year th.task { text-align: left; min-width: 200px; max-width: 260px; }
+  table.year td.cell { text-align: center; cursor: pointer; width: 6.5%; height: 34px; }
+  table.year td.cell:hover { outline: 2px solid var(--accent); outline-offset: -2px; }
+  table.year td.plan { background: var(--plan-soft); }
+  table.year td.done { background: var(--ok-soft); color: var(--ok); font-weight: bold; }
+  table.year td.late { background: var(--ng-soft); color: var(--ng); }
+  table.year td.extra { background: #f3f0ff; color: #6d28d9; }
+  table.year td.now { box-shadow: inset 0 0 0 2px var(--warn); }
+  table.year tr.cat-row th { background: #fafbfc; text-align: left; color: var(--accent); }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; margin-top: 8px; }
+  .legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border: 1px solid var(--line); margin-right: 4px; vertical-align: -1px; }
+  .legend .l-plan::before { background: var(--plan-soft); }
+  .legend .l-done::before { background: var(--ok-soft); }
+  .legend .l-late::before { background: var(--ng-soft); }
+  .legend .l-extra::before { background: #f3f0ff; }
+
+  /* マニュアル */
+  .manual-task { page-break-inside: avoid; }
+  .manual-task h3 { font-size: 18px; border-left: 5px solid var(--accent); padding-left: 8px; margin-bottom: 12px; }
+  .manual-task h4 { margin: 14px 0 4px; font-size: 15px; color: #334155; }
+  table.kv { border-collapse: collapse; width: 100%; }
+  table.kv th, table.kv td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; font-size: 14px; vertical-align: top; }
+  table.kv th { background: #f6f8fa; width: 180px; font-weight: normal; color: #44515f; }
+  .bars { display: flex; gap: 2px; align-items: flex-end; height: 48px; }
+  .bars div { flex: 1; background: var(--accent); opacity: .75; min-height: 1px; border-radius: 2px 2px 0 0; }
+  .bars-label { display: flex; gap: 2px; font-size: 11px; color: var(--muted); }
+  .bars-label span { flex: 1; text-align: center; }
+  .history-item { border-left: 3px solid var(--line); padding: 4px 0 4px 10px; margin: 6px 0; }
+
+  /* ダイアログ */
+  dialog { border: none; border-radius: 10px; padding: 0; width: min(720px, 96vw); max-height: 92vh; }
+  dialog::backdrop { background: rgba(15, 23, 42, .45); }
+  dialog form { padding: 20px; }
+  dialog h2 { margin-bottom: 16px; }
+  .form-row { margin-bottom: 12px; }
+  .form-row > label { display: block; font-weight: bold; font-size: 14px; margin-bottom: 4px; }
+  .form-row .hint { font-size: 12px; color: var(--muted); font-weight: normal; }
+  .form-row input[type=text], .form-row input[type=number], .form-row select { width: 100%; }
+  .form-inline { display: flex; gap: 12px; flex-wrap: wrap; }
+  .form-inline > div { flex: 1; min-width: 140px; }
+  .months { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+  .months label { border: 1px solid var(--line); border-radius: 6px; padding: 4px; text-align: center; cursor: pointer; font-weight: normal; }
+  .months input { margin-right: 4px; }
+  .dialog-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+  .dialog-actions .left { margin-right: auto; }
+  .banner { background: var(--warn-soft); border: 1px solid #f5d08a; color: #7c4a03; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .stat { display: inline-block; margin-right: 18px; }
+  .stat b { font-size: 20px; }
+
+  @media print {
+    header, nav, .toolbar, .no-print, .banner { display: none !important; }
+    body { background: #fff; font-size: 12px; }
+    main { padding: 0; max-width: none; }
+    .panel { border: none; padding: 0; margin-bottom: 24px; }
+    .manual-task { page-break-before: always; }
+    .manual-task:first-of-type { page-break-before: auto; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>📘 業務マニュアル帳</h1>
+  <span class="role" id="roleLabel"></span>
+  <span class="save-status" id="saveStatus"></span>
+</header>
+<nav id="nav">
+  <button data-view="home">ホーム</button>
+  <button data-view="year">年間予定表</button>
+  <button data-view="journal">業務日誌（実施記録）</button>
+  <button data-view="tasks">業務一覧</button>
+  <button data-view="manual">マニュアル</button>
+  <button data-view="data">設定・データ</button>
+</nav>
+<main id="main"></main>
+
+<dialog id="taskDialog">
+  <form method="dialog" id="taskForm">
+    <h2 id="taskDialogTitle">業務を登録</h2>
+    <input type="hidden" name="id">
+    <div class="form-inline">
+      <div class="form-row" style="flex:2">
+        <label>業務名 <span class="hint">（必須）</span></label>
+        <input type="text" name="title" required placeholder="例: 予算要求書の作成">
+      </div>
+      <div class="form-row">
+        <label>分類</label>
+        <input type="text" name="category" list="categoryList" placeholder="例: 予算・会計">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>実施する月 <span class="hint">（定例でない・随時の業務は何も選ばない）</span></label>
+      <div class="toolbar" style="margin-bottom:6px">
+        <button type="button" class="btn small" data-months="all">毎月</button>
+        <button type="button" class="btn small" data-months="quarter">四半期（4・7・10・1月）</button>
+        <button type="button" class="btn small" data-months="none">クリア</button>
+      </div>
+      <div class="months" id="monthChecks"></div>
+    </div>
+    <div class="form-inline">
+      <div class="form-row">
+        <label>期限・実施日 <span class="hint">（日）</span></label>
+        <input type="number" name="day" min="1" max="31" placeholder="例: 10（空欄=月内）">
+      </div>
+      <div class="form-row">
+        <label>周期</label>
+        <select name="everyN">
+          <option value="1">毎年</option>
+          <option value="2">2年に1回</option>
+          <option value="3">3年に1回</option>
+          <option value="4">4年に1回</option>
+          <option value="5">5年に1回</option>
+          <option value="6">6年に1回</option>
+          <option value="10">10年に1回</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>基準年度 <span class="hint">（数年ごとの場合）</span></label>
+        <input type="number" name="baseYear" min="1990" max="2100">
+      </div>
+    </div>
+    <div class="form-inline">
+      <div class="form-row">
+        <label>準備開始 <span class="hint">（期限の何日前から）</span></label>
+        <input type="number" name="leadDays" min="0" placeholder="例: 30">
+      </div>
+      <div class="form-row">
+        <label>想定所要日数</label>
+        <input type="number" name="durationDays" min="0" placeholder="例: 5">
+      </div>
+      <div class="form-row">
+        <label>想定作業時間 <span class="hint">（時間）</span></label>
+        <input type="number" name="hours" min="0" step="0.5" placeholder="例: 8">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>目的・概要</label>
+      <textarea name="purpose" placeholder="何のための業務か、誰に何を提出するか など"></textarea>
+    </div>
+    <div class="form-row">
+      <label>手順 <span class="hint">（1行に1手順で書くと番号付きで表示されます）</span></label>
+      <textarea name="steps" style="min-height:120px" placeholder="例:&#10;前年度の資料をフォルダから探す&#10;担当課に照会文を送る&#10;集計して課長決裁"></textarea>
+    </div>
+    <div class="form-row">
+      <label>注意点・コツ</label>
+      <textarea name="tips"></textarea>
+    </div>
+    <div class="form-row">
+      <label>関係先・資料の保存場所</label>
+      <textarea name="related" placeholder="例: 提出先＝財政課 / 様式＝共有フォルダ\予算\R8"></textarea>
+    </div>
+    <div class="form-row">
+      <label><input type="checkbox" name="archived"> 現在は行っていない業務（廃止）</label>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" class="btn danger left" id="taskDelete">削除</button>
+      <button type="button" class="btn" data-close>キャンセル</button>
+      <button type="submit" class="btn primary">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="recordDialog">
+  <form method="dialog" id="recordForm">
+    <h2 id="recordDialogTitle">実施記録を入力</h2>
+    <input type="hidden" name="id">
+    <div class="form-row">
+      <label>業務</label>
+      <select name="taskId" id="recordTaskSelect"></select>
+    </div>
+    <div class="form-row" id="recordTitleRow">
+      <label>件名 <span class="hint">（業務一覧にない場合。あとから業務に登録できます）</span></label>
+      <input type="text" name="title" placeholder="例: 〇〇から急な照会があり回答">
+    </div>
+    <div class="form-inline">
+      <div class="form-row">
+        <label>実施日（開始日）</label>
+        <input type="date" name="date" required>
+      </div>
+      <div class="form-row">
+        <label>終了日 <span class="hint">（数日かかった場合）</span></label>
+        <input type="date" name="endDate">
+      </div>
+      <div class="form-row">
+        <label>作業時間 <span class="hint">（時間）</span></label>
+        <input type="number" name="hours" min="0" step="0.25">
+      </div>
+      <div class="form-row" id="recordOccRow">
+        <label>対象の回 <span class="hint">（予定の年月）</span></label>
+        <input type="month" name="occ">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>やったこと</label>
+      <textarea name="content" style="min-height:110px" placeholder="実際に行った作業、使った資料、連絡した相手 など"></textarea>
+    </div>
+    <div class="form-row">
+      <label>気づき・次回への申し送り</label>
+      <textarea name="notes" placeholder="つまずいた点、もっと早く始めるべきだった点、次の担当者へのメモ"></textarea>
+    </div>
+    <div class="form-row">
+      <label><input type="checkbox" name="partial"> まだ途中（完了していない）</label>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" class="btn danger left" id="recordDelete">削除</button>
+      <button type="button" class="btn" data-close>キャンセル</button>
+      <button type="submit" class="btn primary">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<datalist id="categoryList"></datalist>
+
+<script>
+"use strict";
+
+/* ===================== データ ===================== */
+
+const STORAGE_KEY = "gyomu-manual-v1";
+const MONTH_NAMES = ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+
+function emptyData() {
+  return {
+    version: 1,
+    settings: { role: "", org: "", person: "", fyStart: 4 },
+    tasks: [],
+    records: [],
+    updatedAt: null
+  };
+}
+
+let data = loadLocal();
+let fileHandle = null;      // 連携中のデータファイル
+let filePermission = false; // 書き込み許可済みか
+let saveTimer = null;
+
+const ui = {
+  view: "home",
+  fy: null,
+  journalMonth: "",
+  journalTask: "",
+  journalQuery: "",
+  manualTask: "",
+  taskQuery: ""
+};
+
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return normalize(JSON.parse(raw));
+  } catch (e) { console.error(e); }
+  return emptyData();
+}
+
+function normalize(d) {
+  const base = emptyData();
+  const out = Object.assign(base, d || {});
+  out.settings = Object.assign(emptyData().settings, (d && d.settings) || {});
+  out.tasks = Array.isArray(out.tasks) ? out.tasks : [];
+  out.records = Array.isArray(out.records) ? out.records : [];
+  out.tasks.forEach(t => {
+    t.months = Array.isArray(t.months) ? t.months.map(Number) : [];
+    t.everyN = Number(t.everyN) || 1;
+  });
+  return out;
+}
+
+function save() {
+  data.updatedAt = new Date().toISOString();
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (e) {
+    alert("ブラウザへの保存に失敗しました。「設定・データ」からファイルに書き出してください。\n" + e);
+  }
+  if (fileHandle && filePermission) {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(writeFile, 400);
+  }
+  updateSaveStatus();
+}
+
+async function writeFile() {
+  try {
+    const w = await fileHandle.createWritable();
+    await w.write(JSON.stringify(data, null, 2));
+    await w.close();
+    data._fileSavedAt = new Date().toISOString();
+    updateSaveStatus("ファイルに保存しました");
+  } catch (e) {
+    console.error(e);
+    filePermission = false;
+    updateSaveStatus("ファイルへの保存に失敗しました");
+    render();
+  }
+}
+
+function updateSaveStatus(msg) {
+  const el = document.getElementById("saveStatus");
+  const parts = [];
+  if (fileHandle) parts.push(filePermission ? "📄 " + fileHandle.name + " と連携中" : "📄 " + fileHandle.name + "（再接続が必要）");
+  else parts.push("ブラウザ内に保存");
+  if (data.updatedAt) parts.push("最終更新 " + fmtDateTime(data.updatedAt));
+  if (msg) parts.push(msg);
+  el.textContent = parts.join("　");
+}
+
+/* ----- ファイル連携（Edge / Chrome の File System Access API） ----- */
+
+const fsSupported = "showSaveFilePicker" in window;
+
+function idb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open("gyomu-manual", 1);
+    req.onupgradeneeded = () => req.result.createObjectStore("kv");
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbGet(key) {
+  const db = await idb();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction("kv").objectStore("kv").get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbSet(key, value) {
+  const db = await idb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("kv", "readwrite");
+    if (value === undefined) tx.objectStore("kv").delete(key); else tx.objectStore("kv").put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function restoreFileHandle() {
+  if (!fsSupported) return;
+  try {
+    const h = await idbGet("fileHandle");
+    if (!h) return;
+    fileHandle = h;
+    filePermission = (await h.queryPermission({ mode: "readwrite" })) === "granted";
+    if (filePermission) await loadFromHandle();
+  } catch (e) { console.error(e); }
+}
+
+async function reconnectFile() {
+  if (!fileHandle) return;
+  const p = await fileHandle.requestPermission({ mode: "readwrite" });
+  filePermission = p === "granted";
+  if (filePermission) await loadFromHandle();
+  render();
+}
+
+async function loadFromHandle() {
+  const file = await fileHandle.getFile();
+  const text = await file.text();
+  if (!text.trim()) { await writeFile(); return; }
+  const fromFile = normalize(JSON.parse(text));
+  // ファイルとブラウザ内のうち新しい方を採用する
+  if (!data.updatedAt || (fromFile.updatedAt && fromFile.updatedAt >= data.updatedAt)) {
+    data = fromFile;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } else {
+    await writeFile();
+  }
+}
+
+async function createDataFile() {
+  try {
+    const h = await window.showSaveFilePicker({
+      suggestedName: "業務マニュアルデータ.json",
+      types: [{ description: "業務マニュアル帳データ", accept: { "application/json": [".json"] } }]
+    });
+    fileHandle = h;
+    filePermission = true;
+    await idbSet("fileHandle", h);
+    await writeFile();
+    render();
+  } catch (e) { if (e.name !== "AbortError") alert(e); }
+}
+
+async function openDataFile() {
+  try {
+    const [h] = await window.showOpenFilePicker({
+      types: [{ description: "業務マニュアル帳データ", accept: { "application/json": [".json"] } }]
+    });
+    const text = await (await h.getFile()).text();
+    const fromFile = normalize(JSON.parse(text));
+    if ((data.tasks.length || data.records.length) &&
+        !confirm("このファイルの内容で、いまブラウザにあるデータを置き換えます。よろしいですか？")) return;
+    fileHandle = h;
+    const p = await h.requestPermission({ mode: "readwrite" });
+    filePermission = p === "granted";
+    data = fromFile;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    await idbSet("fileHandle", h);
+    render();
+  } catch (e) { if (e.name !== "AbortError") alert("読み込めませんでした: " + e.message); }
+}
+
+async function unlinkFile() {
+  fileHandle = null;
+  filePermission = false;
+  await idbSet("fileHandle", undefined);
+  render();
+}
+
+/* ===================== ユーティリティ ===================== */
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function pad(n) { return String(n).padStart(2, "0"); }
+function toYmd(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+function parseYmd(s) { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d || 1); }
+function today() { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function todayYmd() { return toYmd(today()); }
+function thisMonthKey() { return todayYmd().slice(0, 7); }
+function daysBetween(a, b) { return Math.round((b - a) / 86400000); }
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function fmtDate(s) {
+  if (!s) return "";
+  const d = parseYmd(s);
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}（${"日月火水木金土"[d.getDay()]}）`;
+}
+function fmtMonthKey(k) { const [y, m] = k.split("-").map(Number); return `${y}年${m}月`; }
+function fmtDateTime(iso) {
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function round1(n) { return Math.round(n * 10) / 10; }
+function avg(arr) { return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null; }
+
+function fyStart() { return Number(data.settings.fyStart) || 4; }
+/** 日付から年度を求める */
+function fyOf(date) { const y = date.getFullYear(), m = date.getMonth() + 1; return m >= fyStart() ? y : y - 1; }
+/** 年度内の月順（4,5,...,12,1,2,3 など） */
+function fyMonths() { const s = fyStart(); return Array.from({ length: 12 }, (_, i) => ((s - 1 + i) % 12) + 1); }
+function calYear(fy, month) { return month >= fyStart() ? fy : fy + 1; }
+function fyLabel(fy) { return fyStart() === 1 ? `${fy}年` : `${fy}年度`; }
+
+function taskById(id) { return data.tasks.find(t => t.id === id); }
+function recordTitle(r) { const t = taskById(r.taskId); return t ? t.title : (r.title || "（件名なし）"); }
+
+function scheduleText(t) {
+  if (!t.months.length) return "随時・不定期";
+  let s;
+  const ms = [...t.months].sort((a, b) => fyMonths().indexOf(a) - fyMonths().indexOf(b));
+  if (ms.length === 12) s = "毎月";
+  else s = ms.map(m => m + "月").join("・");
+  if (t.day) s += ` ${t.day}日`;
+  if (t.everyN > 1) s = `${t.everyN}年に1回（${fyLabel(Number(t.baseYear) || "")}〜） ` + s;
+  else if (ms.length < 12) s = "毎年 " + s;
+  return s;
+}
+
+/** 指定年度にその業務が行われる回（予定）の一覧 */
+function occurrencesInFy(t, fy) {
+  if (t.archived || !t.months.length) return [];
+  const n = t.everyN || 1;
+  const base = Number(t.baseYear) || fy;
+  if (((fy - base) % n + n) % n !== 0) return [];
+  return t.months.map(m => {
+    const y = calYear(fy, m);
+    const key = `${y}-${pad(m)}`;
+    let due = null;
+    if (t.day) {
+      const last = new Date(y, m, 0).getDate();
+      due = new Date(y, m - 1, Math.min(Number(t.day), last));
+    }
+    return { task: t, key, y, m, due };
+  });
+}
+
+function recordsForOcc(task, key) {
+  return data.records.filter(r => r.taskId === task.id && (r.occ || r.date.slice(0, 7)) === key);
+}
+function occStatus(occ) {
+  const recs = recordsForOcc(occ.task, occ.key);
+  if (recs.length && recs.some(r => !r.partial)) return "done";
+  if (recs.length) return "partial";
+  return occ.key < thisMonthKey() ? "late" : "plan";
+}
+
+/* ===================== 実績の集計（マニュアル用） ===================== */
+
+function taskStats(t) {
+  const recs = data.records.filter(r => r.taskId === t.id).sort((a, b) => a.date.localeCompare(b.date));
+  const groups = {};
+  recs.forEach(r => { const k = r.occ || r.date.slice(0, 7); (groups[k] = groups[k] || []).push(r); });
+  const keys = Object.keys(groups).sort();
+  const durations = [], hours = [], leadBefore = [];
+  const monthCount = Array(13).fill(0);
+  keys.forEach(k => {
+    const g = groups[k];
+    const start = g.reduce((min, r) => r.date < min ? r.date : min, g[0].date);
+    const end = g.reduce((max, r) => { const e = r.endDate || r.date; return e > max ? e : max; }, g[0].endDate || g[0].date);
+    durations.push(daysBetween(parseYmd(start), parseYmd(end)) + 1);
+    const h = g.reduce((s, r) => s + (Number(r.hours) || 0), 0);
+    if (h > 0) hours.push(h);
+    monthCount[parseYmd(start).getMonth() + 1]++;
+    if (t.day) {
+      const [y, m] = k.split("-").map(Number);
+      const last = new Date(y, m, 0).getDate();
+      const due = new Date(y, m - 1, Math.min(Number(t.day), last));
+      leadBefore.push(daysBetween(parseYmd(start), due));
+    }
+  });
+  const years = [...new Set(recs.map(r => fyOf(parseYmd(r.date))))].sort();
+  return {
+    recs, groups, keys, years,
+    count: keys.length,
+    avgDuration: avg(durations), minDuration: durations.length ? Math.min(...durations) : null, maxDuration: durations.length ? Math.max(...durations) : null,
+    avgHours: avg(hours),
+    avgLead: avg(leadBefore),
+    monthCount,
+    first: recs[0] ? recs[0].date : null,
+    last: recs.length ? recs[recs.length - 1].date : null
+  };
+}
+
+/* ===================== 画面描画 ===================== */
+
+function render() {
+  document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("active", b.dataset.view === ui.view));
+  const s = data.settings;
+  document.getElementById("roleLabel").textContent = [s.org, s.role].filter(Boolean).join("　") || "（役職名は「設定・データ」で登録できます）";
+  document.getElementById("categoryList").innerHTML = categories().map(c => `<option value="${esc(c)}">`).join("");
+  if (ui.fy == null) ui.fy = fyOf(today());
+  const main = document.getElementById("main");
+  const views = { home: viewHome, year: viewYear, journal: viewJournal, tasks: viewTasks, manual: viewManual, data: viewData };
+  main.innerHTML = fileBanner() + views[ui.view]();
+  updateSaveStatus();
+}
+
+function categories() {
+  return [...new Set(data.tasks.map(t => t.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ja"));
+}
+
+function fileBanner() {
+  if (fileHandle && !filePermission) {
+    return `<div class="banner">📄 データファイル「${esc(fileHandle.name)}」との連携を再開するには許可が必要です。
+      <button class="btn primary" data-action="reconnect">再接続する</button></div>`;
+  }
+  if (!fileHandle && data.records.length + data.tasks.length > 0 && ui.view === "home") {
+    const last = data.lastExport ? fmtDateTime(data.lastExport) : "なし";
+    const old = !data.lastExport || daysBetween(new Date(data.lastExport), new Date()) > 30;
+    if (old) return `<div class="banner">💾 データはこのブラウザ内にだけ保存されています（最終バックアップ: ${last}）。
+      ${fsSupported ? `<button class="btn" data-action="createFile">データファイルを作って連携</button>` : ""}
+      <button class="btn" data-action="exportJson">バックアップを書き出す</button></div>`;
+  }
+  return "";
+}
+
+/* ----- ホーム ----- */
+function viewHome() {
+  const t0 = today();
+  const curKey = thisMonthKey();
+  const fy = fyOf(t0);
+  const occs = data.tasks.flatMap(t => [...occurrencesInFy(t, fy), ...occurrencesInFy(t, fy + 1)]);
+
+  const thisMonth = occs.filter(o => o.key === curKey);
+  const prep = occs.filter(o => {
+    if (o.key <= curKey) return false;
+    if (occStatus(o) === "done") return false;
+    const lead = Number(o.task.leadDays) || 0;
+    const dueish = o.due || new Date(o.y, o.m - 1, 1);
+    return addDays(dueish, -lead) <= t0;
+  });
+  const next = occs.filter(o => {
+    const [y, m] = curKey.split("-").map(Number);
+    const nk = m === 12 ? `${y + 1}-01` : `${y}-${pad(m + 1)}`;
+    return o.key === nk && !prep.includes(o);
+  });
+  const late = occs.filter(o => o.key < curKey && fyOf(new Date(o.y, o.m - 1, 1)) === fy && occStatus(o) === "late");
+  const recent = [...data.records].sort((a, b) => (b.date + (b.createdAt || "")).localeCompare(a.date + (a.createdAt || ""))).slice(0, 8);
+
+  const occItem = o => {
+    const st = occStatus(o);
+    const tag = { done: '<span class="tag ok">実施済</span>', partial: '<span class="tag warn">途中</span>', late: '<span class="tag ng">未実施</span>', plan: '<span class="tag">予定</span>' }[st];
+    const dueTxt = o.due ? `期限 ${fmtDate(toYmd(o.due))}` : fmtMonthKey(o.key);
+    const stats = taskStats(o.task);
+    const hint = [];
+    if (o.task.leadDays) hint.push(`期限の${o.task.leadDays}日前から準備`);
+    if (stats.avgDuration) hint.push(`実績: 平均${round1(stats.avgDuration)}日`);
+    if (stats.avgHours) hint.push(`約${round1(stats.avgHours)}時間`);
+    return `<li><div class="body">
+        <div>${tag}<button class="link title" data-action="openManual" data-id="${o.task.id}">${esc(o.task.title)}</button></div>
+        <div class="muted">${dueTxt}${hint.length ? "　/　" + hint.join("・") : ""}</div>
+      </div>
+      <button class="btn small" data-action="addRecord" data-task="${o.task.id}" data-occ="${o.key}">実施を記録</button></li>`;
+  };
+  const list = (arr, empty) => arr.length ? `<ul class="items">${arr.map(occItem).join("")}</ul>` : `<div class="empty">${empty}</div>`;
+
+  if (!data.tasks.length && !data.records.length) {
+    return `<div class="panel">
+      <h2>はじめに</h2>
+      <p>このアプリは、役職の<b>年間の業務予定</b>と<b>日々の実施記録</b>をためていき、数年後には
+      そのまま<b>業務マニュアル</b>になることを目指した帳簿です。</p>
+      <ol>
+        <li>「設定・データ」で役職名と年度の始まり月を登録し、<b>データファイルを作って連携</b>します（推奨）。</li>
+        <li>「業務一覧」に、毎月・毎年・数年に1回の業務など、分かっている業務を登録します。</li>
+        <li>業務をしたら「実施を記録」から、やったこと・かかった日数や時間・気づきを入れます。
+            予定にない業務も「業務日誌」に日記のように書いておけば、あとから業務として登録できます。</li>
+        <li>「年間予定表」で1年の流れを、「マニュアル」で業務ごとの手順と過去の実績（目安の時期・期間）を確認できます。</li>
+      </ol>
+      <div class="toolbar">
+        <button class="btn primary" data-action="addTask">業務を登録する</button>
+        <button class="btn" data-action="addRecord">今日の業務を記録する</button>
+        <button class="btn" data-action="loadSample">サンプルデータを入れて試す</button>
+      </div>
+    </div>`;
+  }
+
+  return `
+    <div class="toolbar">
+      <h2 style="margin:0">${fmtDate(todayYmd())}</h2>
+      <span class="spacer"></span>
+      <button class="btn primary" data-action="addRecord">＋ 今日の業務を記録</button>
+      <button class="btn" data-action="addTask">＋ 業務を登録</button>
+    </div>
+    <div class="grid2">
+      <div class="panel"><h3>今月（${new Date().getMonth() + 1}月）の予定業務</h3>${list(thisMonth, "今月の予定業務はありません")}</div>
+      <div class="panel"><h3>そろそろ準備を始める業務</h3>${list(prep, "準備開始時期に入った業務はありません")}</div>
+      <div class="panel"><h3>来月の予定業務</h3>${list(next, "来月の予定業務はありません")}</div>
+      <div class="panel"><h3>今年度の未実施（過ぎた月）</h3>${list(late, "未実施の業務はありません 👍")}</div>
+    </div>
+    <div class="panel"><h3>最近の記録</h3>${recordList(recent)}</div>`;
+}
+
+function recordList(recs, opts = {}) {
+  if (!recs.length) return `<div class="empty">記録はまだありません</div>`;
+  return `<ul class="items">${recs.map(r => {
+    const t = taskById(r.taskId);
+    const period = r.endDate && r.endDate !== r.date ? `${fmtDate(r.date)} 〜 ${fmtDate(r.endDate)}` : fmtDate(r.date);
+    return `<li><div class="body">
+      <div>${t ? `<span class="tag cat">${esc(t.category || "未分類")}</span>` : '<span class="tag warn">業務未登録</span>'}
+        <span class="title">${esc(recordTitle(r))}</span>
+        ${r.partial ? '<span class="tag warn">途中</span>' : ""}
+        ${r.hours ? `<span class="muted">${r.hours}時間</span>` : ""}</div>
+      <div class="muted">${period}${r.occ && t ? `　（${fmtMonthKey(r.occ)}分）` : ""}</div>
+      ${r.content ? `<div class="pre">${esc(r.content)}</div>` : ""}
+      ${r.notes ? `<div class="pre muted">📝 ${esc(r.notes)}</div>` : ""}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <button class="btn small" data-action="editRecord" data-id="${r.id}">編集</button>
+      ${!t ? `<button class="btn small" data-action="taskFromRecord" data-id="${r.id}">業務に登録</button>` : ""}
+    </div></li>`;
+  }).join("")}</ul>`;
+}
+
+/* ----- 年間予定表 ----- */
+function viewYear() {
+  const fy = ui.fy;
+  const months = fyMonths();
+  const curKey = thisMonthKey();
+  const activeTasks = data.tasks.filter(t => !t.archived);
+  const byCat = {};
+  activeTasks.forEach(t => (byCat[t.category || "未分類"] = byCat[t.category || "未分類"] || []).push(t));
+  const cats = Object.keys(byCat).sort((a, b) => a.localeCompare(b, "ja"));
+
+  const rows = cats.map(cat => {
+    const taskRows = byCat[cat].sort((a, b) => a.title.localeCompare(b.title, "ja")).map(t => {
+      const occs = occurrencesInFy(t, fy);
+      const cells = months.map(m => {
+        const key = `${calYear(fy, m)}-${pad(m)}`;
+        const occ = occs.find(o => o.m === m);
+        const recs = data.records.filter(r => r.taskId === t.id && (r.occ || r.date.slice(0, 7)) === key);
+        let cls = "", txt = "";
+        if (occ) {
+          const st = occStatus(occ);
+          cls = { done: "done", partial: "plan", late: "late", plan: "plan" }[st];
+          txt = st === "done" ? "✓" : st === "partial" ? "途中" : (t.day ? t.day + "日" : "●");
+        } else if (recs.length) {
+          cls = "extra"; txt = "✓";
+        }
+        if (key === curKey) cls += " now";
+        return `<td class="cell ${cls}" data-action="cell" data-task="${t.id}" data-occ="${key}" title="${esc(t.title)} ${fmtMonthKey(key)}">${txt}</td>`;
+      }).join("");
+      const freq = t.everyN > 1 ? ` <span class="tag warn">${t.everyN}年毎</span>` : "";
+      return `<tr><th class="task"><button class="link" data-action="openManual" data-id="${t.id}">${esc(t.title)}</button>${freq}</th>${cells}</tr>`;
+    }).join("");
+    return `<tr class="cat-row"><th colspan="13">${esc(cat)}</th></tr>` + taskRows;
+  }).join("");
+
+  // 業務に紐付いていない記録の件数
+  const loose = months.map(m => {
+    const key = `${calYear(fy, m)}-${pad(m)}`;
+    const n = data.records.filter(r => !taskById(r.taskId) && r.date.slice(0, 7) === key).length;
+    return `<td class="cell" data-action="looseMonth" data-occ="${key}">${n ? n + "件" : ""}</td>`;
+  }).join("");
+
+  // 年度内に予定がある業務を月ごとに一覧（印刷・説明用）
+  const monthly = months.map(m => {
+    const key = `${calYear(fy, m)}-${pad(m)}`;
+    const items = activeTasks.flatMap(t => occurrencesInFy(t, fy)).filter(o => o.key === key)
+      .sort((a, b) => (a.task.day || 99) - (b.task.day || 99));
+    return `<div class="panel" style="margin-bottom:8px"><h3>${m}月</h3>${items.length ? `<ul class="items">${items.map(o =>
+      `<li><div class="body">${o.task.day ? `<b>${o.task.day}日</b>　` : ""}${esc(o.task.title)} <span class="muted">${esc(o.task.category || "")}</span></div></li>`).join("")}</ul>` : '<div class="muted">予定なし</div>'}</div>`;
+  }).join("");
+
+  return `
+    <div class="toolbar">
+      <button class="btn" data-action="fyPrev">◀</button>
+      <h2 style="margin:0">${fyLabel(fy)} 年間予定表</h2>
+      <button class="btn" data-action="fyNext">▶</button>
+      <button class="btn" data-action="fyToday">今年度</button>
+      <span class="spacer"></span>
+      <button class="btn" data-action="addTask">＋ 業務を登録</button>
+      <button class="btn" data-action="print">印刷</button>
+    </div>
+    <div class="panel year-table-wrap">
+      ${activeTasks.length ? `<table class="year">
+        <thead><tr><th class="task">業務</th>${months.map(m => `<th>${m}月</th>`).join("")}</tr></thead>
+        <tbody>${rows}
+          <tr class="cat-row"><th colspan="13">業務一覧にない記録（日誌）</th></tr>
+          <tr><th class="task muted">件数</th>${loose}</tr>
+        </tbody></table>` : '<div class="empty">業務が登録されていません。「＋ 業務を登録」から追加してください。</div>'}
+      <div class="legend">
+        <span class="l-plan">予定（数字は期限日）</span><span class="l-done">実施済み</span>
+        <span class="l-late">期限月を過ぎて未実施</span><span class="l-extra">予定外の月に実施</span>
+        <span class="muted">セルをクリックすると記録を入力・確認できます</span>
+      </div>
+    </div>
+    <h3>月別の予定</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px">${monthly}</div>`;
+}
+
+/* ----- 業務日誌 ----- */
+function viewJournal() {
+  const q = ui.journalQuery.trim().toLowerCase();
+  let recs = data.records.filter(r => {
+    if (ui.journalMonth && r.date.slice(0, 7) !== ui.journalMonth) return false;
+    if (ui.journalTask === "__none") { if (taskById(r.taskId)) return false; }
+    else if (ui.journalTask && r.taskId !== ui.journalTask) return false;
+    if (q && ![recordTitle(r), r.content, r.notes].join(" ").toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a, b) => (b.date + (b.createdAt || "")).localeCompare(a.date + (a.createdAt || "")));
+
+  const totalHours = recs.reduce((s, r) => s + (Number(r.hours) || 0), 0);
+  // 月ごとに見出しを付ける
+  const groups = {};
+  recs.forEach(r => (groups[r.date.slice(0, 7)] = groups[r.date.slice(0, 7)] || []).push(r));
+
+  return `
+    <div class="toolbar">
+      <h2 style="margin:0">業務日誌（実施記録）</h2>
+      <span class="spacer"></span>
+      <button class="btn primary" data-action="addRecord">＋ 記録を追加</button>
+      <button class="btn" data-action="exportCsv">CSVで書き出す</button>
+    </div>
+    <div class="panel">
+      <div class="toolbar" style="margin-bottom:0">
+        <label>月 <input type="month" id="jMonth" value="${esc(ui.journalMonth)}"></label>
+        <label>業務 <select id="jTask">
+          <option value="">すべて</option>
+          <option value="__none" ${ui.journalTask === "__none" ? "selected" : ""}>（業務未登録の記録のみ）</option>
+          ${taskOptions(ui.journalTask)}
+        </select></label>
+        <input type="search" id="jQuery" placeholder="キーワード検索" value="${esc(ui.journalQuery)}">
+        <button class="btn small" data-action="jClear">条件クリア</button>
+        <span class="spacer"></span>
+        <span class="muted">${recs.length}件${totalHours ? ` / 合計 ${round1(totalHours)} 時間` : ""}</span>
+      </div>
+    </div>
+    ${Object.keys(groups).length ? Object.keys(groups).sort().reverse().map(k =>
+      `<div class="panel"><h3>${fmtMonthKey(k)}</h3>${recordList(groups[k])}</div>`).join("")
+      : '<div class="panel"><div class="empty">該当する記録はありません</div></div>'}`;
+}
+
+function taskOptions(selected) {
+  const byCat = {};
+  data.tasks.forEach(t => (byCat[t.category || "未分類"] = byCat[t.category || "未分類"] || []).push(t));
+  return Object.keys(byCat).sort((a, b) => a.localeCompare(b, "ja")).map(c =>
+    `<optgroup label="${esc(c)}">${byCat[c].sort((a, b) => a.title.localeCompare(b.title, "ja")).map(t =>
+      `<option value="${t.id}" ${t.id === selected ? "selected" : ""}>${esc(t.title)}${t.archived ? "（廃止）" : ""}</option>`).join("")}</optgroup>`).join("");
+}
+
+/* ----- 業務一覧 ----- */
+function viewTasks() {
+  const q = ui.taskQuery.trim().toLowerCase();
+  const tasks = data.tasks.filter(t => !q || [t.title, t.category, t.purpose, t.steps, t.tips].join(" ").toLowerCase().includes(q));
+  const byCat = {};
+  tasks.forEach(t => (byCat[t.category || "未分類"] = byCat[t.category || "未分類"] || []).push(t));
+  const loose = data.records.filter(r => !taskById(r.taskId)).length;
+
+  return `
+    <div class="toolbar">
+      <h2 style="margin:0">業務一覧</h2>
+      <input type="search" id="tQuery" placeholder="業務を検索" value="${esc(ui.taskQuery)}">
+      <span class="spacer"></span>
+      <button class="btn primary" data-action="addTask">＋ 業務を登録</button>
+    </div>
+    ${loose ? `<div class="banner" style="background:var(--accent-soft);border-color:#c7d7fe;color:#1e3a8a">
+      業務一覧に登録されていない日誌が ${loose} 件あります。繰り返し行う業務なら「業務に登録」しておくと、年間予定とマニュアルに反映されます。
+      <button class="btn" data-action="showLoose">確認する</button></div>` : ""}
+    ${Object.keys(byCat).sort((a, b) => a.localeCompare(b, "ja")).map(c => `
+      <div class="panel"><h3>${esc(c)}</h3><ul class="items">
+      ${byCat[c].sort((a, b) => a.title.localeCompare(b.title, "ja")).map(t => {
+        const st = taskStats(t);
+        return `<li><div class="body">
+          <div><span class="title">${esc(t.title)}</span> ${t.archived ? '<span class="tag">廃止</span>' : ""}</div>
+          <div class="muted">${esc(scheduleText(t))}　/　実施記録 ${st.count} 回${st.last ? `（最終 ${fmtDate(st.last)}）` : ""}</div>
+        </div>
+        <button class="btn small" data-action="openManual" data-id="${t.id}">マニュアル</button>
+        <button class="btn small" data-action="addRecord" data-task="${t.id}">記録</button>
+        <button class="btn small" data-action="editTask" data-id="${t.id}">編集</button></li>`;
+      }).join("")}</ul></div>`).join("") || '<div class="panel"><div class="empty">業務が登録されていません</div></div>'}`;
+}
+
+/* ----- マニュアル ----- */
+function viewManual() {
+  const s = data.settings;
+  const tasks = data.tasks
+    .filter(t => !ui.manualTask || t.id === ui.manualTask)
+    .sort((a, b) => (a.category || "").localeCompare(b.category || "", "ja") || firstMonthOrder(a) - firstMonthOrder(b) || a.title.localeCompare(b.title, "ja"));
+
+  return `
+    <div class="toolbar">
+      <h2 style="margin:0">業務マニュアル</h2>
+      <select id="mTask"><option value="">すべての業務</option>${taskOptions(ui.manualTask)}</select>
+      <span class="spacer"></span>
+      ${ui.manualTask ? `<button class="btn" data-action="editTask" data-id="${ui.manualTask}">この業務を編集</button>
+        <button class="btn" data-action="addRecord" data-task="${ui.manualTask}">実施を記録</button>` : ""}
+      <button class="btn" data-action="print">印刷 / PDF</button>
+      <button class="btn" data-action="exportMd">テキスト(Markdown)で保存</button>
+    </div>
+    ${!ui.manualTask ? `<div class="panel">
+      <h2>${esc([s.org, s.role].filter(Boolean).join(" ") || "")} 業務マニュアル</h2>
+      <div class="muted">作成日 ${fmtDate(todayYmd())}　/　登録業務 ${data.tasks.length} 件　/　実施記録 ${data.records.length} 件
+        ${data.records.length ? `（${fmtDate([...data.records].sort((a, b) => a.date.localeCompare(b.date))[0].date)} 〜）` : ""}</div>
+      <h4>年間の流れ</h4>${yearFlowTable()}
+    </div>` : ""}
+    ${tasks.map(manualSection).join("") || '<div class="panel"><div class="empty">業務が登録されていません</div></div>'}`;
+}
+
+function firstMonthOrder(t) {
+  if (!t.months.length) return 99;
+  return Math.min(...t.months.map(m => fyMonths().indexOf(m)));
+}
+
+function yearFlowTable() {
+  const rows = fyMonths().map(m => {
+    const ts = data.tasks.filter(t => !t.archived && t.months.includes(m))
+      .sort((a, b) => (a.day || 99) - (b.day || 99));
+    const multi = ts.filter(t => t.everyN > 1);
+    const yearly = ts.filter(t => t.everyN === 1 && t.months.length < 12);
+    return `<tr><th>${m}月</th><td>${yearly.map(t => esc(t.title) + (t.day ? `（${t.day}日）` : "")).join("、") || ""}
+      ${multi.length ? `<div class="muted">数年ごと: ${multi.map(t => esc(t.title) + `（${t.everyN}年毎）`).join("、")}</div>` : ""}</td></tr>`;
+  }).join("");
+  const monthly = data.tasks.filter(t => !t.archived && t.months.length === 12);
+  const irregular = data.tasks.filter(t => !t.archived && !t.months.length);
+  return `<table class="kv">
+    ${monthly.length ? `<tr><th>毎月</th><td>${monthly.map(t => esc(t.title) + (t.day ? `（${t.day}日）` : "")).join("、")}</td></tr>` : ""}
+    ${rows}
+    ${irregular.length ? `<tr><th>随時・不定期</th><td>${irregular.map(t => esc(t.title)).join("、")}</td></tr>` : ""}
+  </table>`;
+}
+
+function manualSection(t) {
+  const st = taskStats(t);
+  const steps = (t.steps || "").split("\n").map(x => x.trim()).filter(Boolean);
+  const maxMonth = Math.max(1, ...st.monthCount);
+  const months = fyMonths();
+  const hist = st.keys.slice().reverse().map(k => {
+    const g = st.groups[k];
+    return `<div class="history-item">
+      <b>${fmtMonthKey(k)}分</b>
+      ${g.map(r => `<div><span class="muted">${fmtDate(r.date)}${r.endDate && r.endDate !== r.date ? "〜" + fmtDate(r.endDate) : ""}${r.hours ? "　" + r.hours + "時間" : ""}${r.partial ? "　（途中）" : ""}</span>
+        ${r.content ? `<div class="pre">${esc(r.content)}</div>` : ""}
+        ${r.notes ? `<div class="pre">📝 ${esc(r.notes)}</div>` : ""}</div>`).join("")}
+    </div>`;
+  }).join("");
+  const allNotes = st.recs.filter(r => r.notes);
+
+  return `<div class="panel manual-task">
+    <h3>${esc(t.title)} ${t.archived ? '<span class="tag">廃止</span>' : ""}</h3>
+    <table class="kv">
+      <tr><th>分類</th><td>${esc(t.category || "未分類")}</td></tr>
+      <tr><th>実施時期（予定）</th><td>${esc(scheduleText(t))}</td></tr>
+      <tr><th>準備開始の目安</th><td>${t.leadDays ? `期限の ${t.leadDays} 日前から` : "—"}${st.avgLead != null ? `<span class="muted">　（実績: 平均 ${round1(st.avgLead)} 日前に着手）</span>` : ""}</td></tr>
+      <tr><th>所要日数の目安</th><td>${t.durationDays ? `${t.durationDays} 日` : "—"}${st.avgDuration ? `<span class="muted">　（実績: 平均 ${round1(st.avgDuration)} 日、${st.minDuration}〜${st.maxDuration} 日）</span>` : ""}</td></tr>
+      <tr><th>作業時間の目安</th><td>${t.hours ? `${t.hours} 時間` : "—"}${st.avgHours ? `<span class="muted">　（実績: 1回あたり平均 ${round1(st.avgHours)} 時間）</span>` : ""}</td></tr>
+      <tr><th>実施実績</th><td>${st.count ? `${st.count} 回（${st.years.map(fyLabel).join("・")}）` : "まだ記録がありません"}</td></tr>
+      ${st.count ? `<tr><th>実際に着手した月</th><td>
+        <div class="bars">${months.map(m => `<div style="height:${st.monthCount[m] / maxMonth * 100}%" title="${m}月: ${st.monthCount[m]}回"></div>`).join("")}</div>
+        <div class="bars-label">${months.map(m => `<span>${m}</span>`).join("")}</div>
+        ${!t.months.length ? `<div class="muted">実績から見ると主に ${topMonths(st.monthCount)} に行われています</div>` : ""}
+      </td></tr>` : ""}
+      ${t.related ? `<tr><th>関係先・資料</th><td class="pre">${esc(t.related)}</td></tr>` : ""}
+    </table>
+    ${t.purpose ? `<h4>目的・概要</h4><div class="pre">${esc(t.purpose)}</div>` : ""}
+    ${steps.length ? `<h4>手順</h4><ol>${steps.map(x => `<li>${esc(x)}</li>`).join("")}</ol>` : ""}
+    ${t.tips ? `<h4>注意点・コツ</h4><div class="pre">${esc(t.tips)}</div>` : ""}
+    ${allNotes.length ? `<h4>過去の申し送り（新しい順）</h4><ul>${allNotes.slice().reverse().map(r => `<li><span class="muted">${fmtDate(r.date)}</span>　<span class="pre">${esc(r.notes)}</span></li>`).join("")}</ul>` : ""}
+    ${hist ? `<h4>実施の記録</h4>${hist}` : ""}
+  </div>`;
+}
+
+function topMonths(mc) {
+  const max = Math.max(...mc);
+  if (!max) return "—";
+  return mc.map((n, m) => ({ n, m })).filter(x => x.n && x.n >= max * 0.5).map(x => x.m + "月").join("・");
+}
+
+/* ----- 設定・データ ----- */
+function viewData() {
+  const s = data.settings;
+  return `
+    <h2>設定・データ</h2>
+    <div class="panel">
+      <h3>基本設定</h3>
+      <div class="form-inline">
+        <div class="form-row"><label>組織・所属</label><input type="text" id="sOrg" value="${esc(s.org)}" placeholder="例: 〇〇市 総務課"></div>
+        <div class="form-row"><label>役職</label><input type="text" id="sRole" value="${esc(s.role)}" placeholder="例: 庶務係長"></div>
+        <div class="form-row"><label>年度の始まり</label><select id="sFy">
+          ${[1, 4, 7, 9, 10].map(m => `<option value="${m}" ${Number(s.fyStart) === m ? "selected" : ""}>${m}月</option>`).join("")}
+        </select></div>
+      </div>
+      <button class="btn primary" data-action="saveSettings">設定を保存</button>
+    </div>
+
+    <div class="panel">
+      <h3>データの保存場所</h3>
+      <p class="muted">入力した内容は自動でこのパソコンのブラウザ内に保存されます。ブラウザの履歴削除などで消えることがあるため、
+      <b>データファイル（.json）と連携</b>しておくと、入力のたびにそのファイルへ自動保存されます（Microsoft Edge / Google Chrome）。
+      ファイルを共有フォルダやUSBに置けば、後任者への引き継ぎにも使えます。</p>
+      ${fsSupported ? `
+        <div class="toolbar">
+          ${fileHandle ? `<span>連携中: <b>${esc(fileHandle.name)}</b> ${filePermission ? '<span class="tag ok">自動保存中</span>' : '<span class="tag ng">再接続が必要</span>'}</span>
+            ${!filePermission ? `<button class="btn primary" data-action="reconnect">再接続</button>` : ""}
+            <button class="btn" data-action="unlinkFile">連携を解除</button>` : ""}
+          <button class="btn" data-action="createFile">新しいデータファイルを作って連携</button>
+          <button class="btn" data-action="openFile">既存のデータファイルを開いて連携</button>
+        </div>` : `<p class="muted">※ このブラウザはファイル連携に対応していません。下の「書き出し」で定期的にバックアップしてください。</p>`}
+    </div>
+
+    <div class="panel">
+      <h3>バックアップ・引き継ぎ</h3>
+      <div class="toolbar">
+        <button class="btn" data-action="exportJson">データを書き出す（.json）</button>
+        <label class="btn">データを読み込む（置き換え）<input type="file" accept=".json,application/json" id="importReplace" hidden></label>
+        <label class="btn">データを追加で読み込む（統合）<input type="file" accept=".json,application/json" id="importMerge" hidden></label>
+        <button class="btn" data-action="exportCsv">日誌をCSVで書き出す（Excel用）</button>
+      </div>
+      <p class="muted">最終書き出し: ${data.lastExport ? fmtDateTime(data.lastExport) : "なし"}　/
+        「統合」は、別のパソコンや前任者のデータを合わせたいときに使います（同じ業務・記録は重複しません）。</p>
+    </div>
+
+    <div class="panel">
+      <h3>その他</h3>
+      <div class="toolbar">
+        <button class="btn" data-action="loadSample">サンプルデータを追加</button>
+        <button class="btn danger" data-action="clearAll">すべてのデータを削除</button>
+      </div>
+      <p class="muted">登録業務 ${data.tasks.length} 件 / 実施記録 ${data.records.length} 件</p>
+    </div>`;
+}
+
+/* ===================== ダイアログ ===================== */
+
+const taskDialog = document.getElementById("taskDialog");
+const taskForm = document.getElementById("taskForm");
+const recordDialog = document.getElementById("recordDialog");
+const recordForm = document.getElementById("recordForm");
+
+document.getElementById("monthChecks").innerHTML =
+  Array.from({ length: 12 }, (_, i) => `<label><input type="checkbox" name="m" value="${i + 1}">${i + 1}月</label>`).join("");
+
+function openTaskDialog(task, preset) {
+  const t = task || Object.assign({ id: "", title: "", category: "", months: [], day: "", everyN: 1, baseYear: fyOf(today()),
+    leadDays: "", durationDays: "", hours: "", purpose: "", steps: "", tips: "", related: "", archived: false }, preset || {});
+  document.getElementById("taskDialogTitle").textContent = task ? "業務を編集" : "業務を登録";
+  const f = taskForm.elements;
+  ["id", "title", "category", "day", "baseYear", "leadDays", "durationDays", "hours", "purpose", "steps", "tips", "related"]
+    .forEach(k => f[k].value = t[k] == null ? "" : t[k]);
+  f.everyN.value = String(t.everyN || 1);
+  if (![...f.everyN.options].some(o => o.value === f.everyN.value)) {
+    f.everyN.add(new Option(`${t.everyN}年に1回`, String(t.everyN)));
+    f.everyN.value = String(t.everyN);
+  }
+  f.archived.checked = !!t.archived;
+  taskForm.querySelectorAll("input[name=m]").forEach(cb => cb.checked = t.months.includes(Number(cb.value)));
+  document.getElementById("taskDelete").style.display = task ? "" : "none";
+  taskForm.dataset.fromRecord = (preset && preset._fromRecord) || "";
+  taskDialog.showModal();
+}
+
+taskForm.addEventListener("submit", e => {
+  e.preventDefault();
+  const f = taskForm.elements;
+  const id = f.id.value || uid();
+  const t = {
+    id,
+    title: f.title.value.trim(),
+    category: f.category.value.trim(),
+    months: [...taskForm.querySelectorAll("input[name=m]:checked")].map(cb => Number(cb.value)),
+    day: f.day.value ? Number(f.day.value) : "",
+    everyN: Number(f.everyN.value) || 1,
+    baseYear: f.baseYear.value ? Number(f.baseYear.value) : fyOf(today()),
+    leadDays: f.leadDays.value ? Number(f.leadDays.value) : "",
+    durationDays: f.durationDays.value ? Number(f.durationDays.value) : "",
+    hours: f.hours.value ? Number(f.hours.value) : "",
+    purpose: f.purpose.value, steps: f.steps.value, tips: f.tips.value, related: f.related.value,
+    archived: f.archived.checked
+  };
+  if (!t.title) return;
+  const i = data.tasks.findIndex(x => x.id === id);
+  if (i >= 0) data.tasks[i] = Object.assign(data.tasks[i], t);
+  else { t.createdAt = new Date().toISOString(); data.tasks.push(t); }
+  // 日誌から業務を作った場合は、その記録を紐付ける
+  const fromRec = taskForm.dataset.fromRecord;
+  if (fromRec) {
+    const r = data.records.find(x => x.id === fromRec);
+    if (r) { r.taskId = id; r.occ = r.occ || r.date.slice(0, 7); }
+    const sameTitle = data.records.filter(x => !taskById(x.taskId) && r && x.title && x.title.trim() === (r.title || "").trim());
+    if (sameTitle.length && confirm(`同じ件名「${r.title}」の未登録の記録が他に ${sameTitle.length} 件あります。まとめてこの業務に紐付けますか？`)) {
+      sameTitle.forEach(x => { x.taskId = id; x.occ = x.occ || x.date.slice(0, 7); });
+    }
+  }
+  save();
+  taskDialog.close();
+  render();
+});
+
+document.getElementById("taskDelete").addEventListener("click", () => {
+  const id = taskForm.elements.id.value;
+  const n = data.records.filter(r => r.taskId === id).length;
+  if (!confirm(n ? `この業務を削除します。実施記録 ${n} 件は「業務未登録」の記録として残ります。よろしいですか？\n（行っていない業務は「廃止」にチェックするのがおすすめです）`
+                 : "この業務を削除します。よろしいですか？")) return;
+  const t = taskById(id);
+  data.records.forEach(r => { if (r.taskId === id) { r.title = r.title || t.title; r.taskId = ""; } });
+  data.tasks = data.tasks.filter(x => x.id !== id);
+  if (ui.manualTask === id) ui.manualTask = "";
+  save();
+  taskDialog.close();
+  render();
+});
+
+taskForm.addEventListener("click", e => {
+  const b = e.target.closest("[data-months]");
+  if (!b) return;
+  const mode = b.dataset.months;
+  taskForm.querySelectorAll("input[name=m]").forEach(cb => {
+    const m = Number(cb.value);
+    cb.checked = mode === "all" ? true : mode === "quarter" ? [1, 4, 7, 10].includes(m) : false;
+  });
+});
+
+function openRecordDialog(rec, preset) {
+  const r = rec || Object.assign({ id: "", taskId: "", title: "", date: todayYmd(), endDate: "", hours: "", occ: "", content: "", notes: "", partial: false }, preset || {});
+  document.getElementById("recordDialogTitle").textContent = rec ? "実施記録を編集" : "実施記録を入力";
+  const sel = document.getElementById("recordTaskSelect");
+  sel.innerHTML = `<option value="">（業務一覧にない業務・その他）</option>` + taskOptions(r.taskId);
+  const f = recordForm.elements;
+  ["id", "title", "date", "endDate", "hours", "occ", "content", "notes"].forEach(k => f[k].value = r[k] == null ? "" : r[k]);
+  f.taskId.value = r.taskId || "";
+  f.partial.checked = !!r.partial;
+  syncRecordForm();
+  document.getElementById("recordDelete").style.display = rec ? "" : "none";
+  recordDialog.showModal();
+}
+
+function syncRecordForm() {
+  const f = recordForm.elements;
+  const hasTask = !!f.taskId.value;
+  document.getElementById("recordTitleRow").style.display = hasTask ? "none" : "";
+  document.getElementById("recordOccRow").style.display = hasTask ? "" : "none";
+  if (hasTask && !f.occ.value && f.date.value) f.occ.value = f.date.value.slice(0, 7);
+  const t = taskById(f.taskId.value);
+  let hintEl = document.getElementById("recordHint");
+  if (!hintEl) {
+    hintEl = document.createElement("div");
+    hintEl.id = "recordHint";
+    hintEl.className = "muted";
+    hintEl.style.marginTop = "4px";
+    document.getElementById("recordTaskSelect").after(hintEl);
+  }
+  if (t) {
+    const st = taskStats(t);
+    const last = st.recs.filter(r => r.id !== f.id.value).pop();
+    hintEl.innerHTML = [
+      esc(scheduleText(t)),
+      st.avgDuration ? `実績 平均${round1(st.avgDuration)}日` : "",
+      st.avgHours ? `約${round1(st.avgHours)}時間` : "",
+      last ? `前回 ${fmtDate(last.date)}${last.notes ? "：📝 " + esc(last.notes.slice(0, 80)) : ""}` : ""
+    ].filter(Boolean).join("　/　");
+  } else hintEl.innerHTML = "";
+}
+recordForm.elements.taskId.addEventListener("change", () => { recordForm.elements.occ.value = ""; syncRecordForm(); });
+recordForm.elements.date.addEventListener("change", () => {
+  const f = recordForm.elements;
+  if (f.taskId.value && !f.id.value) f.occ.value = f.date.value.slice(0, 7);
+});
+
+recordForm.addEventListener("submit", e => {
+  e.preventDefault();
+  const f = recordForm.elements;
+  if (!f.date.value) return;
+  if (!f.taskId.value && !f.title.value.trim() && !f.content.value.trim()) {
+    alert("業務を選ぶか、件名・やったことのどれかを入力してください。");
+    return;
+  }
+  if (f.endDate.value && f.endDate.value < f.date.value) { alert("終了日が開始日より前になっています。"); return; }
+  const id = f.id.value || uid();
+  const r = {
+    id,
+    taskId: f.taskId.value,
+    title: f.taskId.value ? "" : f.title.value.trim(),
+    date: f.date.value,
+    endDate: f.endDate.value,
+    hours: f.hours.value ? Number(f.hours.value) : "",
+    occ: f.taskId.value ? (f.occ.value || f.date.value.slice(0, 7)) : "",
+    content: f.content.value,
+    notes: f.notes.value,
+    partial: f.partial.checked
+  };
+  const i = data.records.findIndex(x => x.id === id);
+  if (i >= 0) data.records[i] = Object.assign(data.records[i], r);
+  else { r.createdAt = new Date().toISOString(); data.records.push(r); }
+  save();
+  recordDialog.close();
+  render();
+});
+
+document.getElementById("recordDelete").addEventListener("click", () => {
+  if (!confirm("この記録を削除します。よろしいですか？")) return;
+  const id = recordForm.elements.id.value;
+  data.records = data.records.filter(r => r.id !== id);
+  save();
+  recordDialog.close();
+  render();
+});
+
+document.querySelectorAll("dialog [data-close]").forEach(b => b.addEventListener("click", () => b.closest("dialog").close()));
+
+/* ===================== 書き出し・読み込み ===================== */
+
+function download(name, text, type) {
+  const blob = new Blob([text], { type });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+function exportJson() {
+  data.lastExport = new Date().toISOString();
+  save();
+  const name = `業務マニュアルデータ_${(data.settings.role || "").replace(/[\\/:*?"<>|]/g, "")}_${todayYmd()}.json`;
+  download(name, JSON.stringify(data, null, 2), "application/json");
+  render();
+}
+
+function exportCsv() {
+  const rows = [["実施日", "終了日", "分類", "業務", "対象の回", "作業時間", "やったこと", "気づき・申し送り", "途中"]];
+  [...data.records].sort((a, b) => a.date.localeCompare(b.date)).forEach(r => {
+    const t = taskById(r.taskId);
+    rows.push([r.date, r.endDate || "", t ? t.category || "" : "", recordTitle(r), r.occ || "", r.hours || "", r.content || "", r.notes || "", r.partial ? "途中" : ""]);
+  });
+  const csv = rows.map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+  download(`業務日誌_${todayYmd()}.csv`, "﻿" + csv, "text/csv");
+}
+
+function exportMd() {
+  const s = data.settings;
+  const tasks = data.tasks.filter(t => !ui.manualTask || t.id === ui.manualTask)
+    .sort((a, b) => (a.category || "").localeCompare(b.category || "", "ja") || firstMonthOrder(a) - firstMonthOrder(b));
+  const L = [];
+  L.push(`# ${[s.org, s.role].filter(Boolean).join(" ")} 業務マニュアル`, "", `作成日: ${fmtDate(todayYmd())}`, "");
+  if (!ui.manualTask) {
+    L.push("## 年間の流れ", "");
+    const monthly = data.tasks.filter(t => !t.archived && t.months.length === 12);
+    if (monthly.length) L.push(`- **毎月**: ${monthly.map(t => t.title + (t.day ? `（${t.day}日）` : "")).join("、")}`);
+    fyMonths().forEach(m => {
+      const ts = data.tasks.filter(t => !t.archived && t.months.includes(m) && t.months.length < 12);
+      if (ts.length) L.push(`- **${m}月**: ${ts.map(t => t.title + (t.day ? `（${t.day}日）` : "") + (t.everyN > 1 ? `【${t.everyN}年毎】` : "")).join("、")}`);
+    });
+    const irr = data.tasks.filter(t => !t.archived && !t.months.length);
+    if (irr.length) L.push(`- **随時**: ${irr.map(t => t.title).join("、")}`);
+    L.push("");
+  }
+  tasks.forEach(t => {
+    const st = taskStats(t);
+    L.push(`## ${t.title}${t.archived ? "（廃止）" : ""}`, "");
+    L.push(`- 分類: ${t.category || "未分類"}`);
+    L.push(`- 実施時期: ${scheduleText(t)}`);
+    if (t.leadDays || st.avgLead != null) L.push(`- 準備開始の目安: ${t.leadDays ? `期限の${t.leadDays}日前` : "—"}${st.avgLead != null ? `（実績 平均${round1(st.avgLead)}日前）` : ""}`);
+    if (t.durationDays || st.avgDuration) L.push(`- 所要日数の目安: ${t.durationDays ? t.durationDays + "日" : "—"}${st.avgDuration ? `（実績 平均${round1(st.avgDuration)}日）` : ""}`);
+    if (t.hours || st.avgHours) L.push(`- 作業時間の目安: ${t.hours ? t.hours + "時間" : "—"}${st.avgHours ? `（実績 平均${round1(st.avgHours)}時間）` : ""}`);
+    L.push(`- 実施実績: ${st.count}回${st.years.length ? `（${st.years.map(fyLabel).join("・")}）` : ""}`);
+    if (t.related) L.push(`- 関係先・資料: ${t.related.replace(/\n/g, " / ")}`);
+    L.push("");
+    if (t.purpose) L.push("### 目的・概要", "", t.purpose, "");
+    const steps = (t.steps || "").split("\n").map(x => x.trim()).filter(Boolean);
+    if (steps.length) L.push("### 手順", "", ...steps.map((x, i) => `${i + 1}. ${x}`), "");
+    if (t.tips) L.push("### 注意点・コツ", "", t.tips, "");
+    const notes = st.recs.filter(r => r.notes).reverse();
+    if (notes.length) L.push("### 過去の申し送り", "", ...notes.map(r => `- ${r.date}: ${r.notes.replace(/\n/g, " ")}`), "");
+    if (st.keys.length) {
+      L.push("### 実施の記録", "");
+      st.keys.slice().reverse().forEach(k => st.groups[k].forEach(r =>
+        L.push(`- ${r.date}${r.endDate && r.endDate !== r.date ? "〜" + r.endDate : ""}${r.hours ? `（${r.hours}時間）` : ""}: ${(r.content || "").replace(/\n/g, " ")}`)));
+      L.push("");
+    }
+  });
+  download(`業務マニュアル_${todayYmd()}.md`, L.join("\n"), "text/markdown");
+}
+
+async function importFile(file, merge) {
+  try {
+    const incoming = normalize(JSON.parse(await file.text()));
+    if (merge) {
+      let addT = 0, addR = 0;
+      incoming.tasks.forEach(t => { if (!taskById(t.id)) { data.tasks.push(t); addT++; } });
+      incoming.records.forEach(r => { if (!data.records.some(x => x.id === r.id)) { data.records.push(r); addR++; } });
+      save();
+      alert(`業務 ${addT} 件、記録 ${addR} 件を追加しました。`);
+    } else {
+      if (!confirm(`業務 ${incoming.tasks.length} 件・記録 ${incoming.records.length} 件のデータで、今のデータを置き換えます。よろしいですか？`)) return;
+      data = incoming;
+      save();
+    }
+    render();
+  } catch (e) {
+    alert("読み込めませんでした。業務マニュアル帳のデータファイルか確認してください。\n" + e.message);
+  }
+}
+
+/* ===================== サンプル ===================== */
+
+function loadSample() {
+  const fy = fyOf(today());
+  const T = (o) => Object.assign({ id: uid(), category: "", months: [], day: "", everyN: 1, baseYear: fy, leadDays: "", durationDays: "", hours: "",
+    purpose: "", steps: "", tips: "", related: "", archived: false, createdAt: new Date().toISOString() }, o);
+  const tasks = [
+    T({ title: "月例報告の作成・提出", category: "報告", months: [1,2,3,4,5,6,7,8,9,10,11,12], day: 10, leadDays: 5, durationDays: 2, hours: 3,
+        purpose: "前月の業務実績を取りまとめて本部へ報告する。", steps: "各担当から前月実績を集める（5日まで）\n様式に入力して集計\n課長確認\nメールで本部へ提出",
+        tips: "連休明けは集まりが遅いので早めに催促する。", related: "提出先: 本部 企画課 / 様式: 共有フォルダ\\報告\\月例" }),
+    T({ title: "次年度予算要求書の作成", category: "予算・会計", months: [10], day: 31, leadDays: 45, durationDays: 20, hours: 30,
+        purpose: "次年度の事業に必要な予算を見積もり、財政担当へ要求する。", steps: "前年度要求書と執行状況を確認\n各係へ新規要望を照会\n見積書を徴取\n要求書作成・課内協議\n提出",
+        tips: "見積書は業者から返ってくるまで2週間ほどかかる。" }),
+    T({ title: "決算・事業報告", category: "予算・会計", months: [5], day: 31, leadDays: 30, durationDays: 10, hours: 20 }),
+    T({ title: "防災訓練の実施", category: "庶務", months: [9], leadDays: 60, durationDays: 1, hours: 12 }),
+    T({ title: "人事評価（期首面談）", category: "人事", months: [4, 10], day: 30, leadDays: 14, hours: 10 }),
+    T({ title: "規程集の全面見直し", category: "庶務", months: [11], everyN: 3, baseYear: fy - 1, leadDays: 60, durationDays: 30, hours: 40,
+        purpose: "3年ごとに規程類の改正漏れがないか点検し、規程集を更新する。" }),
+    T({ title: "外部監査への対応", category: "予算・会計", months: [], leadDays: 0 })
+  ];
+  const recs = [];
+  const R = (task, date, o) => recs.push(Object.assign({ id: uid(), taskId: task ? task.id : "", title: "", date, endDate: "", hours: "",
+    occ: task ? date.slice(0, 7) : "", content: "", notes: "", partial: false, createdAt: new Date().toISOString() }, o || {}));
+  const y0 = fy - 1;
+  // 前年度の初めから先月までの月例報告
+  for (let i = 0; i < 24; i++) {
+    const m = ((fyStart() - 1 + i) % 12) + 1;
+    const y = calYear(y0 + Math.floor(i / 12), m);
+    if (`${y}-${pad(m)}` >= thisMonthKey()) break;
+    R(tasks[0], `${y}-${pad(m)}-0${6 + (i % 3)}`, { endDate: `${y}-${pad(m)}-0${7 + (i % 3)}`, hours: 2.5 + (i % 3) * 0.5, content: "実績を集計し提出。",
+      notes: i === 8 ? "システム更新で様式が変わった。新様式は共有フォルダの「R新様式」。" : "" });
+  }
+  R(tasks[1], `${y0}-09-20`, { endDate: `${y0}-10-28`, hours: 34, occ: `${y0}-10`, content: "各係に照会、見積徴取、要求書作成。",
+    notes: "照会は9月中旬だと遅い。9月上旬に出すこと。" });
+  R(tasks[2], `${y0 + 1}-05-08`, { endDate: `${y0 + 1}-05-24`, hours: 18, occ: `${y0 + 1}-05`, content: "決算書作成、監事監査対応。" });
+  R(tasks[3], `${y0}-09-05`, { hours: 10, content: "避難訓練を実施。参加者 45 名。", notes: "消防署への計画書提出は1か月前まで。" });
+  R(tasks[5], `${y0}-10-15`, { endDate: `${y0}-11-20`, hours: 42, occ: `${y0}-11`, content: "全規程を点検し 12 本を改正。" });
+  R(tasks[6], `${y0}-07-12`, { endDate: `${y0}-07-14`, hours: 15, content: "会計監査人の往査に対応。資料 30 点を準備。", notes: "通帳コピーと契約書一覧を事前に用意しておくとスムーズ。" });
+  R(null, `${y0}-08-20`, { title: "庁舎の空調故障対応", hours: 2, content: "業者に修理依頼、見積取得。", notes: "保守契約先は〇〇設備（連絡先は契約書参照）。" });
+  data.tasks.push(...tasks);
+  data.records.push(...recs);
+  if (!data.settings.role) data.settings.role = "（サンプル）庶務係長";
+  save();
+  render();
+}
+
+/* ===================== イベント ===================== */
+
+document.getElementById("nav").addEventListener("click", e => {
+  const b = e.target.closest("button[data-view]");
+  if (!b) return;
+  ui.view = b.dataset.view;
+  render();
+  window.scrollTo(0, 0);
+});
+
+document.getElementById("main").addEventListener("click", async e => {
+  const el = e.target.closest("[data-action]");
+  if (!el) return;
+  const a = el.dataset.action;
+  switch (a) {
+    case "addTask": openTaskDialog(null); break;
+    case "editTask": openTaskDialog(taskById(el.dataset.id)); break;
+    case "addRecord": openRecordDialog(null, { taskId: el.dataset.task || "", occ: el.dataset.occ || "" }); break;
+    case "editRecord": openRecordDialog(data.records.find(r => r.id === el.dataset.id)); break;
+    case "taskFromRecord": {
+      const r = data.records.find(x => x.id === el.dataset.id);
+      openTaskDialog(null, { title: r.title || "", months: [parseYmd(r.date).getMonth() + 1], _fromRecord: r.id });
+      break;
+    }
+    case "openManual": ui.view = "manual"; ui.manualTask = el.dataset.id; render(); window.scrollTo(0, 0); break;
+    case "cell": {
+      const t = taskById(el.dataset.task);
+      const key = el.dataset.occ;
+      const recs = recordsForOcc(t, key);
+      if (recs.length) {
+        ui.view = "journal"; ui.journalTask = t.id; ui.journalMonth = ""; ui.journalQuery = "";
+        render();
+      } else {
+        const [y, m] = key.split("-").map(Number);
+        const d = key === thisMonthKey() ? todayYmd() : (t.day ? toYmd(new Date(y, m - 1, Math.min(t.day, new Date(y, m, 0).getDate()))) : `${key}-01`);
+        openRecordDialog(null, { taskId: t.id, occ: key, date: d });
+      }
+      break;
+    }
+    case "looseMonth": ui.view = "journal"; ui.journalTask = "__none"; ui.journalMonth = el.dataset.occ; render(); break;
+    case "showLoose": ui.view = "journal"; ui.journalTask = "__none"; ui.journalMonth = ""; render(); break;
+    case "fyPrev": ui.fy--; render(); break;
+    case "fyNext": ui.fy++; render(); break;
+    case "fyToday": ui.fy = fyOf(today()); render(); break;
+    case "jClear": ui.journalMonth = ""; ui.journalTask = ""; ui.journalQuery = ""; render(); break;
+    case "print": window.print(); break;
+    case "exportMd": exportMd(); break;
+    case "exportJson": exportJson(); break;
+    case "exportCsv": exportCsv(); break;
+    case "createFile": await createDataFile(); break;
+    case "openFile": await openDataFile(); break;
+    case "reconnect": await reconnectFile(); break;
+    case "unlinkFile": if (confirm("データファイルとの連携を解除します（ファイルは削除されません）。")) await unlinkFile(); break;
+    case "loadSample": loadSample(); break;
+    case "saveSettings":
+      data.settings.org = document.getElementById("sOrg").value.trim();
+      data.settings.role = document.getElementById("sRole").value.trim();
+      data.settings.fyStart = Number(document.getElementById("sFy").value);
+      ui.fy = null;
+      save(); render();
+      alert("設定を保存しました。");
+      break;
+    case "clearAll":
+      if (confirm("すべての業務と記録を削除します。元に戻せません。先にバックアップを書き出しましたか？") &&
+          confirm("本当に削除しますか？")) {
+        const settings = data.settings;
+        data = emptyData(); data.settings = settings;
+        save(); render();
+      }
+      break;
+  }
+});
+
+document.getElementById("main").addEventListener("change", e => {
+  const id = e.target.id;
+  if (id === "jMonth") { ui.journalMonth = e.target.value; render(); }
+  else if (id === "jTask") { ui.journalTask = e.target.value; render(); }
+  else if (id === "mTask") { ui.manualTask = e.target.value; render(); }
+  else if (id === "importReplace" || id === "importMerge") {
+    const file = e.target.files[0];
+    if (file) importFile(file, id === "importMerge");
+    e.target.value = "";
+  }
+});
+
+let searchTimer = null;
+document.getElementById("main").addEventListener("input", e => {
+  const id = e.target.id;
+  if (id !== "jQuery" && id !== "tQuery") return;
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    if (id === "jQuery") ui.journalQuery = e.target.value; else ui.taskQuery = e.target.value;
+    const pos = e.target.selectionStart;
+    render();
+    const box = document.getElementById(id);
+    box.focus();
+    box.setSelectionRange(pos, pos);
+  }, 250);
+});
+
+// 別タブで更新された場合に反映する
+window.addEventListener("storage", e => { if (e.key === STORAGE_KEY) { data = loadLocal(); render(); } });
+
+(async function init() {
+  render();
+  await restoreFileHandle();
+  render();
+})();
+</script>
+</body>
+</html>

@@ -91,3 +91,9 @@ npm run preview
 - Web Speech API（読み上げ）
 - IndexedDB（アップロードした音声ファイルの保存）
 - vite-plugin-pwa（PWA / Service Worker）
+
+## 同梱しているほかのツール
+
+- [`gyomu-manual/`](gyomu-manual/README.md) — 業務マニュアル帳。役職の年間業務予定と日々の実施記録から業務マニュアルを作る、
+  パソコン単独で動く1ファイルのアプリ（`業務マニュアル帳.html` をダブルクリックで起動）
+- [`subsidies/`](subsidies/README.md) — 補助金カレンダー（Excel）
