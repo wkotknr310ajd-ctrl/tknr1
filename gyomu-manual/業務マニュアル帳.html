@@ -885,10 +885,14 @@ function viewYear() {
   const fy = ui.fy;
   const months = fyMonths();
   const curKey = thisMonthKey();
-  const activeTasks = myTasks().filter(t => !t.archived);
+  // 「すべての役職」では役職ごと、通常は分類ごとに並べる
+  const all = !!ui.yearAll;
+  const viewRecords = all ? data.records : myRecords();
+  const activeTasks = (all ? data.tasks : myTasks()).filter(t => !t.archived);
+  const groupOf = t => all ? t.role : (t.category || "未分類");
   const byCat = {};
-  activeTasks.forEach(t => (byCat[t.category || "未分類"] = byCat[t.category || "未分類"] || []).push(t));
-  const cats = Object.keys(byCat).sort((a, b) => a.localeCompare(b, "ja"));
+  activeTasks.forEach(t => (byCat[groupOf(t)] = byCat[groupOf(t)] || []).push(t));
+  const cats = Object.keys(byCat).sort((a, b) => all ? data.settings.roles.indexOf(a) - data.settings.roles.indexOf(b) : a.localeCompare(b, "ja"));
 
   const rows = cats.map(cat => {
     const taskRows = byCat[cat].sort((a, b) => a.title.localeCompare(b.title, "ja")).map(t => {
@@ -896,7 +900,7 @@ function viewYear() {
       const cells = months.map(m => {
         const key = `${calYear(fy, m)}-${pad(m)}`;
         const occ = occs.find(o => o.m === m);
-        const recs = myRecords().filter(r => r.taskId === t.id && (r.occ || r.date.slice(0, 7)) === key);
+        const recs = viewRecords.filter(r => r.taskId === t.id && (r.occ || r.date.slice(0, 7)) === key);
         let cls = "", txt = "";
         if (occ) {
           const st = occStatus(occ);
@@ -909,7 +913,8 @@ function viewYear() {
         return `<td class="cell ${cls}" data-action="cell" data-task="${t.id}" data-occ="${key}" title="${esc(t.title)} ${fmtMonthKey(key)}">${txt}</td>`;
       }).join("");
       const freq = t.everyN > 1 ? ` <span class="tag warn">${t.everyN}年毎</span>` : "";
-      return `<tr><th class="task"><button class="link" data-action="openManual" data-id="${t.id}">${esc(t.title)}</button>${freq}</th>${cells}</tr>`;
+      const cat = all && t.category ? ` <span class="muted">${esc(t.category)}</span>` : "";
+      return `<tr><th class="task"><button class="link" data-action="openManual" data-id="${t.id}">${esc(t.title)}</button>${freq}${cat}</th>${cells}</tr>`;
     }).join("");
     return `<tr class="cat-row"><th colspan="13">${esc(cat)}</th></tr>` + taskRows;
   }).join("");
@@ -917,7 +922,7 @@ function viewYear() {
   // 業務に紐付いていない記録の件数
   const loose = months.map(m => {
     const key = `${calYear(fy, m)}-${pad(m)}`;
-    const n = myRecords().filter(r => !taskById(r.taskId) && r.date.slice(0, 7) === key).length;
+    const n = viewRecords.filter(r => !taskById(r.taskId) && r.date.slice(0, 7) === key).length;
     return `<td class="cell" data-action="looseMonth" data-occ="${key}">${n ? n + "件" : ""}</td>`;
   }).join("");
 
@@ -927,7 +932,7 @@ function viewYear() {
     const items = activeTasks.flatMap(t => occurrencesInFy(t, fy)).filter(o => o.key === key)
       .sort((a, b) => (a.task.day || 99) - (b.task.day || 99));
     return `<div class="panel" style="margin-bottom:8px"><h3>${m}月</h3>${items.length ? `<ul class="items">${items.map(o =>
-      `<li><div class="body">${o.task.day ? `<b>${o.task.day}日</b>　` : ""}${esc(o.task.title)} <span class="muted">${esc(o.task.category || "")}</span></div></li>`).join("")}</ul>` : '<div class="muted">予定なし</div>'}</div>`;
+      `<li><div class="body">${o.task.day ? `<b>${o.task.day}日</b>　` : ""}${esc(o.task.title)} <span class="muted">${esc(all ? o.task.role : o.task.category || "")}</span></div></li>`).join("")}</ul>` : '<div class="muted">予定なし</div>'}</div>`;
   }).join("");
 
   return `
@@ -936,6 +941,9 @@ function viewYear() {
       <h2 style="margin:0">${fyLabel(fy)} 年間予定表</h2>
       <button class="btn" data-action="fyNext">▶</button>
       <button class="btn" data-action="fyToday">今年度</button>
+      <span style="margin-left:12px">表示：</span>
+      <button class="btn ${all ? "" : "primary"}" data-action="yearRole">${esc(curRole())}だけ</button>
+      <button class="btn ${all ? "primary" : ""}" data-action="yearAll">すべての役職</button>
       <span class="spacer"></span>
       <button class="btn" data-action="addTask">＋ 業務を登録</button>
       <button class="btn" data-action="exportXlsx">Excelで保存</button>
@@ -943,7 +951,7 @@ function viewYear() {
     </div>
     <div class="panel year-table-wrap">
       ${activeTasks.length ? `<table class="year">
-        <thead><tr><th class="task">業務</th>${months.map(m => `<th>${m}月</th>`).join("")}</tr></thead>
+        <thead><tr><th class="task">${all ? "役職 / 業務" : "業務"}</th>${months.map(m => `<th>${m}月</th>`).join("")}</tr></thead>
         <tbody>${rows}
           <tr class="cat-row"><th colspan="13">業務一覧にない記録（日誌）</th></tr>
           <tr><th class="task muted">件数</th>${loose}</tr>
@@ -1042,6 +1050,8 @@ function viewTasks() {
       <button class="btn small" data-action="selAllTask">表示中の ${tasks.length} 件をすべて選択</button>
       <button class="btn small" data-action="selNone">選択を解除</button>
       <button class="btn small danger" data-action="deleteSelTask">選択した <b id="selCount">${[...ui.selT].filter(id => tasks.some(t => t.id === id)).length}</b> 件を削除</button>
+      <span>選択したものを <select id="moveRole">${data.settings.roles.filter(r => r !== curRole()).map(r => `<option>${esc(r)}</option>`).join("")}</select></span>
+      <button class="btn small" data-action="moveSelTask">へ移す</button>
       <span class="muted">左のチェックで選べます（検索で絞り込んでから「すべて選択」も可）。</span>
     </div>` : ""}
     ${Object.keys(byCat).sort((a, b) => a.localeCompare(b, "ja")).map(c => `
@@ -1180,7 +1190,8 @@ function viewData() {
       }).join("")}</ul>
       <div class="toolbar"><input type="text" id="newRole" placeholder="役職を追加（例: 主任）"><button class="btn" data-action="addRole">追加</button>
         <span class="spacer"></span>
-        <button class="btn" data-action="reassignRoles" title="取り込んだ予定表の記録を、担当者の名前に合わせて役職へ振り分け直します">取り込んだ予定を担当者の役職へ振り分け直す</button></div>
+        <button class="btn" data-action="reassignRoles" title="取り込んだ予定表の記録を、担当者の名前に合わせて役職へ振り分け直します">取り込んだ予定を担当者の役職へ振り分け直す</button>
+        <button class="btn danger" data-action="purgeImported" title="予定表から取り込んだ記録と、取り込みで作られた業務を、すべての役職から削除します">取り込んだ予定表のデータをすべて削除</button></div>
       <h3 style="margin-top:8px">記録のお知らせ</h3>
       <div class="form-row"><label style="font-weight:normal"><input type="checkbox" id="sRemind" ${s.remindEnabled ? "checked" : ""}>
         毎日決まった時刻に、その日の記録がまだなければ入力を促す</label></div>
@@ -1893,7 +1904,7 @@ function childTags(node, tag) { return [...node.children].filter(e => e.localNam
 async function readXlsx(buf) {
   const z = await readZip(buf);
   if (!z["xl/workbook.xml"]) throw new Error("Excel ファイルとして読めませんでした。");
-  const shared = z["xl/sharedStrings.xml"] ? byTag(parseXml(z["xl/sharedStrings.xml"]), "si").map(si => byTag(si, "t").map(t => t.textContent).join("")) : [];
+  const shared = z["xl/sharedStrings.xml"] ? byTag(parseXml(z["xl/sharedStrings.xml"]), "si").map(richText) : [];
   const rels = {};
   byTag(parseXml(z["xl/_rels/workbook.xml.rels"]), "Relationship").forEach(r => rels[r.getAttribute("Id")] = r.getAttribute("Target"));
   return byTag(parseXml(z["xl/workbook.xml"]), "sheet").map(sh => {
@@ -1912,7 +1923,7 @@ async function readXlsx(buf) {
         const vEl = childTags(c, "v")[0];
         let val = "";
         if (t === "s") val = shared[Number(vEl && vEl.textContent)] || "";
-        else if (t === "inlineStr") val = byTag(c, "t").map(x => x.textContent).join("");
+        else if (t === "inlineStr") val = childTags(c, "is").map(richText).join("");
         else if (vEl) val = t === "str" || t === "e" ? vEl.textContent : Number(vEl.textContent);
         arr[col] = val;
       });
@@ -1920,6 +1931,10 @@ async function readXlsx(buf) {
     for (let i = 0; i < rows.length; i++) rows[i] = rows[i] || [];
     return { name: sh.getAttribute("name"), rows };
   });
+}
+/** セルの文字（ふりがな＝rPh の部分は含めない） */
+function richText(el) {
+  return [...el.children].map(ch => ch.localName === "t" ? ch.textContent : ch.localName === "r" ? childTags(ch, "t").map(t => t.textContent).join("") : "").join("");
 }
 function colIndex(letters) { let n = 0; for (const ch of letters) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; }
 
@@ -2270,6 +2285,15 @@ function applyImport() {
       const months = c.structured ? c.months : (c.date ? [Number(c.date.slice(5, 7))] : []);
       const day = c.structured ? c.day : (c.date ? Number(c.date.slice(8, 10)) : "");
       let t = findTask(c.role, title);
+      // 以前の取り込みで別の役職に入ってしまった同じ業務（担当者不明）があれば、こちらの役職へ移す
+      if (!t && c.person) {
+        t = data.tasks.find(x => x.title === title && !x.person && (x.importId || x.category === "取り込み") && x.role !== c.role);
+        if (t) {
+          data.records.forEach(r => { if (r.taskId === t.id && r.role !== c.role) { r.title = r.title || t.title; r.taskId = ""; r.occ = ""; } });
+          t.role = c.role;
+          t.person = c.person;
+        }
+      }
       if (t) {
         months.forEach(m => { if (!t.months.includes(m)) t.months.push(m); });
         if (!t.day && day) t.day = day;
@@ -2390,6 +2414,11 @@ function loadSample() {
   render();
 }
 
+/** ほかの役職の業務を開くときは、その役職に切り替える */
+function switchToRoleOf(t) {
+  if (t && t.role && t.role !== curRole()) { data.settings.currentRole = t.role; save(); }
+}
+
 /** 業務と記録をまとめて削除する（「元に戻す」用に控えておく） */
 function deleteItems(taskIds, recordIds, msg) {
   const tSet = new Set(taskIds), rSet = new Set(recordIds);
@@ -2484,6 +2513,18 @@ document.getElementById("main").addEventListener("click", async e => {
       myTasks().filter(t => !q || [t.title, t.category, t.purpose, t.steps, t.tips].join(" ").toLowerCase().includes(q)).forEach(t => ui.selT.add(t.id));
       render(); break;
     }
+    case "moveSelTask": {
+      const ids = [...ui.selT].filter(id => taskById(id));
+      const role = document.getElementById("moveRole").value;
+      if (!ids.length) { alert("移す業務にチェックを入れてください。"); break; }
+      const recs = data.records.filter(r => ids.includes(r.taskId));
+      if (!confirm(`選択した業務 ${ids.length} 件（実施記録 ${recs.length} 件を含む）を「${role}」へ移します。よろしいですか？`)) break;
+      ids.forEach(id => { taskById(id).role = role; ui.selT.delete(id); });
+      recs.forEach(r => r.role = role);
+      save(); render();
+      alert(`「${role}」へ移しました。画面上部で役職を切り替えて確認できます。`);
+      break;
+    }
     case "selNone": ui.sel.clear(); ui.selT.clear(); render(); break;
     case "deleteSelRec": {
       const ids = [...ui.sel].filter(id => data.records.some(r => r.id === id));
@@ -2525,9 +2566,10 @@ document.getElementById("main").addEventListener("click", async e => {
       openTaskDialog(null, { title: r.title || "", months: [parseYmd(r.date).getMonth() + 1], _fromRecord: r.id });
       break;
     }
-    case "openManual": ui.view = "manual"; ui.manualTask = el.dataset.id; render(); window.scrollTo(0, 0); break;
+    case "openManual": switchToRoleOf(taskById(el.dataset.id)); ui.view = "manual"; ui.manualTask = el.dataset.id; render(); window.scrollTo(0, 0); break;
     case "cell": {
       const t = taskById(el.dataset.task);
+      switchToRoleOf(t);
       const key = el.dataset.occ;
       const recs = recordsForOcc(t, key);
       if (recs.length) {
@@ -2545,6 +2587,8 @@ document.getElementById("main").addEventListener("click", async e => {
     case "fyPrev": ui.fy--; render(); break;
     case "fyNext": ui.fy++; render(); break;
     case "fyToday": ui.fy = fyOf(today()); render(); break;
+    case "yearAll": ui.yearAll = true; render(); break;
+    case "yearRole": ui.yearAll = false; render(); break;
     case "jClear": ui.journalMonth = ""; ui.journalTask = ""; ui.journalQuery = ""; render(); break;
     case "print": window.print(); break;
     case "exportMd": exportMd(); break;
@@ -2597,22 +2641,46 @@ document.getElementById("main").addEventListener("click", async e => {
       if (!data.settings.roles.includes(curRole())) data.settings.currentRole = data.settings.roles[0];
       save(); render(); break;
     case "exportTemplate": exportTemplate(); break;
+    case "purgeImported": {
+      const rIds = data.records.filter(r => r.importId || /（予定表の担当: .+?）/.test(r.content || "")).map(r => r.id);
+      const tIds = data.tasks.filter(t => t.importId || t.category === "取り込み").map(t => t.id);
+      if (!rIds.length && !tIds.length) { alert("取り込んだデータはありません。"); break; }
+      if (!confirm(`Excel・Word から取り込んだデータを、すべての役職から削除します。\n・業務（分類「取り込み」など）: ${tIds.length} 件\n・実施記録: ${rIds.length} 件\n\n自分で入力した業務・記録は消えません。削除したあと、予定表をもう一度取り込み直せます。よろしいですか？`)) break;
+      const linked = data.records.filter(r => tIds.includes(r.taskId) && !rIds.includes(r.id)).length;
+      deleteItems(tIds, rIds, `取り込んだデータ（業務 ${tIds.length} 件・記録 ${rIds.length} 件）を削除しました。` + (linked ? `（その業務に付けていた記録 ${linked} 件は「業務未登録」で残しています）` : ""));
+      break;
+    }
     case "reassignRoles": {
       // 記録は「（予定表の担当: ◯◯）」、業務は取り込み時の担当者名から役職を決め直す
       const moves = [];
+      const tagOf = r => { const m = String(r.content || "").match(/（予定表の担当: (.+?)）/); return m ? m[1] : ""; };
+      // 業務: 取り込み時の担当者名、なければ同じ名前の記録の担当者から推測する
+      data.tasks.forEach(t => {
+        let role = t.person && roleOfPerson(t.person);
+        if (!role && !t.person && (t.importId || t.category === "取り込み")) {
+          const roles = [...new Set(data.records.filter(r => recordTitle(r) === t.title && tagOf(r)).map(r => roleOfPerson(tagOf(r))).filter(Boolean))];
+          if (roles.length === 1) role = roles[0];
+        }
+        if (role && role !== t.role) moves.push([t, role]);
+      });
       data.records.forEach(r => {
-        const m = String(r.content || "").match(/（予定表の担当: (.+?)）/);
-        const role = m && roleOfPerson(m[1]);
+        const role = tagOf(r) && roleOfPerson(tagOf(r));
         if (role && role !== r.role) moves.push([r, role]);
       });
-      data.tasks.forEach(t => { const role = t.person && roleOfPerson(t.person); if (role && role !== t.role) moves.push([t, role]); });
-      const others = data.records.filter(r => { const m = String(r.content || "").match(/（予定表の担当: (.+?)）/); return m && !roleOfPerson(m[1]); }).length;
-      if (!moves.length) { alert("振り分け直すものはありませんでした。" + (others ? `\n（担当者が役職に当てはまらない記録が ${others} 件あります）` : "")); break; }
+      const otherRecs = data.records.filter(r => tagOf(r) && !roleOfPerson(tagOf(r)));
+      const others = otherRecs.length;
+      const otherNames = [...new Set(otherRecs.map(tagOf))].join("・");
+      if (!moves.length) {
+        if (others && confirm(`振り分け直すものはありませんでした。\n役職に当てはまらない担当者（${otherNames}）の記録が ${others} 件あります。削除しますか？`))
+          deleteItems([], otherRecs.map(r => r.id), `役職に当てはまらない担当者の記録 ${others} 件を削除しました。`);
+        else if (!others) alert("振り分け直すものはありませんでした。");
+        break;
+      }
       const byRole = {};
       moves.forEach(([, role]) => byRole[role] = (byRole[role] || 0) + 1);
-      if (!confirm(`次のとおり役職を振り分け直します。よろしいですか？\n` + Object.entries(byRole).map(([r, n]) => `・${r}: ${n} 件`).join("\n") +
-        (others ? `\n\n※「その他」など、役職に当てはまらない担当者の記録 ${others} 件は今の役職のままです（不要なら業務日誌でまとめて削除できます）。` : ""))) break;
-      moves.forEach(([x, role]) => {
+      if (!confirm(`次のとおり役職を振り分け直します。よろしいですか？\n` + Object.entries(byRole).map(([r, n]) => `・${r}: ${n} 件`).join("\n"))) break;
+      moves.filter(([x]) => x.taskId === undefined).forEach(([x, role]) => { x.role = role; });
+      moves.filter(([x]) => x.taskId !== undefined).forEach(([x, role]) => {
         x.role = role;
         // 記録が別の役職の業務に紐付いていたら、移った先の同じ名前の業務に付け替える
         if (x.taskId !== undefined && x.taskId) {
@@ -2623,8 +2691,15 @@ document.getElementById("main").addEventListener("click", async e => {
           }
         }
       });
+      // 役職が分かれた業務と記録の紐付けは外して、記録は件名付きで残す
+      data.records.forEach(r => { const t = taskById(r.taskId); if (t && t.role !== r.role) { r.title = r.title || t.title; r.taskId = ""; r.occ = ""; } });
       save(); render();
-      alert("振り分け直しました。画面上部で役職を切り替えて確認してください。");
+      if (others && confirm(`振り分け直しました。\n\n役職に当てはまらない担当者（${otherNames}）の記録が ${others} 件あります。これらを削除しますか？\n［OK］削除する　［キャンセル］残す`)) {
+        deleteItems([], otherRecs.map(r => r.id), `役職に当てはまらない担当者の記録 ${others} 件を削除しました。`);
+      }
+      const leftover = data.tasks.filter(t => !t.person && (t.importId || t.category === "取り込み")).length;
+      alert("振り分け直しました。年間予定表の「すべての役職」や、画面上部の役職切り替えで確認してください。" +
+        (leftover ? `\n\n※ 担当者が分からない取り込みの業務が ${leftover} 件あります。同じ予定表をもう一度取り込むと、正しい役職へ移ります。` : ""));
       break;
     }
     case "clearAll":
