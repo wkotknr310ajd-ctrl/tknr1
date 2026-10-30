@@ -141,7 +141,7 @@
   ul.items li:last-child { border-bottom: none; }
   ul.items .body { flex: 1; min-width: 0; }
   ul.items .title { font-weight: bold; }
-  .link { color: var(--accent); cursor: pointer; text-decoration: underline; background: none; border: none; font: inherit; padding: 0; }
+  .link { color: var(--accent); cursor: pointer; text-decoration: underline; background: none; border: none; font: inherit; padding: 0; text-align: left; }
   .pre { white-space: pre-wrap; word-break: break-word; }
 
   /* 年間予定表 */
@@ -427,7 +427,7 @@ const MONTH_NAMES = ["1月","2月","3月","4月","5月","6月","7月","8月","9�
 function emptyData() {
   return {
     version: 1,
-    settings: { roles: ["園長", "課長", "入所サビ管", "そよかぜ", "Aさん", "Bさん", "Cさん", "Dさん"], rolesAdded: ["そよかぜ", "Aさん", "Bさん", "Cさん", "Dさん"], roleMembers: { "園長": "工藤", "課長": "鈴木", "入所サビ管": "木村 忍", "そよかぜ": "佐藤 恭成" }, currentRole: "園長", org: "", fyStart: 4, remindEnabled: true, remindTime: "16:00", remindWeekdaysOnly: true },
+    settings: { roles: ["園長", "課長", "入所サビ管", "そよかぜ", "Aさん", "Bさん", "Cさん", "Dさん"], rolesAdded: ["そよかぜ", "Aさん", "Bさん", "Cさん", "Dさん"], roleMembers: { "園長": "工藤 一美", "課長": "鈴木 正一", "入所サビ管": "木村 忍", "そよかぜ": "佐藤 恭成" }, currentRole: "園長", org: "", fyStart: 4, remindEnabled: true, remindTime: "16:00", remindWeekdaysOnly: true },
     tasks: [],
     records: [],
     imports: [],
@@ -2269,8 +2269,9 @@ function meaningful(s) {
 
 const COLS = {
   role: ["役職", "担当役職", "担当"],
-  category: ["分類", "区分", "種別"],
-  title: ["業務名", "業務", "件名", "行事", "行事名", "予定", "項目", "内容"],
+  person: ["氏名", "名前", "担当者", "職員名"],
+  category: ["分類", "種類", "区分", "種別"],
+  title: ["業務名", "業務", "研修名", "件名", "行事", "行事名", "予定", "項目", "内容"],
   months: ["実施月", "月"],
   day: ["期限日", "日"],
   everyN: ["周期（年）", "周期(年)", "周期"],
@@ -2330,14 +2331,29 @@ function candidatesFromSheet(sheet) {
       const dt = looseDate(get(row, "date"));
       if (!title && !content) return;
       const roleVal = String(get(row, "role") || "").trim();
-      const base = { role: roleVal || curRole(), title: title || content.split("\n")[0].slice(0, 40) };
-      if (dt && dt.d) {
-        const ds = dateStr(dt);
+      const person = String(get(row, "person") || "").replace(/\u3000/g, " ").trim();
+      const base = { role: roleVal || roleOfPerson(person) || curRole(), person, title: title || content.split("\n")[0].slice(0, 40) };
+      // 研修一覧など: 日付の列がなく、備考の先頭に日付が書いてある
+      const notesText = String(get(row, "notes") || "").trim();
+      let d0 = dt, endFromNotes = null;
+      if (!(d0 && d0.d) && hd.map.date == null && hd.map.months == null) {
+        const nd = looseDate(notesText);
+        if (nd && nd.y && nd.d) { d0 = nd; const e = looseDate(nd.rest); if (e && e.y && e.d) endFromNotes = e; }
+      }
+      const training = (rows[hd.row][hd.map.title] || "") === "研修名";
+      if (training) {
+        base.category = "研修";
+        base.purpose = [get(row, "category"), ...Object.keys(COLS).filter(k => k === "notes").map(k => get(row, k))].filter(Boolean).join("\n");
+      }
+      if (d0 && d0.d) {
+        const ds = dateStr(d0);
         if (!ds) return;
-        const ed = looseDate(get(row, "endDate"));
-        add(Object.assign(base, { kind: ds <= todayYmd() ? "record" : "task", date: ds, endDate: ed && ed.d ? dateStr(ed) : "",
-          hours: numOr(get(row, "hours")), content: hd.map.content != null && hd.map.content !== hd.map.title ? content : "",
-          notes: String(get(row, "notes") || ""), category: String(get(row, "category") || "") }));
+        const ed = endFromNotes || looseDate(get(row, "endDate"));
+        add(Object.assign({ kind: ds <= todayYmd() ? "record" : "task", date: ds, endDate: ed && ed.d ? dateStr(ed) : "",
+          hours: numOr(get(row, "hours")), content: hd.map.content != null && hd.map.content !== hd.map.title ? content : (training ? base.purpose : ""),
+          notes: training ? "" : notesText, category: String(get(row, "category") || "") }, base));
+      } else if (training) {
+        add(Object.assign({ kind: "task", months: [], day: "", structured: true }, base));
       } else {
         const months = parseMonths(get(row, "months"));
         add(Object.assign(base, { kind: "task", months, day: numOr(get(row, "day")), category: String(get(row, "category") || ""),
