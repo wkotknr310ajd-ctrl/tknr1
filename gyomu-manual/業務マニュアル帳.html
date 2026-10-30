@@ -190,7 +190,7 @@
   dialog.wide { width: min(1100px, 98vw); }
   table.import { border-collapse: collapse; width: 100%; font-size: 13px; }
   table.import th, table.import td { border-bottom: 1px solid var(--line); padding: 4px 6px; text-align: left; vertical-align: top; }
-  table.import th { background: #f0f3f7; position: sticky; top: 0; }
+  table.import th { background: #f0f3f7; position: sticky; top: 0; white-space: nowrap; z-index: 1; }
   table.import tr.off { opacity: .45; }
   .nowrap { white-space: nowrap; }
 
@@ -368,8 +368,9 @@
       <button type="button" class="btn small" data-imp="record">日付のあるものはすべて実施記録に</button>
       <span class="spacer"></span><span class="muted" id="importCount"></span>
     </div>
+    <div class="toolbar" id="importFilters"></div>
     <div style="max-height:55vh;overflow:auto">
-      <table class="import"><thead><tr><th></th><th>種類</th><th>日付・時期</th><th>名前（業務名・件名）</th><th>役職</th><th>読み取り元</th></tr></thead>
+      <table class="import"><thead><tr><th></th><th>種類</th><th>日付・時期</th><th>名前（業務名・件名）</th><th>役職</th><th>担当者など</th><th>読み取り元</th></tr></thead>
       <tbody id="importRows"></tbody></table>
     </div>
     <div class="dialog-actions">
@@ -392,7 +393,7 @@ const MONTH_NAMES = ["1月","2月","3月","4月","5月","6月","7月","8月","9�
 function emptyData() {
   return {
     version: 1,
-    settings: { roles: ["園長", "課長", "入所サビ管"], currentRole: "園長", org: "", fyStart: 4, remindEnabled: true, remindTime: "16:00", remindWeekdaysOnly: true },
+    settings: { roles: ["園長", "課長", "入所サビ管", "そよかぜ"], rolesAdded: ["そよかぜ"], currentRole: "園長", org: "", fyStart: 4, remindEnabled: true, remindTime: "16:00", remindWeekdaysOnly: true },
     tasks: [],
     records: [],
     updatedAt: null
@@ -432,6 +433,9 @@ function normalize(d) {
   const st = out.settings;
   if (!Array.isArray(st.roles) || !st.roles.length) st.roles = emptyData().settings.roles;
   if (st.role && !st.roles.includes(st.role)) st.roles.push(st.role);
+  // あとから既定の選択肢に加えた役職を、以前のデータにも 1 度だけ追加する
+  st.rolesAdded = d && d.settings ? (Array.isArray(d.settings.rolesAdded) ? [...d.settings.rolesAdded] : []) : st.rolesAdded;
+  ["そよかぜ"].forEach(r => { if (!st.rolesAdded.includes(r)) { if (!st.roles.includes(r)) st.roles.push(r); st.rolesAdded.push(r); } });
   const fallbackRole = st.role || st.currentRole || st.roles[0];
   delete st.role;
   if (!st.roles.includes(st.currentRole)) st.currentRole = st.roles[0];
@@ -1945,6 +1949,8 @@ function meaningful(s) {
   if (/^[\d\s.:：\-\/～〜]+$/.test(s)) return false;
   if (/^[（(]?[日月火水木金土祝][曜日]*[)）]?$/.test(s)) return false;
   if (/^(休|公休|有休|年休|出|日勤|夜勤|早番|遅番|明|明け|[A-Za-z]{1,2}\d?)$/.test(s)) return false;
+  if (/^[×✕○◯△→\s]*(日勤|夜勤|早番|遅番|休み?|公休|有休|出勤)?[×✕○◯△→\s]*$/.test(s)) return false;
+  if (/^(メモ|備考|その他)$/.test(s)) return false;
   return true;
 }
 
@@ -2033,6 +2039,31 @@ function candidatesFromSheet(sheet) {
     return out;
   }
 
+  // 週ごとの予定表（日付が横に並んだ行の下に、担当者ごとの予定が書かれている形）
+  const fullDate = c => { const d = looseDate(c); return d && d.y && d.m && d.d && !d.rest ? d : null; };
+  const dateCount = rows.map(row => row.filter(fullDate).length);
+  if (dateCount.filter(n => n >= 3).length >= 2) {
+    let colDate = null;
+    rows.forEach((row, r) => {
+      if (dateCount[r] >= 3) {
+        colDate = {};
+        row.forEach((c, i) => { const d = fullDate(c); if (d) colDate[i] = dateStr(d); });
+        return;
+      }
+      if (dateCount[r]) { colDate = null; return; }   // メモ欄などの区切り
+      if (!colDate) return;
+      const label = row.find((c, i) => !(i in colDate) && typeof c === "string" && c.trim());
+      row.forEach((c, i) => {
+        if (!(i in colDate) || typeof c !== "string" || !meaningful(c)) return;
+        const text = c.replace(/\u3000/g, " ").replace(/[ \t]+/g, " ").trim();
+        const ds = colDate[i];
+        add({ kind: ds <= todayYmd() ? "record" : "task", date: ds, title: text.split("\n")[0].slice(0, 60), content: text,
+          person: label ? label.trim() : "", role: curRole() });
+      });
+    });
+    return out;
+  }
+
   // 見出しのない表（カレンダー・行事予定・勤務表など）は、日付と文字の組み合わせを探す
   const ctx = contextMonth([sheet.name, ...rows.slice(0, 4).flat()]);
   let curCtx = ctx;
@@ -2100,7 +2131,7 @@ async function importOffice(file) {
     else throw new Error("対応しているのは Excel（.xlsx）と Word（.docx）です。古い形式（.xls / .doc）の場合は、Excel・Word で開いて「名前を付けて保存」から .xlsx / .docx で保存し直してください。");
     const seen = new Set();
     importCandidates = sheets.filter(s => !/^(記入例|説明)/.test(s.name)).flatMap(candidatesFromSheet).filter(c => {
-      const k = [c.kind === "task" && c.structured ? "T" : "", c.date || "", c.title, c.role].join("|");
+      const k = [c.kind === "task" && c.structured ? "T" : "", c.date || "", c.title, c.role, c.person || ""].join("|");
       if (seen.has(k)) return false;
       seen.add(k);
       return true;
@@ -2144,8 +2175,17 @@ function renderImportRows() {
         ${c.content && c.content !== c.title ? `<div class="muted pre">${esc(c.content.slice(0, 120))}</div>` : ""}
         ${exists && c.kind === "task" ? '<div class="muted">※ 同じ名前の業務があるので、実施月を追加・内容を更新します</div>' : ""}</td>
       <td><select data-i="${i}" data-f="role">${roleOpts(c.role)}</select></td>
+      <td>${esc(c.person || "")}</td>
       <td class="muted">${esc(c.source)}</td></tr>`;
   }).join("");
+  const persons = [...new Set(importCandidates.map(c => c.person).filter(Boolean))];
+  document.getElementById("importFilters").innerHTML = (persons.length ? `<label>担当者で絞る <select id="impPerson">
+      <option value="">（すべて）</option>${persons.map(p => `<option ${p === ui.impPerson ? "selected" : ""}>${esc(p)}</option>`).join("")}</select></label>` : "") +
+    `<label>期間 <input type="date" id="impFrom" value="${esc(ui.impFrom || "")}"> 〜 <input type="date" id="impTo" value="${esc(ui.impTo || "")}"></label>
+     <button type="button" class="btn small" data-imp="filter">この条件のものだけ選択</button>
+     <span class="spacer"></span>
+     <label>選択中のものの役職を <select id="impRole">${roles.map(r => `<option ${r === curRole() ? "selected" : ""}>${esc(r)}</option>`).join("")}</select></label>
+     <button type="button" class="btn small" data-imp="role">にまとめて変更</button>`;
   const n = importCandidates.filter(c => c.checked).length;
   document.getElementById("importCount").textContent = `${importCandidates.length} 件見つかりました（${n} 件を選択中）`;
 }
@@ -2177,8 +2217,9 @@ function applyImport() {
     } else {
       const t = findTask(c.role, title);
       if (data.records.some(r => r.role === c.role && r.date === c.date && recordTitle(r) === title && (r.content || "") === (c.content || ""))) { skipR++; return; }
+      const content = [c.content || "", c.person ? `（予定表の担当: ${c.person}）` : ""].filter(Boolean).join("\n");
       data.records.push({ id: uid(), role: c.role, taskId: t ? t.id : "", title: t ? "" : title, date: c.date, endDate: c.endDate || "",
-        hours: c.hours || "", occ: t ? c.date.slice(0, 7) : "", content: c.content && c.content !== title ? c.content : (c.content || ""),
+        hours: c.hours || "", occ: t ? c.date.slice(0, 7) : "", content,
         notes: c.notes || "", partial: false, createdAt: now });
       newR++;
     }
@@ -2308,7 +2349,13 @@ importDialog.addEventListener("click", e => {
   const b = e.target.closest("[data-imp]");
   if (!b) return;
   const m = b.dataset.imp;
+  ui.impPerson = (document.getElementById("impPerson") || {}).value || "";
+  ui.impFrom = document.getElementById("impFrom").value;
+  ui.impTo = document.getElementById("impTo").value;
+  const role = document.getElementById("impRole").value;
   importCandidates.forEach(c => {
+    if (m === "filter") c.checked = (!ui.impPerson || c.person === ui.impPerson) && (!ui.impFrom || (c.date && c.date >= ui.impFrom)) && (!ui.impTo || (c.date && c.date <= ui.impTo));
+    if (m === "role" && c.checked) c.role = role;
     if (m === "all") c.checked = true;
     else if (m === "none") c.checked = false;
     else if (m === "task") c.kind = "task";
