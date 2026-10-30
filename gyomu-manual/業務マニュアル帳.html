@@ -6,49 +6,53 @@
 <title>業務マニュアル帳</title>
 <style>
   :root {
-    --bg: #f5f6f8;
+    --bg: #f2f6f4;
     --panel: #ffffff;
-    --text: #1f2933;
-    --muted: #66788a;
-    --line: #dde2e8;
-    --accent: #2563eb;
-    --accent-soft: #e8efff;
-    --ok: #15803d;
-    --ok-soft: #e6f6ea;
-    --warn: #b45309;
-    --warn-soft: #fff4e0;
-    --ng: #b91c1c;
-    --ng-soft: #fdecec;
-    --plan-soft: #eef2f7;
+    --text: #1f2d2a;
+    --muted: #61736e;
+    --line: #dde6e2;
+    --accent: #13806a;
+    --accent-dark: #0e6655;
+    --accent-soft: #e2f3ee;
+    --ok: #1a7f43;
+    --ok-soft: #e3f5e9;
+    --warn: #a95c08;
+    --warn-soft: #fff3df;
+    --ng: #b42318;
+    --ng-soft: #fdeceb;
+    --plan-soft: #edf2f0;
+    --shadow: 0 1px 2px rgba(20, 50, 42, .06), 0 6px 20px rgba(20, 50, 42, .06);
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font-family: "Yu Gothic UI", "Meiryo", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
-    font-size: 15px;
-    line-height: 1.6;
+    font-family: "BIZ UDPGothic", "Yu Gothic UI", "Meiryo", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
   }
   header {
-    background: #1e293b;
+    background: linear-gradient(120deg, #0e6655 0%, #13806a 55%, #2a9d84 100%);
     color: #fff;
-    padding: 10px 20px;
+    padding: 14px 28px;
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 18px;
     flex-wrap: wrap;
   }
-  header h1 { font-size: 18px; margin: 0; white-space: nowrap; }
-  header .role { color: #cbd5e1; font-size: 14px; }
-  header .role select { font-weight: bold; font-size: 15px; padding: 2px 6px; }
-  header .save-status { margin-left: auto; font-size: 12px; color: #cbd5e1; }
+  header h1 { font-size: 21px; margin: 0; white-space: nowrap; letter-spacing: .04em; }
+  header .role { color: #e3f4ef; font-size: 14px; }
+  header .role select { font-weight: bold; font-size: 16px; padding: 4px 10px; border-radius: 999px; border: none; color: var(--accent-dark); }
+  header .save-status { margin-left: auto; font-size: 12px; color: #d4eee7; }
   nav {
-    background: #fff;
-    border-bottom: 1px solid var(--line);
+    background: rgba(255, 255, 255, .96);
+    backdrop-filter: blur(6px);
+    box-shadow: 0 1px 0 var(--line);
     display: flex;
     flex-wrap: wrap;
-    padding: 0 12px;
+    gap: 4px;
+    padding: 8px 20px;
     position: sticky;
     top: 0;
     z-index: 5;
@@ -56,51 +60,59 @@
   nav button {
     border: none;
     background: none;
-    padding: 12px 16px;
+    padding: 8px 16px;
     font: inherit;
+    font-size: 15px;
     cursor: pointer;
     color: var(--muted);
-    border-bottom: 3px solid transparent;
+    border-radius: 999px;
+    transition: background .15s, color .15s;
   }
-  nav button.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: bold; }
-  main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 60px; }
-  h2 { font-size: 20px; margin: 0 0 12px; }
-  h3 { font-size: 16px; margin: 0 0 8px; }
+  nav button:hover { background: var(--plan-soft); color: var(--text); }
+  nav button.active { color: #fff; background: var(--accent); font-weight: bold; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 20px 60px; }
+  h2 { font-size: 22px; margin: 0 0 12px; }
+  h3 { font-size: 17px; margin: 0 0 10px; color: var(--accent-dark); }
   .panel {
     background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 16px;
+    border: 1px solid rgba(0, 0, 0, .02);
+    border-radius: 16px;
+    padding: 20px 22px;
+    margin-bottom: 18px;
+    box-shadow: var(--shadow);
   }
-  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
-  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
   .toolbar .spacer { flex: 1; }
   button.btn, a.btn, label.btn {
     display: inline-block;
     border: 1px solid var(--line);
     background: #fff;
     color: var(--text);
-    padding: 6px 12px;
-    border-radius: 6px;
+    padding: 8px 16px;
+    border-radius: 10px;
     font: inherit;
     font-size: 14px;
     cursor: pointer;
     text-decoration: none;
+    transition: background .15s, border-color .15s;
   }
-  button.btn:hover, label.btn:hover { background: #f0f3f7; }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  button.primary:hover { background: #1d4ed8; }
+  button.btn:hover, label.btn:hover { background: var(--plan-soft); border-color: #c9d6d1; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff !important; font-weight: bold; }
+  .btn.primary:hover { background: var(--accent-dark) !important; border-color: var(--accent-dark); }
   button.danger { color: var(--ng); border-color: #f2c4c4; }
-  button.small { padding: 2px 8px; font-size: 13px; }
+  button.danger:hover { background: var(--ng-soft); }
+  button.small { padding: 3px 10px; font-size: 13px; border-radius: 8px; }
+  button:disabled { opacity: .45; cursor: default; }
   input, select, textarea {
     font: inherit;
-    padding: 6px 8px;
-    border: 1px solid #c7ced6;
-    border-radius: 6px;
+    padding: 7px 10px;
+    border: 1px solid #c8d4cf;
+    border-radius: 8px;
     background: #fff;
     color: var(--text);
   }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
   textarea { width: 100%; min-height: 80px; resize: vertical; }
   .muted { color: var(--muted); font-size: 13px; }
   .empty { color: var(--muted); padding: 12px 0; }
@@ -167,7 +179,7 @@
   .history-item { border-left: 3px solid var(--line); padding: 4px 0 4px 10px; margin: 6px 0; }
 
   /* ダイアログ */
-  dialog { border: none; border-radius: 10px; padding: 0; width: min(720px, 96vw); max-height: 92vh; }
+  dialog { border: none; border-radius: 16px; padding: 0; width: min(720px, 96vw); max-height: 92vh; }
   dialog::backdrop { background: rgba(15, 23, 42, .45); }
   dialog form { padding: 20px; }
   dialog h2 { margin-bottom: 16px; }
@@ -182,7 +194,7 @@
   .months input { margin-right: 4px; }
   .dialog-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
   .dialog-actions .left { margin-right: auto; }
-  .banner { background: var(--warn-soft); border: 1px solid #f5d08a; color: #7c4a03; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .banner { background: var(--warn-soft); border: 1px solid #f5d08a; color: #7c4a03; padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   .banner.remind { background: #fff7d6; border-color: #f2c94c; font-weight: bold; font-size: 16px; }
   .stat { display: inline-block; margin-right: 18px; }
   .stat b { font-size: 20px; }
@@ -193,6 +205,14 @@
   table.import th { background: #f0f3f7; position: sticky; top: 0; white-space: nowrap; z-index: 1; }
   table.import tr.off { opacity: .45; }
   .nowrap { white-space: nowrap; }
+
+  .help p { margin: 4px 0 8px; }
+  .help ul { margin: 4px 0 8px; padding-left: 1.4em; }
+  .help-step { display: flex; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); }
+  .help-step:first-of-type { border-top: none; }
+  .help-step h3 { margin: 2px 0 4px; color: var(--text); }
+  .help-no { flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: #fff;
+    font-weight: bold; display: flex; align-items: center; justify-content: center; }
 
   @media print {
     header, nav, .toolbar, .no-print, .banner { display: none !important; }
@@ -206,17 +226,18 @@
 </head>
 <body>
 <header>
-  <h1>📘 業務マニュアル帳</h1>
+  <h1>🌿 業務マニュアル帳</h1>
   <span class="role" id="roleLabel"></span>
   <span class="save-status" id="saveStatus"></span>
 </header>
 <nav id="nav">
-  <button data-view="home">ホーム</button>
-  <button data-view="year">年間予定表</button>
-  <button data-view="journal">業務日誌（実施記録）</button>
-  <button data-view="tasks">業務一覧</button>
-  <button data-view="manual">マニュアル</button>
-  <button data-view="data">設定・データ</button>
+  <button data-view="home">🏠 ホーム</button>
+  <button data-view="year">📅 年間予定表</button>
+  <button data-view="journal">✏️ 業務日誌</button>
+  <button data-view="tasks">📋 業務一覧</button>
+  <button data-view="manual">📘 マニュアル</button>
+  <button data-view="help">❓ 使い方</button>
+  <button data-view="data">⚙️ 設定・データ</button>
 </nav>
 <main id="main"></main>
 
@@ -758,7 +779,7 @@ function render() {
   document.getElementById("categoryList").innerHTML = categories().map(c => `<option value="${esc(c)}">`).join("");
   if (ui.fy == null) ui.fy = fyOf(today());
   const main = document.getElementById("main");
-  const views = { home: viewHome, year: viewYear, journal: viewJournal, tasks: viewTasks, manual: viewManual, data: viewData };
+  const views = { home: viewHome, year: viewYear, journal: viewJournal, tasks: viewTasks, manual: viewManual, help: viewHelp, data: viewData };
   main.innerHTML = fileBanner() + views[ui.view]();
   updateSaveStatus();
 }
@@ -1071,7 +1092,7 @@ function viewTasks() {
       <label class="btn">Excel・Wordから取り込み<input type="file" accept=".xlsx,.xlsm,.docx" class="importOffice" hidden></label>
       <button class="btn primary" data-action="addTask">＋ 業務を登録</button>
     </div>
-    ${loose ? `<div class="banner" style="background:var(--accent-soft);border-color:#c7d7fe;color:#1e3a8a">
+    ${loose ? `<div class="banner" style="background:var(--accent-soft);border-color:#bfe3d8;color:var(--accent-dark)">
       業務一覧に登録されていない日誌が ${loose} 件あります。繰り返し行う業務なら「業務に登録」しておくと、年間予定とマニュアルに反映されます。
       <button class="btn" data-action="showLoose">確認する</button></div>` : ""}
     ${tasks.length ? `<div class="toolbar">
@@ -1191,6 +1212,65 @@ function topMonths(mc) {
   const max = Math.max(...mc);
   if (!max) return "—";
   return mc.map((n, m) => ({ n, m })).filter(x => x.n && x.n >= max * 0.5).map(x => x.m + "月").join("・");
+}
+
+/* ----- 使い方 ----- */
+function viewHelp() {
+  const step = (no, icon, title, body) => `<div class="help-step"><div class="help-no">${no}</div><div>
+    <h3>${icon} ${title}</h3>${body}</div></div>`;
+  return `
+    <div class="toolbar">
+      <h2 style="margin:0">❓ かんたん使い方</h2>
+      <span class="spacer"></span>
+      <button class="btn" data-action="print">この使い方を印刷</button>
+    </div>
+    <div class="panel help">
+      <p>このアプリは、<b>毎日の仕事を記録していくと、数年後には役職ごとの「業務マニュアル」ができあがる</b>帳簿です。
+        インターネットにはつながず、このパソコンの中だけで動きます。</p>
+    </div>
+
+    <div class="panel help">
+      <h2>はじめに（最初の1回だけ）</h2>
+      ${step(1, "👤", "自分の役職を選ぶ", `<p>画面いちばん上の <b>役職名</b>（園長・課長・入所サビ管・そよかぜ など）を自分のものに切り替えます。
+        業務や記録は役職ごとに分かれて保存されます。</p>`)}
+      ${step(2, "💾", "データの保存先を決める（おすすめ）", `<p>「⚙️ 設定・データ」→ <b>「新しいデータファイルを作って連携」</b>。以後、入力するたびに自動でファイルへ保存されます。
+        次に開いたとき「再接続する」と出たら押してください。</p>`)}
+      ${step(3, "📥", "予定表を取り込む（あれば）", `<p>「⚙️ 設定・データ」→ <b>「Excel・Word を選んで取り込む」</b>で予定表や行事予定を選びます。
+        一覧が出るので、取り込むものにチェックがあるか確かめて <b>「選んだものを登録」</b>。担当者の名前から役職に自動で振り分けられます。</p>`)}
+    </div>
+
+    <div class="panel help">
+      <h2>毎日すること</h2>
+      ${step(1, "✏️", "今日やった仕事を記録する", `<p>「🏠 ホーム」の <b>「＋ 今日の業務を記録」</b>を押し、<b>やったこと</b>・<b>かかった時間</b>・<b>気づき（次の人へのメモ）</b>を書いて保存します。
+        決まった業務なら「業務」欄から選びます。一覧にない仕事は件名だけでも大丈夫です。</p>`)}
+      ${step(2, "🔔", "16時のお知らせ", `<p>平日16時を過ぎてもその日の記録がないと、画面上にお知らせが出ます。押すとすぐ入力できます。</p>`)}
+      ${step(3, "⏪", "書き忘れた日があったら", `<p>入力画面の日付の下にある <b>「昨日」「10/28（火）」</b>などのボタンで、1週間前までさかのぼって記録できます。
+        ホームの「この1週間で記録のない日」からも入れられます。</p>`)}
+    </div>
+
+    <div class="panel help">
+      <h2>予定の登録と確認</h2>
+      ${step(1, "📋", "決まった業務を登録する", `<p>「📋 業務一覧」→ <b>「＋ 業務を登録」</b>。実施する月にチェックを入れます。</p>
+        <ul><li>毎月の仕事 →「毎月」ボタン</li><li>年1回の仕事 → その月だけチェック</li>
+        <li>数年に1回の仕事 →「周期」で「3年に1回」などを選ぶ</li><li>決まっていない仕事 → 月を選ばない（随時）</li></ul>
+        <p>手順・注意点も書いておくと、そのままマニュアルになります。</p>`)}
+      ${step(2, "📅", "1年の流れを見る", `<p>「📅 年間予定表」で、月ごとの予定と、済んだもの（✓）・まだのもの（赤）が分かります。
+        「すべての役職」を押すと全員分を1つの表で見られます。マスをクリックすると記録できます。</p>`)}
+      ${step(3, "📘", "マニュアルを見る・出す", `<p>「📘 マニュアル」で業務ごとの手順、<b>いつごろ始めて何日かかったか</b>（記録から自動計算）、過去の申し送りが見られます。
+        <b>「Wordで保存」「Excelで保存」「印刷」</b>で外に出せます。</p>`)}
+    </div>
+
+    <div class="panel help">
+      <h2>困ったとき</h2>
+      <table class="kv">
+        <tr><th>間違えて入れた</th><td>「✏️ 業務日誌」や「📋 業務一覧」で左のチェックを入れて <b>「選択した◯件を削除」</b>。消した直後なら上に出る <b>「元に戻す」</b>で戻せます。
+          取り込みを丸ごと取り消すときは「⚙️ 設定・データ」→「取り込みの履歴」。</td></tr>
+        <tr><th>別の役職に入れてしまった</th><td>「📋 業務一覧」でチェックして <b>「選択したものを ◯◯ へ移す」</b>。</td></tr>
+        <tr><th>ほかのパソコンでも使いたい</th><td>「⚙️ 設定・データ」→ <b>「データ入りのアプリを作る」</b>でできたファイルを、ほかのパソコンにコピーして開きます。</td></tr>
+        <tr><th>データが消えないか心配</th><td>データファイルと連携しておくか、ときどき「⚙️ 設定・データ」→ <b>「データを書き出す」</b>でバックアップしてください。</td></tr>
+        <tr><th>後任の人に引き継ぐ</th><td>このアプリのファイルと、データファイル（.json）を渡せば、そのまま続きから使えます。</td></tr>
+      </table>
+    </div>`;
 }
 
 /* ----- 設定・データ ----- */
@@ -1656,7 +1736,7 @@ const XLSX_STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
 <fonts count="3"><font><sz val="11"/><name val="游ゴシック"/></font><font><b/><sz val="11"/><name val="游ゴシック"/></font><font><b/><sz val="14"/><name val="游ゴシック"/></font></fonts>
 <fills count="7"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>
-<fill><patternFill patternType="solid"><fgColor rgb="FFDCE6F2"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFDDF0E9"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="FFE2F0D9"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="FFEEF2F7"/></patternFill></fill>
 <fill><patternFill patternType="solid"><fgColor rgb="FFFBE2E2"/></patternFill></fill>
@@ -1876,7 +1956,7 @@ function exportDocx(only) {
 <w:pPrDefault><w:pPr><w:spacing w:after="60" w:line="300" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>
 <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>
 <w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="120"/></w:pPr><w:rPr><w:b/><w:sz w:val="36"/></w:rPr></w:style>
-<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="240" w:after="120"/><w:pBdr><w:left w:val="single" w:sz="36" w:space="6" w:color="2563EB"/></w:pBdr><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="30"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="240" w:after="120"/><w:pBdr><w:left w:val="single" w:sz="36" w:space="6" w:color="13806A"/></w:pBdr><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="30"/></w:rPr></w:style>
 <w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="200" w:after="60"/><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:color w:val="334155"/><w:sz w:val="24"/></w:rPr></w:style>
 </w:styles>`;
   const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
