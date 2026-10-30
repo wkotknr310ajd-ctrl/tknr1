@@ -182,6 +182,7 @@
   .dialog-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
   .dialog-actions .left { margin-right: auto; }
   .banner { background: var(--warn-soft); border: 1px solid #f5d08a; color: #7c4a03; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .banner.remind { background: #fff7d6; border-color: #f2c94c; font-weight: bold; font-size: 16px; }
   .stat { display: inline-block; margin-right: 18px; }
   .stat b { font-size: 20px; }
 
@@ -359,7 +360,7 @@ const MONTH_NAMES = ["1月","2月","3月","4月","5月","6月","7月","8月","9�
 function emptyData() {
   return {
     version: 1,
-    settings: { role: "", org: "", person: "", fyStart: 4 },
+    settings: { role: "", org: "", person: "", fyStart: 4, remindEnabled: true, remindTime: "16:00", remindWeekdaysOnly: true },
     tasks: [],
     records: [],
     updatedAt: null
@@ -678,6 +679,11 @@ function categories() {
 }
 
 function fileBanner() {
+  if (ui.reminding) {
+    return `<div class="banner remind">🔔 ${esc(data.settings.remindTime)} になりました。今日の業務を記録しましょう。
+      <button class="btn primary" data-action="remindRecord">今日の業務を記録</button>
+      <button class="btn" data-action="remindDismiss">今日は記録しない</button></div>`;
+  }
   if (fileHandle && !filePermission) {
     return `<div class="banner">📄 データファイル「${esc(fileHandle.name)}」との連携を再開するには許可が必要です。
       <button class="btn primary" data-action="reconnect">再接続する</button></div>`;
@@ -1057,7 +1063,23 @@ function viewData() {
           ${[1, 4, 7, 9, 10].map(m => `<option value="${m}" ${Number(s.fyStart) === m ? "selected" : ""}>${m}月</option>`).join("")}
         </select></div>
       </div>
-      <button class="btn primary" data-action="saveSettings">設定を保存</button>
+      <h3 style="margin-top:8px">記録のお知らせ</h3>
+      <div class="form-row"><label style="font-weight:normal"><input type="checkbox" id="sRemind" ${s.remindEnabled ? "checked" : ""}>
+        毎日決まった時刻に、その日の記録がまだなければ入力を促す</label></div>
+      <div class="form-inline">
+        <div class="form-row"><label>時刻</label><input type="time" id="sRemindTime" value="${esc(s.remindTime || "16:00")}"></div>
+        <div class="form-row"><label>対象の日</label><select id="sRemindDays">
+          <option value="1" ${s.remindWeekdaysOnly ? "selected" : ""}>平日（月〜金）のみ</option>
+          <option value="0" ${!s.remindWeekdaysOnly ? "selected" : ""}>毎日</option>
+        </select></div>
+      </div>
+      <p class="muted">お知らせはこのアプリを開いている間に表示されます（画面上の表示＋音＋デスクトップ通知）。
+        閉じていても毎日その時刻に開くようにするには、同じフォルダの「16時に自動で開く設定.bat」を実行してください。</p>
+      <div class="toolbar">
+        <button class="btn primary" data-action="saveSettings">設定を保存</button>
+        ${"Notification" in window ? `<button class="btn" data-action="notifyPermission">デスクトップ通知を許可${Notification.permission === "granted" ? "（許可済み）" : ""}</button>` : ""}
+        <button class="btn" data-action="remindTest">お知らせをテスト</button>
+      </div>
     </div>
 
     <div class="panel">
@@ -1258,6 +1280,7 @@ recordForm.addEventListener("submit", e => {
   const i = data.records.findIndex(x => x.id === id);
   if (i >= 0) data.records[i] = Object.assign(data.records[i], r);
   else { r.createdAt = new Date().toISOString(); data.records.push(r); }
+  if (ui.reminding) stopRemind(true);
   save();
   recordDialog.close();
   render();
@@ -1473,10 +1496,18 @@ document.getElementById("main").addEventListener("click", async e => {
       data.settings.org = document.getElementById("sOrg").value.trim();
       data.settings.role = document.getElementById("sRole").value.trim();
       data.settings.fyStart = Number(document.getElementById("sFy").value);
+      data.settings.remindEnabled = document.getElementById("sRemind").checked;
+      data.settings.remindTime = document.getElementById("sRemindTime").value || "16:00";
+      data.settings.remindWeekdaysOnly = document.getElementById("sRemindDays").value === "1";
+      localStorage.removeItem(REMIND_KEY);
       ui.fy = null;
       save(); render();
       alert("設定を保存しました。");
       break;
+    case "remindRecord": stopRemind(true); openRecordDialog(null); break;
+    case "remindDismiss": stopRemind(true); render(); break;
+    case "remindTest": fireRemind(); break;
+    case "notifyPermission": await Notification.requestPermission(); render(); break;
     case "clearAll":
       if (confirm("すべての業務と記録を削除します。元に戻せません。先にバックアップを書き出しましたか？") &&
           confirm("本当に削除しますか？")) {
@@ -1516,12 +1547,79 @@ document.getElementById("main").addEventListener("input", e => {
 });
 
 // 別タブで更新された場合に反映する
-window.addEventListener("storage", e => { if (e.key === STORAGE_KEY) { data = loadLocal(); render(); } });
+window.addEventListener("storage", e => {
+  if (e.key === STORAGE_KEY) { data = loadLocal(); render(); }
+  if (e.key === REMIND_KEY && e.newValue === todayYmd() && ui.reminding) { stopRemind(false); render(); }
+});
+
+/* ===================== 記録のお知らせ ===================== */
+
+const REMIND_KEY = "gyomu-manual-reminded"; // お知らせ済みの日（パソコンごと）
+const baseTitle = document.title;
+let titleTimer = null;
+
+function recordedToday() {
+  const t = todayYmd();
+  return data.records.some(r => r.date === t || (r.createdAt && toYmd(new Date(r.createdAt)) === t));
+}
+
+function checkRemind() {
+  const s = data.settings;
+  if (!s.remindEnabled || ui.reminding) return;
+  const now = new Date();
+  const dow = now.getDay();
+  if (s.remindWeekdaysOnly && (dow === 0 || dow === 6)) return;
+  const [h, m] = (s.remindTime || "16:00").split(":").map(Number);
+  if (now.getHours() * 60 + now.getMinutes() < h * 60 + m) return;
+  if (localStorage.getItem(REMIND_KEY) === todayYmd()) return;
+  if (recordedToday()) return;
+  fireRemind();
+}
+
+function fireRemind() {
+  ui.reminding = true;
+  render();
+  chime();
+  let on = false;
+  clearInterval(titleTimer);
+  titleTimer = setInterval(() => { document.title = (on = !on) ? "🔔 記録の時間です" : baseTitle; }, 1000);
+  if ("Notification" in window && Notification.permission === "granted") {
+    try {
+      const n = new Notification("業務マニュアル帳", { body: "今日の業務を記録しましょう。", requireInteraction: true });
+      n.onclick = () => { window.focus(); n.close(); stopRemind(true); openRecordDialog(null); };
+    } catch (e) { console.error(e); }
+  }
+}
+
+function stopRemind(markDone) {
+  ui.reminding = false;
+  clearInterval(titleTimer);
+  document.title = baseTitle;
+  if (markDone) localStorage.setItem(REMIND_KEY, todayYmd());
+}
+
+function chime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [880, 660].forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = f;
+      o.connect(g); g.connect(ctx.destination);
+      const t = ctx.currentTime + i * 0.45;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.3, t + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+      o.start(t); o.stop(t + 0.42);
+    });
+  } catch (e) { console.error(e); }
+}
 
 (async function init() {
   render();
   await restoreFileHandle();
   render();
+  checkRemind();
+  setInterval(checkRemind, 30000);
 })();
 </script>
 </body>
