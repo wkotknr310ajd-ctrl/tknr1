@@ -382,8 +382,13 @@
 
 <datalist id="categoryList"></datalist>
 
+<!-- 配布用: 「データ入りのアプリを作る」で、ここに初期データが入る -->
+<script id="embeddedData" type="application/json">null</script>
 <script>
 "use strict";
+
+// 画面を描く前のこのファイルの中身（データ入りのアプリを作るときに使う）
+const PRISTINE_HTML = "<!doctype html>\n" + document.documentElement.outerHTML;
 
 /* ===================== データ ===================== */
 
@@ -393,7 +398,7 @@ const MONTH_NAMES = ["1月","2月","3月","4月","5月","6月","7月","8月","9�
 function emptyData() {
   return {
     version: 1,
-    settings: { roles: ["園長", "課長", "入所サビ管", "そよかぜ"], rolesAdded: ["そよかぜ"], roleMembers: { "園長": "工藤", "課長": "鈴木", "入所サビ管": "木村 忍", "そよかぜ": "佐藤 恭成" }, currentRole: "園長", org: "", fyStart: 4, remindEnabled: true, remindTime: "16:00", remindWeekdaysOnly: true },
+    settings: { roles: ["園長", "課長", "入所サビ管", "そよかぜ", "Aさん", "Bさん", "Cさん", "Dさん"], rolesAdded: ["そよかぜ", "Aさん", "Bさん", "Cさん", "Dさん"], roleMembers: { "園長": "工藤", "課長": "鈴木", "入所サビ管": "木村 忍", "そよかぜ": "佐藤 恭成" }, currentRole: "園長", org: "", fyStart: 4, remindEnabled: true, remindTime: "16:00", remindWeekdaysOnly: true },
     tasks: [],
     records: [],
     imports: [],
@@ -424,7 +429,30 @@ function loadLocal() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return normalize(JSON.parse(raw));
   } catch (e) { console.error(e); }
+  // このパソコンでまだ使っていなければ、アプリに入っている初期データから始める
+  const embedded = embeddedData();
+  if (embedded) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(embedded)); } catch (e) { console.error(e); }
+    return embedded;
+  }
   return emptyData();
+}
+function embeddedData() {
+  try {
+    const d = JSON.parse(document.getElementById("embeddedData").textContent);
+    return d ? normalize(d) : null;
+  } catch (e) { console.error(e); return null; }
+}
+
+/** いまのデータを初期データとして入れた、このアプリのコピーを作る */
+function exportAppWithData() {
+  const copy = JSON.parse(JSON.stringify(data));
+  delete copy._fileSavedAt;
+  copy.embeddedAt = new Date().toISOString();
+  const json = JSON.stringify(copy).replace(/</g, "\\u003c");
+  const html = PRISTINE_HTML.replace(/<script id="embeddedData" type="application\/json">[\s\S]*?<\/script>/,
+    () => `<script id="embeddedData" type="application/json">${json}<\/script>`);
+  downloadBlob(`業務マニュアル帳（データ入り_${todayYmd()}）.html`, new Blob([html], { type: "text/html" }));
 }
 
 function normalize(d) {
@@ -445,7 +473,7 @@ function normalize(d) {
     Object.entries(emptyData().settings.roleMembers).forEach(([r, n]) => { if (st.roles.includes(r) || r === "そよかぜ") st.roleMembers[r] = st.roleMembers[r] || n; });
   }
   st.rolesAdded = d && d.settings ? (Array.isArray(d.settings.rolesAdded) ? [...d.settings.rolesAdded] : []) : st.rolesAdded;
-  ["そよかぜ"].forEach(r => { if (!st.rolesAdded.includes(r)) { if (!st.roles.includes(r)) st.roles.push(r); st.rolesAdded.push(r); } });
+  ["そよかぜ", "Aさん", "Bさん", "Cさん", "Dさん"].forEach(r => { if (!st.rolesAdded.includes(r)) { if (!st.roles.includes(r)) st.roles.push(r); st.rolesAdded.push(r); } });
   const fallbackRole = st.role || st.currentRole || st.roles[0];
   delete st.role;
   if (!st.roles.includes(st.currentRole)) st.currentRole = st.roles[0];
@@ -1247,6 +1275,18 @@ function viewData() {
           <button class="btn small danger" data-action="undoImport" data-id="${im.id}" ${nT + nR ? "" : "disabled"}>この取り込みを取り消す</button></li>`;
       }).join("")}</ul>
     </div>` : ""}
+
+    <div class="panel">
+      <h3>ほかのパソコンでも同じ状態で使う</h3>
+      <p class="muted">いま入っている業務・記録・役職・設定を最初から入れた「業務マニュアル帳」のファイルを作ります。
+        そのファイルをほかのパソコンにコピーして開くと、この状態から使い始められます（そのパソコンでまだ使っていない場合）。
+        ${embeddedData() ? `<br>このファイルには ${fmtDateTime(embeddedData().embeddedAt || embeddedData().updatedAt || new Date().toISOString())} 時点の初期データが入っています。` : ""}</p>
+      <div class="toolbar">
+        <button class="btn primary" data-action="exportApp">データ入りのアプリを作る（.html）</button>
+        ${embeddedData() ? `<button class="btn" data-action="resetToEmbedded">このパソコンのデータを初期データに戻す</button>` : ""}
+      </div>
+      <p class="muted">※ 各パソコンのデータはそれぞれ別々に増えていきます。全員で同じデータを見たいときは、共有フォルダに置いたデータファイル（.json）に、各パソコンから「既存のデータファイルを開いて連携」してください。</p>
+    </div>
 
     <div class="panel">
       <h3>バックアップ・引き継ぎ</h3>
@@ -2641,6 +2681,13 @@ document.getElementById("main").addEventListener("click", async e => {
       if (!data.settings.roles.includes(curRole())) data.settings.currentRole = data.settings.roles[0];
       save(); render(); break;
     case "exportTemplate": exportTemplate(); break;
+    case "exportApp": exportAppWithData(); break;
+    case "resetToEmbedded":
+      if (!confirm("このパソコンのデータを、アプリに入っている初期データに置き換えます。いまの入力内容は消えます（先にバックアップを書き出しておくと安心です）。よろしいですか？")) break;
+      data = embeddedData();
+      save(); render();
+      alert("初期データに戻しました。");
+      break;
     case "purgeImported": {
       const rIds = data.records.filter(r => r.importId || /（予定表の担当: .+?）/.test(r.content || "")).map(r => r.id);
       const tIds = data.tasks.filter(t => t.importId || t.category === "取り込み").map(t => t.id);
