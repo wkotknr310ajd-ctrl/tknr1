@@ -41,6 +41,7 @@
   }
   header h1 { font-size: 18px; margin: 0; white-space: nowrap; }
   header .role { color: #cbd5e1; font-size: 14px; }
+  header .role select { font-weight: bold; font-size: 15px; padding: 2px 6px; }
   header .save-status { margin-left: auto; font-size: 12px; color: #cbd5e1; }
   nav {
     background: #fff;
@@ -186,6 +187,13 @@
   .stat { display: inline-block; margin-right: 18px; }
   .stat b { font-size: 20px; }
 
+  dialog.wide { width: min(1100px, 98vw); }
+  table.import { border-collapse: collapse; width: 100%; font-size: 13px; }
+  table.import th, table.import td { border-bottom: 1px solid var(--line); padding: 4px 6px; text-align: left; vertical-align: top; }
+  table.import th { background: #f0f3f7; position: sticky; top: 0; }
+  table.import tr.off { opacity: .45; }
+  .nowrap { white-space: nowrap; }
+
   @media print {
     header, nav, .toolbar, .no-print, .banner { display: none !important; }
     body { background: #fff; font-size: 12px; }
@@ -314,6 +322,7 @@
       <div class="form-row">
         <label>実施日（開始日）</label>
         <input type="date" name="date" required>
+        <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px" id="dayButtons"></div>
       </div>
       <div class="form-row">
         <label>終了日 <span class="hint">（数日かかった場合）</span></label>
@@ -347,6 +356,29 @@
   </form>
 </dialog>
 
+<dialog id="importDialog" class="wide">
+  <form method="dialog" id="importForm">
+    <h2>Excel・Word から取り込み</h2>
+    <p class="muted">「<span id="importFileName"></span>」から読み取った候補です。取り込むものにチェックを入れ、種類・名前・役職を確認してください。
+      <br>「業務（年間予定）」は毎年その月の予定として、「実施記録」はその日に行った記録として登録されます（今日より前の日付は実施記録になっています）。</p>
+    <div class="toolbar">
+      <button type="button" class="btn small" data-imp="all">すべて選択</button>
+      <button type="button" class="btn small" data-imp="none">すべて解除</button>
+      <button type="button" class="btn small" data-imp="task">すべて業務に</button>
+      <button type="button" class="btn small" data-imp="record">日付のあるものはすべて実施記録に</button>
+      <span class="spacer"></span><span class="muted" id="importCount"></span>
+    </div>
+    <div style="max-height:55vh;overflow:auto">
+      <table class="import"><thead><tr><th></th><th>種類</th><th>日付・時期</th><th>名前（業務名・件名）</th><th>役職</th><th>読み取り元</th></tr></thead>
+      <tbody id="importRows"></tbody></table>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" class="btn" data-close>キャンセル</button>
+      <button type="button" class="btn primary" id="importApply">選んだものを登録</button>
+    </div>
+  </form>
+</dialog>
+
 <datalist id="categoryList"></datalist>
 
 <script>
@@ -360,7 +392,7 @@ const MONTH_NAMES = ["1月","2月","3月","4月","5月","6月","7月","8月","9�
 function emptyData() {
   return {
     version: 1,
-    settings: { role: "", org: "", person: "", fyStart: 4, remindEnabled: true, remindTime: "16:00", remindWeekdaysOnly: true },
+    settings: { roles: ["園長", "課長", "入所サビ管"], currentRole: "園長", org: "", fyStart: 4, remindEnabled: true, remindTime: "16:00", remindWeekdaysOnly: true },
     tasks: [],
     records: [],
     updatedAt: null
@@ -396,6 +428,17 @@ function normalize(d) {
   out.settings = Object.assign(emptyData().settings, (d && d.settings) || {});
   out.tasks = Array.isArray(out.tasks) ? out.tasks : [];
   out.records = Array.isArray(out.records) ? out.records : [];
+  // 役職ごとに業務と記録を分ける（旧データは「役職」欄の値か先頭の役職に入れる）
+  const st = out.settings;
+  if (!Array.isArray(st.roles) || !st.roles.length) st.roles = emptyData().settings.roles;
+  if (st.role && !st.roles.includes(st.role)) st.roles.push(st.role);
+  const fallbackRole = st.role || st.currentRole || st.roles[0];
+  delete st.role;
+  if (!st.roles.includes(st.currentRole)) st.currentRole = st.roles[0];
+  [...out.tasks, ...out.records].forEach(x => {
+    if (!x.role) x.role = fallbackRole;
+    if (!st.roles.includes(x.role)) st.roles.push(x.role);
+  });
   out.tasks.forEach(t => {
     t.months = Array.isArray(t.months) ? t.months.map(Number) : [];
     t.everyN = Number(t.everyN) || 1;
@@ -581,6 +624,9 @@ function calYear(fy, month) { return month >= fyStart() ? fy : fy + 1; }
 function fyLabel(fy) { return fyStart() === 1 ? `${fy}年` : `${fy}年度`; }
 
 function taskById(id) { return data.tasks.find(t => t.id === id); }
+function curRole() { return data.settings.currentRole; }
+function myTasks() { return data.tasks.filter(t => t.role === curRole()); }
+function myRecords() { return data.records.filter(r => r.role === curRole()); }
 function recordTitle(r) { const t = taskById(r.taskId); return t ? t.title : (r.title || "（件名なし）"); }
 
 function scheduleText(t) {
@@ -614,7 +660,7 @@ function occurrencesInFy(t, fy) {
 }
 
 function recordsForOcc(task, key) {
-  return data.records.filter(r => r.taskId === task.id && (r.occ || r.date.slice(0, 7)) === key);
+  return myRecords().filter(r => r.taskId === task.id && (r.occ || r.date.slice(0, 7)) === key);
 }
 function occStatus(occ) {
   const recs = recordsForOcc(occ.task, occ.key);
@@ -626,7 +672,7 @@ function occStatus(occ) {
 /* ===================== 実績の集計（マニュアル用） ===================== */
 
 function taskStats(t) {
-  const recs = data.records.filter(r => r.taskId === t.id).sort((a, b) => a.date.localeCompare(b.date));
+  const recs = myRecords().filter(r => r.taskId === t.id).sort((a, b) => a.date.localeCompare(b.date));
   const groups = {};
   recs.forEach(r => { const k = r.occ || r.date.slice(0, 7); (groups[k] = groups[k] || []).push(r); });
   const keys = Object.keys(groups).sort();
@@ -665,7 +711,8 @@ function taskStats(t) {
 function render() {
   document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("active", b.dataset.view === ui.view));
   const s = data.settings;
-  document.getElementById("roleLabel").textContent = [s.org, s.role].filter(Boolean).join("　") || "（役職名は「設定・データ」で登録できます）";
+  document.getElementById("roleLabel").innerHTML = (s.org ? esc(s.org) + "　" : "") +
+    `<select id="roleSelect" title="役職を切り替え">${s.roles.map(r => `<option ${r === curRole() ? "selected" : ""}>${esc(r)}</option>`).join("")}</select>`;
   document.getElementById("categoryList").innerHTML = categories().map(c => `<option value="${esc(c)}">`).join("");
   if (ui.fy == null) ui.fy = fyOf(today());
   const main = document.getElementById("main");
@@ -675,7 +722,7 @@ function render() {
 }
 
 function categories() {
-  return [...new Set(data.tasks.map(t => t.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ja"));
+  return [...new Set(myTasks().map(t => t.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ja"));
 }
 
 function fileBanner() {
@@ -703,7 +750,7 @@ function viewHome() {
   const t0 = today();
   const curKey = thisMonthKey();
   const fy = fyOf(t0);
-  const occs = data.tasks.flatMap(t => [...occurrencesInFy(t, fy), ...occurrencesInFy(t, fy + 1)]);
+  const occs = myTasks().flatMap(t => [...occurrencesInFy(t, fy), ...occurrencesInFy(t, fy + 1)]);
 
   const thisMonth = occs.filter(o => o.key === curKey);
   const prep = occs.filter(o => {
@@ -719,7 +766,7 @@ function viewHome() {
     return o.key === nk && !prep.includes(o);
   });
   const late = occs.filter(o => o.key < curKey && fyOf(new Date(o.y, o.m - 1, 1)) === fy && occStatus(o) === "late");
-  const recent = [...data.records].sort((a, b) => (b.date + (b.createdAt || "")).localeCompare(a.date + (a.createdAt || ""))).slice(0, 8);
+  const recent = [...myRecords()].sort((a, b) => (b.date + (b.createdAt || "")).localeCompare(a.date + (a.createdAt || ""))).slice(0, 8);
 
   const occItem = o => {
     const st = occStatus(o);
@@ -738,13 +785,14 @@ function viewHome() {
   };
   const list = (arr, empty) => arr.length ? `<ul class="items">${arr.map(occItem).join("")}</ul>` : `<div class="empty">${empty}</div>`;
 
-  if (!data.tasks.length && !data.records.length) {
+  if (!myTasks().length && !myRecords().length) {
     return `<div class="panel">
       <h2>はじめに</h2>
       <p>このアプリは、役職の<b>年間の業務予定</b>と<b>日々の実施記録</b>をためていき、数年後には
       そのまま<b>業務マニュアル</b>になることを目指した帳簿です。</p>
       <ol>
-        <li>「設定・データ」で役職名と年度の始まり月を登録し、<b>データファイルを作って連携</b>します（推奨）。</li>
+        <li>画面上部で役職（園長・課長・入所サビ管など）を選びます。「設定・データ」で役職の追加・名前の変更、年度の始まり月の設定、<b>データファイルとの連携</b>（推奨）ができます。</li>
+        <li>行事予定表などの Excel・Word があれば「Excel・Wordから取り込み」で読み込めます。</li>
         <li>「業務一覧」に、毎月・毎年・数年に1回の業務など、分かっている業務を登録します。</li>
         <li>業務をしたら「実施を記録」から、やったこと・かかった日数や時間・気づきを入れます。
             予定にない業務も「業務日誌」に日記のように書いておけば、あとから業務として登録できます。</li>
@@ -754,6 +802,7 @@ function viewHome() {
         <button class="btn primary" data-action="addTask">業務を登録する</button>
         <button class="btn" data-action="addRecord">今日の業務を記録する</button>
         <button class="btn" data-action="loadSample">サンプルデータを入れて試す</button>
+        <label class="btn">Excel・Wordから取り込み<input type="file" accept=".xlsx,.xlsm,.docx" class="importOffice" hidden></label>
       </div>
     </div>`;
   }
@@ -771,7 +820,24 @@ function viewHome() {
       <div class="panel"><h3>来月の予定業務</h3>${list(next, "来月の予定業務はありません")}</div>
       <div class="panel"><h3>今年度の未実施（過ぎた月）</h3>${list(late, "未実施の業務はありません 👍")}</div>
     </div>
+    ${missingDaysPanel()}
     <div class="panel"><h3>最近の記録</h3>${recordList(recent)}</div>`;
+}
+
+/** この1週間（今日を除く平日）で記録のない日 */
+function missingDaysPanel() {
+  const days = [];
+  for (let i = 1; i <= 7; i++) {
+    const d = addDays(today(), -i);
+    if (d.getDay() === 0 || d.getDay() === 6) continue;
+    const ymd = toYmd(d);
+    if (!myRecords().some(r => r.date <= ymd && (r.endDate || r.date) >= ymd)) days.push(ymd);
+  }
+  if (!days.length) return "";
+  return `<div class="panel"><h3>この1週間で記録のない日</h3>
+    <div class="toolbar" style="margin-bottom:0">${days.map(ymd =>
+      `<button class="btn" data-action="addRecordOn" data-date="${ymd}">${fmtDate(ymd)} を記録</button>`).join("")}</div>
+    <div class="muted">休みの日や、記録することがなかった日はそのままで大丈夫です。</div></div>`;
 }
 
 function recordList(recs, opts = {}) {
@@ -800,7 +866,7 @@ function viewYear() {
   const fy = ui.fy;
   const months = fyMonths();
   const curKey = thisMonthKey();
-  const activeTasks = data.tasks.filter(t => !t.archived);
+  const activeTasks = myTasks().filter(t => !t.archived);
   const byCat = {};
   activeTasks.forEach(t => (byCat[t.category || "未分類"] = byCat[t.category || "未分類"] || []).push(t));
   const cats = Object.keys(byCat).sort((a, b) => a.localeCompare(b, "ja"));
@@ -811,7 +877,7 @@ function viewYear() {
       const cells = months.map(m => {
         const key = `${calYear(fy, m)}-${pad(m)}`;
         const occ = occs.find(o => o.m === m);
-        const recs = data.records.filter(r => r.taskId === t.id && (r.occ || r.date.slice(0, 7)) === key);
+        const recs = myRecords().filter(r => r.taskId === t.id && (r.occ || r.date.slice(0, 7)) === key);
         let cls = "", txt = "";
         if (occ) {
           const st = occStatus(occ);
@@ -832,7 +898,7 @@ function viewYear() {
   // 業務に紐付いていない記録の件数
   const loose = months.map(m => {
     const key = `${calYear(fy, m)}-${pad(m)}`;
-    const n = data.records.filter(r => !taskById(r.taskId) && r.date.slice(0, 7) === key).length;
+    const n = myRecords().filter(r => !taskById(r.taskId) && r.date.slice(0, 7) === key).length;
     return `<td class="cell" data-action="looseMonth" data-occ="${key}">${n ? n + "件" : ""}</td>`;
   }).join("");
 
@@ -853,6 +919,7 @@ function viewYear() {
       <button class="btn" data-action="fyToday">今年度</button>
       <span class="spacer"></span>
       <button class="btn" data-action="addTask">＋ 業務を登録</button>
+      <button class="btn" data-action="exportXlsx">Excelで保存</button>
       <button class="btn" data-action="print">印刷</button>
     </div>
     <div class="panel year-table-wrap">
@@ -873,16 +940,19 @@ function viewYear() {
 }
 
 /* ----- 業務日誌 ----- */
-function viewJournal() {
+function filteredRecords() {
   const q = ui.journalQuery.trim().toLowerCase();
-  let recs = data.records.filter(r => {
+  return myRecords().filter(r => {
     if (ui.journalMonth && r.date.slice(0, 7) !== ui.journalMonth) return false;
     if (ui.journalTask === "__none") { if (taskById(r.taskId)) return false; }
     else if (ui.journalTask && r.taskId !== ui.journalTask) return false;
     if (q && ![recordTitle(r), r.content, r.notes].join(" ").toLowerCase().includes(q)) return false;
     return true;
-  }).sort((a, b) => (b.date + (b.createdAt || "")).localeCompare(a.date + (a.createdAt || "")));
+  });
+}
 
+function viewJournal() {
+  const recs = filteredRecords().sort((a, b) => (b.date + (b.createdAt || "")).localeCompare(a.date + (a.createdAt || "")));
   const totalHours = recs.reduce((s, r) => s + (Number(r.hours) || 0), 0);
   // 月ごとに見出しを付ける
   const groups = {};
@@ -893,6 +963,8 @@ function viewJournal() {
       <h2 style="margin:0">業務日誌（実施記録）</h2>
       <span class="spacer"></span>
       <button class="btn primary" data-action="addRecord">＋ 記録を追加</button>
+      <label class="btn">Excel・Wordから取り込み<input type="file" accept=".xlsx,.xlsm,.docx" class="importOffice" hidden></label>
+      <button class="btn" data-action="exportXlsxJournal" title="いま絞り込んでいる記録を書き出します">Excelで保存</button>
       <button class="btn" data-action="exportCsv">CSVで書き出す</button>
     </div>
     <div class="panel">
@@ -916,7 +988,7 @@ function viewJournal() {
 
 function taskOptions(selected) {
   const byCat = {};
-  data.tasks.forEach(t => (byCat[t.category || "未分類"] = byCat[t.category || "未分類"] || []).push(t));
+  myTasks().forEach(t => (byCat[t.category || "未分類"] = byCat[t.category || "未分類"] || []).push(t));
   return Object.keys(byCat).sort((a, b) => a.localeCompare(b, "ja")).map(c =>
     `<optgroup label="${esc(c)}">${byCat[c].sort((a, b) => a.title.localeCompare(b.title, "ja")).map(t =>
       `<option value="${t.id}" ${t.id === selected ? "selected" : ""}>${esc(t.title)}${t.archived ? "（廃止）" : ""}</option>`).join("")}</optgroup>`).join("");
@@ -925,16 +997,17 @@ function taskOptions(selected) {
 /* ----- 業務一覧 ----- */
 function viewTasks() {
   const q = ui.taskQuery.trim().toLowerCase();
-  const tasks = data.tasks.filter(t => !q || [t.title, t.category, t.purpose, t.steps, t.tips].join(" ").toLowerCase().includes(q));
+  const tasks = myTasks().filter(t => !q || [t.title, t.category, t.purpose, t.steps, t.tips].join(" ").toLowerCase().includes(q));
   const byCat = {};
   tasks.forEach(t => (byCat[t.category || "未分類"] = byCat[t.category || "未分類"] || []).push(t));
-  const loose = data.records.filter(r => !taskById(r.taskId)).length;
+  const loose = myRecords().filter(r => !taskById(r.taskId)).length;
 
   return `
     <div class="toolbar">
       <h2 style="margin:0">業務一覧</h2>
       <input type="search" id="tQuery" placeholder="業務を検索" value="${esc(ui.taskQuery)}">
       <span class="spacer"></span>
+      <label class="btn">Excel・Wordから取り込み<input type="file" accept=".xlsx,.xlsm,.docx" class="importOffice" hidden></label>
       <button class="btn primary" data-action="addTask">＋ 業務を登録</button>
     </div>
     ${loose ? `<div class="banner" style="background:var(--accent-soft);border-color:#c7d7fe;color:#1e3a8a">
@@ -957,7 +1030,7 @@ function viewTasks() {
 /* ----- マニュアル ----- */
 function viewManual() {
   const s = data.settings;
-  const tasks = data.tasks
+  const tasks = myTasks()
     .filter(t => !ui.manualTask || t.id === ui.manualTask)
     .sort((a, b) => (a.category || "").localeCompare(b.category || "", "ja") || firstMonthOrder(a) - firstMonthOrder(b) || a.title.localeCompare(b.title, "ja"));
 
@@ -968,13 +1041,15 @@ function viewManual() {
       <span class="spacer"></span>
       ${ui.manualTask ? `<button class="btn" data-action="editTask" data-id="${ui.manualTask}">この業務を編集</button>
         <button class="btn" data-action="addRecord" data-task="${ui.manualTask}">実施を記録</button>` : ""}
+      <button class="btn" data-action="exportDocx">Wordで保存</button>
+      <button class="btn" data-action="exportXlsx">Excelで保存</button>
       <button class="btn" data-action="print">印刷 / PDF</button>
-      <button class="btn" data-action="exportMd">テキスト(Markdown)で保存</button>
+      <button class="btn" data-action="exportMd">テキストで保存</button>
     </div>
     ${!ui.manualTask ? `<div class="panel">
-      <h2>${esc([s.org, s.role].filter(Boolean).join(" ") || "")} 業務マニュアル</h2>
-      <div class="muted">作成日 ${fmtDate(todayYmd())}　/　登録業務 ${data.tasks.length} 件　/　実施記録 ${data.records.length} 件
-        ${data.records.length ? `（${fmtDate([...data.records].sort((a, b) => a.date.localeCompare(b.date))[0].date)} 〜）` : ""}</div>
+      <h2>${esc([s.org, curRole()].filter(Boolean).join(" "))} 業務マニュアル</h2>
+      <div class="muted">作成日 ${fmtDate(todayYmd())}　/　登録業務 ${myTasks().length} 件　/　実施記録 ${myRecords().length} 件
+        ${myRecords().length ? `（${fmtDate([...myRecords()].sort((a, b) => a.date.localeCompare(b.date))[0].date)} 〜）` : ""}</div>
       <h4>年間の流れ</h4>${yearFlowTable()}
     </div>` : ""}
     ${tasks.map(manualSection).join("") || '<div class="panel"><div class="empty">業務が登録されていません</div></div>'}`;
@@ -987,15 +1062,15 @@ function firstMonthOrder(t) {
 
 function yearFlowTable() {
   const rows = fyMonths().map(m => {
-    const ts = data.tasks.filter(t => !t.archived && t.months.includes(m))
+    const ts = myTasks().filter(t => !t.archived && t.months.includes(m))
       .sort((a, b) => (a.day || 99) - (b.day || 99));
     const multi = ts.filter(t => t.everyN > 1);
     const yearly = ts.filter(t => t.everyN === 1 && t.months.length < 12);
     return `<tr><th>${m}月</th><td>${yearly.map(t => esc(t.title) + (t.day ? `（${t.day}日）` : "")).join("、") || ""}
       ${multi.length ? `<div class="muted">数年ごと: ${multi.map(t => esc(t.title) + `（${t.everyN}年毎）`).join("、")}</div>` : ""}</td></tr>`;
   }).join("");
-  const monthly = data.tasks.filter(t => !t.archived && t.months.length === 12);
-  const irregular = data.tasks.filter(t => !t.archived && !t.months.length);
+  const monthly = myTasks().filter(t => !t.archived && t.months.length === 12);
+  const irregular = myTasks().filter(t => !t.archived && !t.months.length);
   return `<table class="kv">
     ${monthly.length ? `<tr><th>毎月</th><td>${monthly.map(t => esc(t.title) + (t.day ? `（${t.day}日）` : "")).join("、")}</td></tr>` : ""}
     ${rows}
@@ -1057,12 +1132,20 @@ function viewData() {
     <div class="panel">
       <h3>基本設定</h3>
       <div class="form-inline">
-        <div class="form-row"><label>組織・所属</label><input type="text" id="sOrg" value="${esc(s.org)}" placeholder="例: 〇〇市 総務課"></div>
-        <div class="form-row"><label>役職</label><input type="text" id="sRole" value="${esc(s.role)}" placeholder="例: 庶務係長"></div>
+        <div class="form-row"><label>組織・所属</label><input type="text" id="sOrg" value="${esc(s.org)}" placeholder="例: 〇〇園"></div>
         <div class="form-row"><label>年度の始まり</label><select id="sFy">
           ${[1, 4, 7, 9, 10].map(m => `<option value="${m}" ${Number(s.fyStart) === m ? "selected" : ""}>${m}月</option>`).join("")}
         </select></div>
       </div>
+      <h3 style="margin-top:8px">役職</h3>
+      <p class="muted">業務と記録は役職ごとに分かれます。画面上部の役職名から切り替えられます。名前を書き換えて「設定を保存」すると、その役職の業務・記録もそのまま引き継がれます。</p>
+      <ul class="items" style="max-width:520px">${s.roles.map((r, i) => {
+        const n = data.tasks.filter(t => t.role === r).length + data.records.filter(x => x.role === r).length;
+        return `<li><input type="text" class="roleName" data-old="${esc(r)}" value="${esc(r)}" style="flex:1">
+          <span class="muted" style="width:90px">${n ? n + " 件" : "データなし"}</span>
+          <button class="btn small danger" data-action="deleteRole" data-role="${esc(r)}" ${n || s.roles.length === 1 ? "disabled" : ""}>削除</button></li>`;
+      }).join("")}</ul>
+      <div class="toolbar"><input type="text" id="newRole" placeholder="役職を追加（例: 主任）"><button class="btn" data-action="addRole">追加</button></div>
       <h3 style="margin-top:8px">記録のお知らせ</h3>
       <div class="form-row"><label style="font-weight:normal"><input type="checkbox" id="sRemind" ${s.remindEnabled ? "checked" : ""}>
         毎日決まった時刻に、その日の記録がまだなければ入力を促す</label></div>
@@ -1098,12 +1181,25 @@ function viewData() {
     </div>
 
     <div class="panel">
+      <h3>Excel・Word から取り込み</h3>
+      <p class="muted">行事予定表・カレンダー・業務の一覧など、日付と予定が書かれた Excel（.xlsx）・Word（.docx）を読み取り、
+        候補を一覧で確認してから業務（年間予定）や実施記録として登録できます。形式が決まっていない表は「日付」と「文字」の組み合わせから推測するため、
+        確実に取り込みたいときは「取り込み用のひな形」に書き写してから取り込んでください。このアプリで書き出した Excel もそのまま取り込めます。</p>
+      <div class="toolbar">
+        <label class="btn primary" style="color:#fff">Excel・Word を選んで取り込む<input type="file" accept=".xlsx,.xlsm,.docx" class="importOffice" hidden></label>
+        <button class="btn" data-action="exportTemplate">取り込み用のひな形（Excel）</button>
+      </div>
+    </div>
+
+    <div class="panel">
       <h3>バックアップ・引き継ぎ</h3>
       <div class="toolbar">
         <button class="btn" data-action="exportJson">データを書き出す（.json）</button>
         <label class="btn">データを読み込む（置き換え）<input type="file" accept=".json,application/json" id="importReplace" hidden></label>
         <label class="btn">データを追加で読み込む（統合）<input type="file" accept=".json,application/json" id="importMerge" hidden></label>
-        <button class="btn" data-action="exportCsv">日誌をCSVで書き出す（Excel用）</button>
+        <button class="btn" data-action="exportDocx">マニュアルをWordで保存</button>
+        <button class="btn" data-action="exportXlsx">予定表・業務一覧・記録をExcelで保存</button>
+        <button class="btn" data-action="exportCsv">日誌をCSVで書き出す</button>
       </div>
       <p class="muted">最終書き出し: ${data.lastExport ? fmtDateTime(data.lastExport) : "なし"}　/
         「統合」は、別のパソコンや前任者のデータを合わせたいときに使います（同じ業務・記録は重複しません）。</p>
@@ -1169,13 +1265,13 @@ taskForm.addEventListener("submit", e => {
   if (!t.title) return;
   const i = data.tasks.findIndex(x => x.id === id);
   if (i >= 0) data.tasks[i] = Object.assign(data.tasks[i], t);
-  else { t.createdAt = new Date().toISOString(); data.tasks.push(t); }
+  else { t.createdAt = new Date().toISOString(); t.role = curRole(); data.tasks.push(t); }
   // 日誌から業務を作った場合は、その記録を紐付ける
   const fromRec = taskForm.dataset.fromRecord;
   if (fromRec) {
     const r = data.records.find(x => x.id === fromRec);
     if (r) { r.taskId = id; r.occ = r.occ || r.date.slice(0, 7); }
-    const sameTitle = data.records.filter(x => !taskById(x.taskId) && r && x.title && x.title.trim() === (r.title || "").trim());
+    const sameTitle = myRecords().filter(x => !taskById(x.taskId) && r && x.title && x.title.trim() === (r.title || "").trim());
     if (sameTitle.length && confirm(`同じ件名「${r.title}」の未登録の記録が他に ${sameTitle.length} 件あります。まとめてこの業務に紐付けますか？`)) {
       sameTitle.forEach(x => { x.taskId = id; x.occ = x.occ || x.date.slice(0, 7); });
     }
@@ -1218,6 +1314,12 @@ function openRecordDialog(rec, preset) {
   ["id", "title", "date", "endDate", "hours", "occ", "content", "notes"].forEach(k => f[k].value = r[k] == null ? "" : r[k]);
   f.taskId.value = r.taskId || "";
   f.partial.checked = !!r.partial;
+  // 1週間前までさかのぼって入れられるよう、日付ボタンを並べる
+  document.getElementById("dayButtons").innerHTML = Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(today(), -i);
+    const label = i === 0 ? "今日" : i === 1 ? "昨日" : `${d.getMonth() + 1}/${d.getDate()}（${"日月火水木金土"[d.getDay()]}）`;
+    return `<button type="button" class="btn small" data-day="${-i}">${label}</button>`;
+  }).join("");
   syncRecordForm();
   document.getElementById("recordDelete").style.display = rec ? "" : "none";
   recordDialog.showModal();
@@ -1279,7 +1381,7 @@ recordForm.addEventListener("submit", e => {
   };
   const i = data.records.findIndex(x => x.id === id);
   if (i >= 0) data.records[i] = Object.assign(data.records[i], r);
-  else { r.createdAt = new Date().toISOString(); data.records.push(r); }
+  else { r.createdAt = new Date().toISOString(); r.role = curRole(); data.records.push(r); }
   if (ui.reminding) stopRemind(true);
   save();
   recordDialog.close();
@@ -1312,14 +1414,14 @@ function download(name, text, type) {
 function exportJson() {
   data.lastExport = new Date().toISOString();
   save();
-  const name = `業務マニュアルデータ_${(data.settings.role || "").replace(/[\\/:*?"<>|]/g, "")}_${todayYmd()}.json`;
+  const name = `業務マニュアルデータ_${todayYmd()}.json`;
   download(name, JSON.stringify(data, null, 2), "application/json");
   render();
 }
 
 function exportCsv() {
   const rows = [["実施日", "終了日", "分類", "業務", "対象の回", "作業時間", "やったこと", "気づき・申し送り", "途中"]];
-  [...data.records].sort((a, b) => a.date.localeCompare(b.date)).forEach(r => {
+  [...myRecords()].sort((a, b) => a.date.localeCompare(b.date)).forEach(r => {
     const t = taskById(r.taskId);
     rows.push([r.date, r.endDate || "", t ? t.category || "" : "", recordTitle(r), r.occ || "", r.hours || "", r.content || "", r.notes || "", r.partial ? "途中" : ""]);
   });
@@ -1329,19 +1431,19 @@ function exportCsv() {
 
 function exportMd() {
   const s = data.settings;
-  const tasks = data.tasks.filter(t => !ui.manualTask || t.id === ui.manualTask)
+  const tasks = myTasks().filter(t => !ui.manualTask || t.id === ui.manualTask)
     .sort((a, b) => (a.category || "").localeCompare(b.category || "", "ja") || firstMonthOrder(a) - firstMonthOrder(b));
   const L = [];
-  L.push(`# ${[s.org, s.role].filter(Boolean).join(" ")} 業務マニュアル`, "", `作成日: ${fmtDate(todayYmd())}`, "");
+  L.push(`# ${[s.org, curRole()].filter(Boolean).join(" ")} 業務マニュアル`, "", `作成日: ${fmtDate(todayYmd())}`, "");
   if (!ui.manualTask) {
     L.push("## 年間の流れ", "");
-    const monthly = data.tasks.filter(t => !t.archived && t.months.length === 12);
+    const monthly = myTasks().filter(t => !t.archived && t.months.length === 12);
     if (monthly.length) L.push(`- **毎月**: ${monthly.map(t => t.title + (t.day ? `（${t.day}日）` : "")).join("、")}`);
     fyMonths().forEach(m => {
-      const ts = data.tasks.filter(t => !t.archived && t.months.includes(m) && t.months.length < 12);
+      const ts = myTasks().filter(t => !t.archived && t.months.includes(m) && t.months.length < 12);
       if (ts.length) L.push(`- **${m}月**: ${ts.map(t => t.title + (t.day ? `（${t.day}日）` : "") + (t.everyN > 1 ? `【${t.everyN}年毎】` : "")).join("、")}`);
     });
-    const irr = data.tasks.filter(t => !t.archived && !t.months.length);
+    const irr = myTasks().filter(t => !t.archived && !t.months.length);
     if (irr.length) L.push(`- **随時**: ${irr.map(t => t.title).join("、")}`);
     L.push("");
   }
@@ -1372,6 +1474,746 @@ function exportMd() {
   download(`業務マニュアル_${todayYmd()}.md`, L.join("\n"), "text/markdown");
 }
 
+/* ===================== Word / Excel 書き出し ===================== */
+
+// .docx / .xlsx は ZIP 形式。外部ライブラリなしで動くよう、無圧縮の ZIP を自前で作る
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function makeZip(files) {
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  let offset = 0;
+  const d = new Date();
+  const dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  const dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  files.forEach(f => {
+    const name = enc.encode(f.name);
+    const body = enc.encode(f.text);
+    const crc = crc32(body);
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true);
+    local.setUint16(4, 20, true);
+    local.setUint16(6, 0x0800, true);
+    local.setUint16(8, 0, true);
+    local.setUint16(10, dosTime, true);
+    local.setUint16(12, dosDate, true);
+    local.setUint32(14, crc, true);
+    local.setUint32(18, body.length, true);
+    local.setUint32(22, body.length, true);
+    local.setUint16(26, name.length, true);
+    local.setUint16(28, 0, true);
+    parts.push(new Uint8Array(local.buffer), name, body);
+    const cen = new DataView(new ArrayBuffer(46));
+    cen.setUint32(0, 0x02014b50, true);
+    cen.setUint16(4, 20, true);
+    cen.setUint16(6, 20, true);
+    cen.setUint16(8, 0x0800, true);
+    cen.setUint16(10, 0, true);
+    cen.setUint16(12, dosTime, true);
+    cen.setUint16(14, dosDate, true);
+    cen.setUint32(16, crc, true);
+    cen.setUint32(20, body.length, true);
+    cen.setUint32(24, body.length, true);
+    cen.setUint16(28, name.length, true);
+    cen.setUint32(42, offset, true);
+    central.push(new Uint8Array(cen.buffer), name);
+    offset += 30 + name.length + body.length;
+  });
+  const cenSize = central.reduce((s, p) => s + p.length, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);
+  end.setUint16(8, files.length, true);
+  end.setUint16(10, files.length, true);
+  end.setUint32(12, cenSize, true);
+  end.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, new Uint8Array(end.buffer)]);
+}
+function downloadBlob(name, blob) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+/** XML 用エスケープ（XML で使えない制御文字も取り除く） */
+function xml(s) { return esc(String(s == null ? "" : s).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "")); }
+function fileLabel() { return (curRole() || "").replace(/[\\/:*?"<>|]/g, ""); }
+
+/* ----- Excel ----- */
+
+// スタイル番号: 0 標準 / 1 見出し / 2 枠付き折り返し / 3 実施済み / 4 予定 / 5 未実施 / 6 予定外 / 7 表題
+const XLSX_STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<fonts count="3"><font><sz val="11"/><name val="游ゴシック"/></font><font><b/><sz val="11"/><name val="游ゴシック"/></font><font><b/><sz val="14"/><name val="游ゴシック"/></font></fonts>
+<fills count="7"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFDCE6F2"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFE2F0D9"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFEEF2F7"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFFBE2E2"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFEDE7FB"/></patternFill></fill></fills>
+<borders count="2"><border/><border><left style="thin"><color rgb="FFBFBFBF"/></left><right style="thin"><color rgb="FFBFBFBF"/></right><top style="thin"><color rgb="FFBFBFBF"/></top><bottom style="thin"><color rgb="FFBFBFBF"/></bottom></border></borders>
+<cellStyleXfs count="1"><xf/></cellStyleXfs>
+<cellXfs count="8">
+<xf/>
+<xf fontId="1" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" horizontal="center" wrapText="1"/></xf>
+<xf borderId="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+<xf fillId="3" borderId="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" horizontal="center" wrapText="1"/></xf>
+<xf fillId="4" borderId="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" horizontal="center" wrapText="1"/></xf>
+<xf fillId="5" borderId="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" horizontal="center" wrapText="1"/></xf>
+<xf fillId="6" borderId="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" horizontal="center" wrapText="1"/></xf>
+<xf fontId="2" applyFont="1"/>
+</cellXfs>
+<cellStyles count="1"><cellStyle name="標準" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+
+function colName(i) { let s = ""; i++; while (i) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+
+/** sheet = { name, widths:[], rows:[[cell]], freeze: 行数 } / cell = 値 または { v, s } */
+function sheetXml(sheet) {
+  const rows = sheet.rows.map((row, r) => `<row r="${r + 1}">${row.map((cell, c) => {
+    const o = cell && typeof cell === "object" ? cell : { v: cell };
+    const ref = colName(c) + (r + 1);
+    const st = o.s != null ? ` s="${o.s}"` : "";
+    if (o.v === "" || o.v == null) return `<c r="${ref}"${st}/>`;
+    if (typeof o.v === "number") return `<c r="${ref}"${st}><v>${o.v}</v></c>`;
+    return `<c r="${ref}"${st} t="inlineStr"><is><t xml:space="preserve">${xml(o.v)}</t></is></c>`;
+  }).join("")}</row>`).join("");
+  const freeze = sheet.freeze ? `<sheetViews><sheetView workbookViewId="0"><pane ySplit="${sheet.freeze}" xSplit="${sheet.freezeCols || 0}" topLeftCell="${colName(sheet.freezeCols || 0)}${sheet.freeze + 1}" activePane="bottomRight" state="frozen"/></sheetView></sheetViews>` : "";
+  const cols = sheet.widths ? `<cols>${sheet.widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("")}</cols>` : "";
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${freeze}${cols}<sheetData>${rows}</sheetData>
+<pageSetup orientation="landscape" paperSize="9" fitToHeight="0"/></worksheet>`;
+}
+
+function makeXlsx(sheets) {
+  const files = [
+    { name: "[Content_Types].xml", text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+${sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}
+</Types>` },
+    { name: "_rels/.rels", text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>` },
+    { name: "xl/workbook.xml", text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>
+${sheets.map((s, i) => `<sheet name="${xml(s.name.replace(/[\\/?*[\]:]/g, "").slice(0, 31))}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("")}
+</sheets></workbook>` },
+    { name: "xl/_rels/workbook.xml.rels", text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+${sheets.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join("")}
+<Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>` },
+    { name: "xl/styles.xml", text: XLSX_STYLES },
+    ...sheets.map((s, i) => ({ name: `xl/worksheets/sheet${i + 1}.xml`, text: sheetXml(s) }))
+  ];
+  return makeZip(files);
+}
+
+function sortedTasks() {
+  return [...myTasks()].sort((a, b) => (a.category || "").localeCompare(b.category || "", "ja") || firstMonthOrder(a) - firstMonthOrder(b) || a.title.localeCompare(b.title, "ja"));
+}
+
+function yearSheet(fy) {
+  const months = fyMonths();
+  const H = v => ({ v, s: 1 });
+  const rows = [
+    [{ v: `${[data.settings.org, curRole()].filter(Boolean).join(" ")} ${fyLabel(fy)} 年間予定表`, s: 7 }],
+    ["凡例: 数字=期限日（予定）／✓=実施済み／未実施=期限月を過ぎて未実施／予定外=予定のない月に実施"],
+    [H("分類"), H("業務"), H("周期"), ...months.map(m => H(m + "月"))]
+  ];
+  sortedTasks().filter(t => !t.archived).forEach(t => {
+    const occs = occurrencesInFy(t, fy);
+    rows.push([{ v: t.category || "未分類", s: 2 }, { v: t.title, s: 2 }, { v: scheduleText(t), s: 2 }, ...months.map(m => {
+      const key = `${calYear(fy, m)}-${pad(m)}`;
+      const occ = occs.find(o => o.m === m);
+      if (occ) {
+        const st = occStatus(occ);
+        if (st === "done") return { v: "✓", s: 3 };
+        if (st === "late") return { v: "未実施", s: 5 };
+        return { v: st === "partial" ? "途中" : (t.day ? t.day + "日" : "●"), s: 4 };
+      }
+      return recordsForOcc(t, key).length ? { v: "✓予定外", s: 6 } : { v: "", s: 2 };
+    })]);
+  });
+  return { name: `${fyLabel(fy)}年間予定`, widths: [14, 30, 22, ...months.map(() => 8)], rows, freeze: 3, freezeCols: 2 };
+}
+
+function taskSheet(tasks) {
+  const head = ["役職", "分類", "業務名", "実施時期（予定）", "実施月", "期限日", "周期（年）", "基準年度", "準備開始（期限の◯日前）", "想定所要日数", "想定作業時間", "実施回数", "実施した年度",
+    "実績 平均着手（期限の◯日前）", "実績 平均所要日数", "実績 平均作業時間", "実際に着手した主な月", "目的・概要", "手順", "注意点・コツ", "関係先・資料", "過去の申し送り", "廃止"];
+  const rows = [head.map(v => ({ v, s: 1 }))];
+  tasks.forEach(t => {
+    const st = taskStats(t);
+    const steps = (t.steps || "").split("\n").map(x => x.trim()).filter(Boolean).map((x, i) => `${i + 1}. ${x}`).join("\n");
+    const notes = st.recs.filter(r => r.notes).reverse().map(r => `${r.date}: ${r.notes}`).join("\n");
+    const n = v => v == null || v === "" ? "" : round1(Number(v));
+    const monthsTxt = t.months.length === 12 ? "毎月" : [...t.months].sort((a, b) => fyMonths().indexOf(a) - fyMonths().indexOf(b)).join(",");
+    rows.push([t.role, t.category || "未分類", t.title, scheduleText(t), monthsTxt, n(t.day), t.everyN || 1, t.everyN > 1 ? n(t.baseYear) : "", n(t.leadDays), n(t.durationDays), n(t.hours), st.count,
+      st.years.map(fyLabel).join("・"), n(st.avgLead), n(st.avgDuration), n(st.avgHours), st.count ? topMonths(st.monthCount) : "",
+      t.purpose || "", steps, t.tips || "", t.related || "", notes, t.archived ? "廃止" : ""].map(v => ({ v, s: 2 })));
+  });
+  return { name: "業務一覧（マニュアル）", widths: [10, 12, 26, 22, 10, 7, 7, 8, 10, 10, 10, 8, 16, 12, 12, 12, 14, 36, 44, 36, 28, 44, 6], rows, freeze: 1, freezeCols: 3 };
+}
+
+function recordSheet(recs) {
+  const head = ["役職", "実施日", "終了日", "日数", "分類", "業務", "対象の回", "作業時間", "やったこと", "気づき・申し送り", "状態"];
+  const rows = [head.map(v => ({ v, s: 1 }))];
+  [...recs].sort((a, b) => a.date.localeCompare(b.date)).forEach(r => {
+    const t = taskById(r.taskId);
+    const days = daysBetween(parseYmd(r.date), parseYmd(r.endDate || r.date)) + 1;
+    rows.push([r.role, r.date, r.endDate || "", days, t ? t.category || "未分類" : "（業務未登録）", recordTitle(r), r.occ ? fmtMonthKey(r.occ) : "",
+      r.hours === "" || r.hours == null ? "" : Number(r.hours), r.content || "", r.notes || "", r.partial ? "途中" : ""].map(v => ({ v, s: 2 })));
+  });
+  return { name: "実施記録", widths: [10, 12, 12, 6, 14, 28, 12, 9, 50, 44, 6], rows, freeze: 1 };
+}
+
+/** what: "all"（年間予定＋業務一覧＋記録）/ "journal"（絞り込み中の記録のみ） */
+function exportXlsx(what) {
+  let sheets, name;
+  if (what === "journal") {
+    sheets = [recordSheet(filteredRecords())];
+    name = `業務日誌_${fileLabel()}_${todayYmd()}.xlsx`;
+  } else {
+    const fy = ui.view === "year" ? ui.fy : fyOf(today());
+    sheets = [yearSheet(fy), taskSheet(sortedTasks()), recordSheet(myRecords())];
+    name = `業務マニュアル_${fileLabel()}_${todayYmd()}.xlsx`;
+  }
+  downloadBlob(name.replace("__", "_"), makeXlsx(sheets));
+}
+
+/* ----- Word ----- */
+
+function wRun(text, opt = {}) {
+  const rpr = [opt.b ? "<w:b/>" : "", opt.color ? `<w:color w:val="${opt.color}"/>` : "", opt.sz ? `<w:sz w:val="${opt.sz}"/>` : ""].join("");
+  return String(text == null ? "" : text).split("\n").map((line, i) =>
+    `<w:r>${rpr ? `<w:rPr>${rpr}</w:rPr>` : ""}${i ? "<w:br/>" : ""}<w:t xml:space="preserve">${xml(line)}</w:t></w:r>`).join("");
+}
+function wP(text, opt = {}) {
+  const ppr = [opt.style ? `<w:pStyle w:val="${opt.style}"/>` : "", opt.pageBreak ? "<w:pageBreakBefore/>" : "", opt.ind ? `<w:ind w:left="${opt.ind}" w:hanging="${opt.hanging || 0}"/>` : ""].join("");
+  return `<w:p>${ppr ? `<w:pPr>${ppr}</w:pPr>` : ""}${opt.runs || wRun(text, opt)}</w:p>`;
+}
+/** 2列の表（見出し｜内容） */
+function wTable(rows, widths = [2600, 6400]) {
+  const border = `<w:tblBorders>${["top", "left", "bottom", "right", "insideH", "insideV"].map(b => `<w:${b} w:val="single" w:sz="4" w:color="BFBFBF"/>`).join("")}</w:tblBorders>`;
+  return `<w:tbl><w:tblPr><w:tblW w:w="${widths.reduce((a, b) => a + b, 0)}" w:type="dxa"/>${border}<w:tblLayout w:type="fixed"/></w:tblPr>
+<w:tblGrid>${widths.map(w => `<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>
+${rows.map(r => `<w:tr>${r.map((c, i) => `<w:tc><w:tcPr><w:tcW w:w="${widths[i]}" w:type="dxa"/>${i === 0 && widths.length === 2 ? '<w:shd w:val="clear" w:color="auto" w:fill="F2F4F7"/>' : ""}</w:tcPr>${wP(c)}</w:tc>`).join("")}</w:tr>`).join("")}
+</w:tbl>${wP("")}`;
+}
+
+function manualDocBody(only) {
+  const s = data.settings;
+  const B = [];
+  const tasks = sortedTasks().filter(t => !only || t.id === only);
+  B.push(wP(`${[s.org, curRole()].filter(Boolean).join(" ")} 業務マニュアル`, { style: "Title" }));
+  B.push(wP(`作成日 ${fmtDate(todayYmd())}　／　登録業務 ${myTasks().length} 件　／　実施記録 ${myRecords().length} 件`, { color: "66788A" }));
+  if (!only) {
+    B.push(wP("年間の流れ", { style: "Heading1" }));
+    const rows = [];
+    const label = t => t.title + (t.day ? `（${t.day}日）` : "") + (t.everyN > 1 ? `【${t.everyN}年に1回】` : "");
+    const monthly = myTasks().filter(t => !t.archived && t.months.length === 12);
+    if (monthly.length) rows.push(["毎月", monthly.map(label).join("、")]);
+    fyMonths().forEach(m => rows.push([m + "月", myTasks().filter(t => !t.archived && t.months.includes(m) && t.months.length < 12)
+      .sort((a, b) => (a.day || 99) - (b.day || 99)).map(label).join("、")]));
+    const irr = myTasks().filter(t => !t.archived && !t.months.length);
+    if (irr.length) rows.push(["随時・不定期", irr.map(t => t.title).join("、")]);
+    B.push(wTable(rows, [1600, 7400]));
+  }
+  tasks.forEach((t, idx) => {
+    const st = taskStats(t);
+    B.push(wP(t.title + (t.archived ? "（廃止）" : ""), { style: "Heading1", pageBreak: !only || idx > 0 }));
+    const rows = [
+      ["分類", t.category || "未分類"],
+      ["実施時期（予定）", scheduleText(t)],
+      ["準備開始の目安", (t.leadDays ? `期限の ${t.leadDays} 日前から` : "—") + (st.avgLead != null ? `（実績: 平均 ${round1(st.avgLead)} 日前に着手）` : "")],
+      ["所要日数の目安", (t.durationDays ? `${t.durationDays} 日` : "—") + (st.avgDuration ? `（実績: 平均 ${round1(st.avgDuration)} 日、${st.minDuration}〜${st.maxDuration} 日）` : "")],
+      ["作業時間の目安", (t.hours ? `${t.hours} 時間` : "—") + (st.avgHours ? `（実績: 1回あたり平均 ${round1(st.avgHours)} 時間）` : "")],
+      ["実施実績", st.count ? `${st.count} 回（${st.years.map(fyLabel).join("・")}）` : "まだ記録がありません"]
+    ];
+    if (st.count) rows.push(["実際に着手した月", fyMonths().filter(m => st.monthCount[m]).map(m => `${m}月×${st.monthCount[m]}`).join("　")]);
+    if (t.related) rows.push(["関係先・資料", t.related]);
+    B.push(wTable(rows));
+    if (t.purpose) B.push(wP("目的・概要", { style: "Heading2" }), wP(t.purpose));
+    const steps = (t.steps || "").split("\n").map(x => x.trim()).filter(Boolean);
+    if (steps.length) B.push(wP("手順", { style: "Heading2" }), ...steps.map((x, i) => wP(`${i + 1}.　${x}`, { ind: 420, hanging: 420 })));
+    if (t.tips) B.push(wP("注意点・コツ", { style: "Heading2" }), wP(t.tips));
+    const notes = st.recs.filter(r => r.notes).reverse();
+    if (notes.length) {
+      B.push(wP("過去の申し送り（新しい順）", { style: "Heading2" }));
+      notes.forEach(r => B.push(wP("", { ind: 420, hanging: 420, runs: wRun("・" + fmtDate(r.date) + "　", { color: "66788A" }) + wRun(r.notes) })));
+    }
+    if (st.keys.length) {
+      B.push(wP("実施の記録", { style: "Heading2" }));
+      const rows2 = [];
+      st.keys.slice().reverse().forEach(k => st.groups[k].forEach(r => {
+        const when = fmtDate(r.date) + (r.endDate && r.endDate !== r.date ? "\n〜" + fmtDate(r.endDate) : "") + (r.hours ? `\n${r.hours}時間` : "") + (r.partial ? "\n（途中）" : "");
+        rows2.push([when, [r.content, r.notes ? "📝 " + r.notes : ""].filter(Boolean).join("\n")]);
+      }));
+      B.push(wTable(rows2, [2600, 6400]));
+    }
+  });
+  return B.join("\n");
+}
+
+function exportDocx(only) {
+  const font = `<w:rFonts w:ascii="游ゴシック" w:eastAsia="游ゴシック" w:hAnsi="游ゴシック"/>`;
+  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:docDefaults><w:rPrDefault><w:rPr>${font}<w:sz w:val="21"/><w:lang w:val="ja-JP" w:eastAsia="ja-JP"/></w:rPr></w:rPrDefault>
+<w:pPrDefault><w:pPr><w:spacing w:after="60" w:line="300" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>
+<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>
+<w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="120"/></w:pPr><w:rPr><w:b/><w:sz w:val="36"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="240" w:after="120"/><w:pBdr><w:left w:val="single" w:sz="36" w:space="6" w:color="2563EB"/></w:pBdr><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="30"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="200" w:after="60"/><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:color w:val="334155"/><w:sz w:val="24"/></w:rPr></w:style>
+</w:styles>`;
+  const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+${manualDocBody(only)}
+<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1300" w:right="1300" w:bottom="1300" w:left="1300" w:header="851" w:footer="851" w:gutter="0"/></w:sectPr>
+</w:body></w:document>`;
+  const files = [
+    { name: "[Content_Types].xml", text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+</Types>` },
+    { name: "_rels/.rels", text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>` },
+    { name: "word/_rels/document.xml.rels", text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>` },
+    { name: "word/styles.xml", text: styles },
+    { name: "word/document.xml", text: doc }
+  ];
+  const one = only && taskById(only);
+  const name = one ? `業務マニュアル_${one.title.replace(/[\\/:*?"<>|]/g, "")}_${todayYmd()}.docx` : `業務マニュアル_${fileLabel()}_${todayYmd()}.docx`;
+  downloadBlob(name.replace("__", "_"), makeZip(files));
+}
+
+/* ===================== Excel / Word からの取り込み ===================== */
+
+/** ZIP（.xlsx / .docx）を展開して { ファイル名: Uint8Array } を返す */
+async function readZip(buf) {
+  const v = new DataView(buf);
+  let eocd = -1;
+  for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 66000); i--) {
+    if (v.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error("Excel（.xlsx）か Word（.docx）のファイルではないようです。");
+  const count = v.getUint16(eocd + 10, true);
+  let p = v.getUint32(eocd + 16, true);
+  const dec = new TextDecoder();
+  const out = {};
+  for (let n = 0; n < count; n++) {
+    const method = v.getUint16(p + 10, true);
+    const csize = v.getUint32(p + 20, true);
+    const nlen = v.getUint16(p + 28, true), xlen = v.getUint16(p + 30, true), clen = v.getUint16(p + 32, true);
+    const lho = v.getUint32(p + 42, true);
+    const name = dec.decode(new Uint8Array(buf, p + 46, nlen));
+    p += 46 + nlen + xlen + clen;
+    if (!/\.(xml|rels)$/.test(name)) continue;
+    const start = lho + 30 + v.getUint16(lho + 26, true) + v.getUint16(lho + 28, true);
+    const raw = new Uint8Array(buf, start, csize);
+    if (method === 0) out[name] = raw;
+    else if (method === 8) {
+      const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+      out[name] = new Uint8Array(await new Response(stream).arrayBuffer());
+    }
+  }
+  return out;
+}
+function parseXml(bytes) { return new DOMParser().parseFromString(new TextDecoder().decode(bytes), "application/xml"); }
+function byTag(node, tag) { return [...node.getElementsByTagName("*")].filter(e => e.localName === tag); }
+function childTags(node, tag) { return [...node.children].filter(e => e.localName === tag); }
+
+/** .xlsx → [{ name, rows: [[値]] }] */
+async function readXlsx(buf) {
+  const z = await readZip(buf);
+  if (!z["xl/workbook.xml"]) throw new Error("Excel ファイルとして読めませんでした。");
+  const shared = z["xl/sharedStrings.xml"] ? byTag(parseXml(z["xl/sharedStrings.xml"]), "si").map(si => byTag(si, "t").map(t => t.textContent).join("")) : [];
+  const rels = {};
+  byTag(parseXml(z["xl/_rels/workbook.xml.rels"]), "Relationship").forEach(r => rels[r.getAttribute("Id")] = r.getAttribute("Target"));
+  return byTag(parseXml(z["xl/workbook.xml"]), "sheet").map(sh => {
+    const rid = sh.getAttribute("r:id") || [...sh.attributes].find(a => a.localName === "id").value;
+    let target = rels[rid].replace(/^\//, "");
+    if (!target.startsWith("xl/")) target = "xl/" + target;
+    const rows = [];
+    if (!z[target]) return { name: sh.getAttribute("name"), rows };
+    byTag(parseXml(z[target]), "row").forEach(row => {
+      const r = Number(row.getAttribute("r")) - 1;
+      const arr = rows[r] = [];
+      childTags(row, "c").forEach((c, idx) => {
+        const ref = c.getAttribute("r");
+        const col = ref ? colIndex(ref.replace(/\d+/g, "")) : idx;
+        const t = c.getAttribute("t");
+        const vEl = childTags(c, "v")[0];
+        let val = "";
+        if (t === "s") val = shared[Number(vEl && vEl.textContent)] || "";
+        else if (t === "inlineStr") val = byTag(c, "t").map(x => x.textContent).join("");
+        else if (vEl) val = t === "str" || t === "e" ? vEl.textContent : Number(vEl.textContent);
+        arr[col] = val;
+      });
+    });
+    for (let i = 0; i < rows.length; i++) rows[i] = rows[i] || [];
+    return { name: sh.getAttribute("name"), rows };
+  });
+}
+function colIndex(letters) { let n = 0; for (const ch of letters) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; }
+
+/** .docx → 表ごと＋表の外の文章 [{ name, rows }] */
+async function readDocx(buf) {
+  const z = await readZip(buf);
+  if (!z["word/document.xml"]) throw new Error("Word ファイルとして読めませんでした。");
+  const doc = parseXml(z["word/document.xml"]);
+  const paraText = p => [...p.getElementsByTagName("*")].filter(e => e.localName === "t" || e.localName === "br" || e.localName === "tab")
+    .map(e => e.localName === "t" ? e.textContent : e.localName === "br" ? "\n" : " ").join("");
+  const tables = [];
+  const loose = [];
+  const body = byTag(doc, "body")[0];
+  [...body.children].forEach(el => {
+    if (el.localName === "tbl") {
+      tables.push({ name: `表${tables.length + 1}`, rows: childTags(el, "tr").map(tr => childTags(tr, "tc").map(tc => childTags(tc, "p").map(paraText).join("\n").trim())) });
+    } else if (el.localName === "p") {
+      const t = paraText(el).trim();
+      if (t) loose.push([t]);
+    }
+  });
+  return [...tables, { name: "本文", rows: loose }];
+}
+
+/* ----- 日付の読み取り ----- */
+
+const WAREKI = { "令和": 2018, "R": 2018, "平成": 1988, "H": 1988 };
+/** 文字列や Excel の日付シリアル値から日付を読む。{ y?, m?, d, rest } / 読めなければ null */
+function looseDate(v) {
+  if (typeof v === "number") {
+    if (v > 20000 && v < 80000) {
+      const d = new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 86400000);
+      return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(), rest: "" };
+    }
+    return null;
+  }
+  const s = String(v || "").trim().replace(/[０-９／．]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+  let m;
+  const tail = str => str.replace(/^\s*[（(][日月火水木金土祝・]+[)）]/, "").replace(/^[\s:：\-－~〜、。]+/, "").trim();
+  if ((m = s.match(/^(\d{4})\s*[\/\-.年]\s*(\d{1,2})\s*[\/\-.月]\s*(\d{1,2})\s*日?/)))
+    return { y: +m[1], m: +m[2], d: +m[3], rest: tail(s.slice(m[0].length)) };
+  if ((m = s.match(/^(令和|平成|R|H)\s*(\d{1,2}|元)\s*[\/\-.年]\s*(\d{1,2})\s*[\/\-.月]\s*(\d{1,2})\s*日?/i)))
+    return { y: WAREKI[m[1].toUpperCase() === m[1] && m[1].length === 1 ? m[1].toUpperCase() : m[1]] + (m[2] === "元" ? 1 : +m[2]), m: +m[3], d: +m[4], rest: tail(s.slice(m[0].length)) };
+  if ((m = s.match(/^(\d{1,2})\s*[\/月]\s*(\d{1,2})\s*日?/)) && +m[1] >= 1 && +m[1] <= 12 && +m[2] <= 31)
+    return { m: +m[1], d: +m[2], rest: tail(s.slice(m[0].length)) };
+  if ((m = s.match(/^(\d{1,2})\s*日/)) && +m[1] >= 1 && +m[1] <= 31)
+    return { d: +m[1], rest: tail(s.slice(m[0].length)) };
+  return null;
+}
+/** シート名や見出しから「何年何月の表か」を読む */
+function contextMonth(texts) {
+  for (const t of texts) {
+    const s = String(t || "");
+    let m;
+    if ((m = s.match(/(\d{4})\s*年\s*(\d{1,2})\s*月/))) return { y: +m[1], m: +m[2] };
+    if ((m = s.match(/(令和|R)\s*(\d{1,2}|元)\s*年\s*(\d{1,2})\s*月/))) return { y: 2018 + (m[2] === "元" ? 1 : +m[2]), m: +m[3] };
+    if ((m = s.match(/(\d{4})[\/\-.](\d{1,2})$/))) return { y: +m[1], m: +m[2] };
+  }
+  for (const t of texts) {
+    const m = String(t || "").match(/(?:^|[^\d])(\d{1,2})\s*月(?!\s*\d)/);
+    if (m && +m[1] >= 1 && +m[1] <= 12) return { m: +m[1] };
+  }
+  return null;
+}
+/** 予定・記録として意味のある文字か（曜日・勤務記号・数字だけのものは除く） */
+function meaningful(s) {
+  s = String(s == null ? "" : s).trim();
+  if (s.length < 2) return false;
+  if (/^[\d\s.:：\-\/～〜]+$/.test(s)) return false;
+  if (/^[（(]?[日月火水木金土祝][曜日]*[)）]?$/.test(s)) return false;
+  if (/^(休|公休|有休|年休|出|日勤|夜勤|早番|遅番|明|明け|[A-Za-z]{1,2}\d?)$/.test(s)) return false;
+  return true;
+}
+
+/* ----- 表の解釈 ----- */
+
+const COLS = {
+  role: ["役職", "担当役職", "担当"],
+  category: ["分類", "区分", "種別"],
+  title: ["業務名", "業務", "件名", "行事", "行事名", "予定", "項目", "内容"],
+  months: ["実施月", "月"],
+  day: ["期限日", "日"],
+  everyN: ["周期（年）", "周期(年)", "周期"],
+  baseYear: ["基準年度"],
+  leadDays: ["準備開始", "準備開始（期限の◯日前）"],
+  durationDays: ["想定所要日数"],
+  hours: ["想定作業時間", "作業時間", "時間"],
+  purpose: ["目的・概要", "目的", "概要"],
+  steps: ["手順"],
+  tips: ["注意点・コツ", "注意点"],
+  related: ["関係先・資料", "関係先"],
+  date: ["実施日", "日付", "年月日", "月日", "開始日"],
+  endDate: ["終了日"],
+  content: ["やったこと", "実施内容", "詳細"],
+  notes: ["気づき・申し送り", "申し送り", "気づき", "備考", "メモ"],
+  occ: ["対象の回"]
+};
+function findHeader(rows) {
+  for (let r = 0; r < Math.min(rows.length, 8); r++) {
+    const cells = (rows[r] || []).map(c => String(c == null ? "" : c).trim());
+    const map = {};
+    Object.entries(COLS).forEach(([key, names]) => {
+      for (const n of names) { const i = cells.indexOf(n); if (i >= 0 && !Object.values(map).includes(i)) { map[key] = i; break; } }
+    });
+    if (map.title != null && (map.date != null || map.months != null || map.category != null || map.steps != null)) return { row: r, map };
+    if (map.date != null && (map.content != null || map.title != null)) return { row: r, map };
+  }
+  return null;
+}
+function parseMonths(v) {
+  const s = String(v == null ? "" : v);
+  if (/毎月/.test(s)) return [1,2,3,4,5,6,7,8,9,10,11,12];
+  if (/四半期/.test(s)) return [4, 7, 10, 1];
+  return [...new Set((s.match(/\d{1,2}/g) || []).map(Number).filter(m => m >= 1 && m <= 12))];
+}
+function numOr(v) { const n = parseFloat(String(v == null ? "" : v).replace(/[^\d.]/g, "")); return isNaN(n) ? "" : n; }
+function dateStr(dt, ctx) {
+  const m = dt.m || (ctx && ctx.m);
+  if (!m) return "";
+  const y = dt.y || (ctx && ctx.y) || calYear(fyOf(today()), m);
+  const last = new Date(y, m, 0).getDate();
+  if (dt.d < 1 || dt.d > last) return "";
+  return `${y}-${pad(m)}-${pad(dt.d)}`;
+}
+
+/** 表 1 枚から取り込み候補を作る */
+function candidatesFromSheet(sheet) {
+  const rows = sheet.rows;
+  const out = [];
+  const add = c => { if (c.title && c.title.length <= 200) out.push(Object.assign({ source: sheet.name }, c)); };
+  const hd = findHeader(rows);
+  if (hd) {
+    const get = (row, k) => hd.map[k] == null ? "" : row[hd.map[k]];
+    rows.slice(hd.row + 1).forEach(row => {
+      const title = String(get(row, "title") || "").trim();
+      const content = String(get(row, "content") || "").trim();
+      const dt = looseDate(get(row, "date"));
+      if (!title && !content) return;
+      const roleVal = String(get(row, "role") || "").trim();
+      const base = { role: roleVal || curRole(), title: title || content.split("\n")[0].slice(0, 40) };
+      if (dt && dt.d) {
+        const ds = dateStr(dt);
+        if (!ds) return;
+        const ed = looseDate(get(row, "endDate"));
+        add(Object.assign(base, { kind: ds <= todayYmd() ? "record" : "task", date: ds, endDate: ed && ed.d ? dateStr(ed) : "",
+          hours: numOr(get(row, "hours")), content: hd.map.content != null && hd.map.content !== hd.map.title ? content : "",
+          notes: String(get(row, "notes") || ""), category: String(get(row, "category") || "") }));
+      } else {
+        const months = parseMonths(get(row, "months"));
+        add(Object.assign(base, { kind: "task", months, day: numOr(get(row, "day")), category: String(get(row, "category") || ""),
+          everyN: numOr(get(row, "everyN")) || 1, baseYear: numOr(get(row, "baseYear")), leadDays: numOr(get(row, "leadDays")),
+          durationDays: numOr(get(row, "durationDays")), hours: numOr(get(row, "hours")), purpose: String(get(row, "purpose") || ""),
+          steps: String(get(row, "steps") || "").replace(/^\s*\d+\.\s*/gm, ""), tips: String(get(row, "tips") || ""),
+          related: String(get(row, "related") || ""), structured: true }));
+      }
+    });
+    return out;
+  }
+
+  // 見出しのない表（カレンダー・行事予定・勤務表など）は、日付と文字の組み合わせを探す
+  const ctx = contextMonth([sheet.name, ...rows.slice(0, 4).flat()]);
+  let curCtx = ctx;
+  rows.forEach((row, r) => {
+    // 「2026年5月」のような月見出しが途中にあれば以降の行に使う
+    const rowCtx = contextMonth(row.filter(c => typeof c === "string" && c.length <= 12));
+    if (rowCtx && row.filter(c => c !== "" && c != null).length <= 2) curCtx = rowCtx;
+    // 行の中の日付セル＋文字セル（行事予定表・一覧）
+    const dateIdx = row.findIndex(c => { const d = looseDate(c); return d && d.d && (d.m || curCtx) && !d.rest; });
+    if (dateIdx >= 0) {
+      const texts = row.filter((c, i) => i !== dateIdx && typeof c === "string" && meaningful(c) && !looseDate(c));
+      if (texts.length) {
+        const ds = dateStr(looseDate(row[dateIdx]), curCtx);
+        if (ds) add({ kind: ds <= todayYmd() ? "record" : "task", date: ds, title: texts[0].split("\n")[0].trim(), content: texts.join("\n"), role: curRole() });
+        return;
+      }
+    }
+    row.forEach((cell, c) => {
+      if (cell == null || cell === "") return;
+      // 「4/10 職員会議」「10日 会議」のように 1 つのセルに日付と予定
+      const d = looseDate(cell);
+      if (d && d.rest && meaningful(d.rest)) {
+        const ds = dateStr(d, curCtx);
+        if (ds) add({ kind: ds <= todayYmd() ? "record" : "task", date: ds, title: d.rest.split("\n")[0].trim(), content: d.rest, role: curRole() });
+        return;
+      }
+      // カレンダー形式: 日にちのセルの下（または同じセルの改行後）に予定
+      const s = String(cell).trim();
+      const dayOnly = typeof cell === "number" ? (cell >= 1 && cell <= 31 && Number.isInteger(cell) ? cell : 0) : (/^\d{1,2}$/.test(s) ? +s : 0);
+      const cellLines = s.split("\n");
+      if (!dayOnly && /^\d{1,2}$/.test(cellLines[0].trim()) && cellLines.length > 1 && curCtx) {
+        const text = cellLines.slice(1).join(" ").trim();
+        if (meaningful(text)) {
+          const ds = dateStr({ d: +cellLines[0].trim() }, curCtx);
+          if (ds) add({ kind: ds <= todayYmd() ? "record" : "task", date: ds, title: text.slice(0, 60), content: text, role: curRole() });
+        }
+        return;
+      }
+      if (dayOnly && curCtx) {
+        const below = [];
+        for (let k = r + 1; k < Math.min(rows.length, r + 4); k++) {
+          const b = rows[k] && rows[k][c];
+          if (b == null || b === "") continue;
+          if (typeof b === "number" || /^\d{1,2}(\n|$)/.test(String(b).trim())) break;
+          if (meaningful(b)) below.push(String(b).trim());
+        }
+        if (below.length) {
+          const ds = dateStr({ d: dayOnly }, curCtx);
+          if (ds) add({ kind: ds <= todayYmd() ? "record" : "task", date: ds, title: below[0].split("\n")[0].slice(0, 60), content: below.join("\n"), role: curRole() });
+        }
+      }
+    });
+  });
+  return out;
+}
+
+let importCandidates = [];
+
+async function importOffice(file) {
+  try {
+    const buf = await file.arrayBuffer();
+    let sheets;
+    if (/\.(xlsx|xlsm)$/i.test(file.name)) sheets = await readXlsx(buf);
+    else if (/\.docx$/i.test(file.name)) sheets = await readDocx(buf);
+    else throw new Error("対応しているのは Excel（.xlsx）と Word（.docx）です。古い形式（.xls / .doc）の場合は、Excel・Word で開いて「名前を付けて保存」から .xlsx / .docx で保存し直してください。");
+    const seen = new Set();
+    importCandidates = sheets.filter(s => !/^(記入例|説明)/.test(s.name)).flatMap(candidatesFromSheet).filter(c => {
+      const k = [c.kind === "task" && c.structured ? "T" : "", c.date || "", c.title, c.role].join("|");
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    }).slice(0, 1000);
+    importCandidates.forEach(c => {
+      c.checked = true;
+      // すでに登録済みのものは最初から外しておく
+      if (c.kind === "record" && data.records.some(r => r.role === c.role && r.date === c.date && recordTitle(r) === c.title)) c.checked = false;
+    });
+    if (!importCandidates.length) {
+      alert("日付と予定・業務の組み合わせが見つかりませんでした。\n「取り込み用のひな形（Excel）」に書き写していただくと確実に取り込めます。");
+      return;
+    }
+    openImportDialog(file.name);
+  } catch (e) {
+    console.error(e);
+    alert("読み込めませんでした。\n" + e.message);
+  }
+}
+
+function openImportDialog(fileName) {
+  const dlg = document.getElementById("importDialog");
+  document.getElementById("importFileName").textContent = fileName;
+  renderImportRows();
+  dlg.showModal();
+}
+
+function renderImportRows() {
+  const roles = data.settings.roles;
+  const roleOpts = sel => [...new Set([...roles, sel])].map(r => `<option ${r === sel ? "selected" : ""}>${esc(r)}</option>`).join("");
+  document.getElementById("importRows").innerHTML = importCandidates.map((c, i) => {
+    const when = c.date ? fmtDate(c.date) : (c.months && c.months.length ? (c.months.length === 12 ? "毎月" : c.months.join("・") + "月") + (c.day ? ` ${c.day}日` : "") : "随時");
+    const exists = data.tasks.some(t => t.role === c.role && t.title === c.title);
+    return `<tr class="${c.checked ? "" : "off"}">
+      <td><input type="checkbox" data-i="${i}" data-f="checked" ${c.checked ? "checked" : ""}></td>
+      <td><select data-i="${i}" data-f="kind">
+        <option value="task" ${c.kind === "task" ? "selected" : ""}>業務（年間予定）</option>
+        <option value="record" ${c.kind === "record" ? "selected" : ""} ${c.date ? "" : "disabled"}>実施記録</option></select></td>
+      <td class="nowrap">${esc(when)}</td>
+      <td><input type="text" data-i="${i}" data-f="title" value="${esc(c.title)}" style="width:100%">
+        ${c.content && c.content !== c.title ? `<div class="muted pre">${esc(c.content.slice(0, 120))}</div>` : ""}
+        ${exists && c.kind === "task" ? '<div class="muted">※ 同じ名前の業務があるので、実施月を追加・内容を更新します</div>' : ""}</td>
+      <td><select data-i="${i}" data-f="role">${roleOpts(c.role)}</select></td>
+      <td class="muted">${esc(c.source)}</td></tr>`;
+  }).join("");
+  const n = importCandidates.filter(c => c.checked).length;
+  document.getElementById("importCount").textContent = `${importCandidates.length} 件見つかりました（${n} 件を選択中）`;
+}
+
+function applyImport() {
+  let newT = 0, updT = 0, newR = 0, skipR = 0;
+  const now = new Date().toISOString();
+  const findTask = (role, title) => data.tasks.find(t => t.role === role && t.title === title);
+  importCandidates.filter(c => c.checked && c.title.trim()).forEach(c => {
+    const title = c.title.trim();
+    if (!data.settings.roles.includes(c.role)) data.settings.roles.push(c.role);
+    if (c.kind === "task") {
+      const months = c.structured ? c.months : (c.date ? [Number(c.date.slice(5, 7))] : []);
+      const day = c.structured ? c.day : (c.date ? Number(c.date.slice(8, 10)) : "");
+      let t = findTask(c.role, title);
+      if (t) {
+        months.forEach(m => { if (!t.months.includes(m)) t.months.push(m); });
+        if (!t.day && day) t.day = day;
+        if (c.structured) ["category", "leadDays", "durationDays", "hours", "purpose", "steps", "tips", "related", "baseYear"].forEach(k => { if (c[k] !== "" && c[k] != null) t[k] = c[k]; });
+        if (c.structured && c.everyN) t.everyN = c.everyN;
+        updT++;
+      } else {
+        data.tasks.push({ id: uid(), role: c.role, title, category: c.category || "取り込み", months, day: day || "", everyN: c.everyN || 1,
+          baseYear: c.baseYear || fyOf(c.date ? parseYmd(c.date) : today()), leadDays: c.leadDays || "", durationDays: c.durationDays || "",
+          hours: c.structured ? c.hours || "" : "", purpose: c.purpose || (!c.structured && c.content !== title ? c.content || "" : ""),
+          steps: c.steps || "", tips: c.tips || "", related: c.related || "", archived: false, createdAt: now });
+        newT++;
+      }
+    } else {
+      const t = findTask(c.role, title);
+      if (data.records.some(r => r.role === c.role && r.date === c.date && recordTitle(r) === title && (r.content || "") === (c.content || ""))) { skipR++; return; }
+      data.records.push({ id: uid(), role: c.role, taskId: t ? t.id : "", title: t ? "" : title, date: c.date, endDate: c.endDate || "",
+        hours: c.hours || "", occ: t ? c.date.slice(0, 7) : "", content: c.content && c.content !== title ? c.content : (c.content || ""),
+        notes: c.notes || "", partial: false, createdAt: now });
+      newR++;
+    }
+  });
+  save();
+  document.getElementById("importDialog").close();
+  render();
+  alert(`取り込みました。\n業務: 新規 ${newT} 件・更新 ${updT} 件\n実施記録: ${newR} 件` + (skipR ? `（重複 ${skipR} 件は取り込んでいません）` : ""));
+}
+
+/** 取り込み用のひな形（Excel） */
+function exportTemplate() {
+  const H = v => ({ v, s: 1 });
+  const taskHead = ["役職", "分類", "業務名", "実施月", "期限日", "周期（年）", "基準年度", "準備開始", "想定所要日数", "想定作業時間", "目的・概要", "手順", "注意点・コツ", "関係先・資料"];
+  const recHead = ["役職", "実施日", "終了日", "業務", "作業時間", "やったこと", "気づき・申し送り"];
+  const w = (n, x) => Array.from({ length: n }, (_, i) => x[i] || 14);
+  const sheets = [
+    { name: "業務一覧", rows: [taskHead.map(H)], widths: w(taskHead.length, [12, 12, 28, 12, 8, 8, 8, 8, 10, 10, 30, 40, 30, 24]), freeze: 1 },
+    { name: "実施記録", rows: [recHead.map(H)], widths: w(recHead.length, [12, 12, 12, 28, 8, 44, 40]), freeze: 1 },
+    { name: "記入例", widths: [12, 12, 28, 18, 8, 8, 8, 8, 10, 10, 30], rows: [
+      [{ v: "記入例（このシートは取り込まれません）", s: 7 }],
+      ["■ 業務一覧シート： 実施月は「4」「4,10」「毎月」「四半期」など。随時の業務は空欄。周期は 3 なら「3年に1回」。役職が空欄なら、取り込むときに選んでいる役職になります。"],
+      taskHead.map(H),
+      ["園長", "行事", "運動会", "10", 12, 1, "", 60, 1, 20, "保護者参加の運動会を開催", "会場予約\n職員会議で担当決め\n案内配布", "雨天時の連絡網を前日に確認", "案内文: 共有フォルダ\\行事"].map(v => ({ v, s: 2 })),
+      ["課長", "報告", "月次報告", "毎月", 10, 1, "", 5, 2, 3, "", "", "", ""].map(v => ({ v, s: 2 })),
+      ["入所サビ管", "支援計画", "個別支援計画の見直し", "4,10", 30, 1, "", 30, 20, 40, "", "", "", ""].map(v => ({ v, s: 2 })),
+      [],
+      ["■ 実施記録シート： 実施日は 2026/4/10 や 令和8年4月10日 などで OK。業務名が業務一覧と同じなら自動で紐付きます。"],
+      recHead.map(H),
+      ["園長", "2026/10/12", "", "運動会", 8, "運動会を実施。参加 120 名", "テントは前日設営が必要"].map(v => ({ v, s: 2 }))
+    ] }
+  ];
+  downloadBlob("業務マニュアル帳_取り込み用ひな形.xlsx", makeXlsx(sheets));
+}
+
 async function importFile(file, merge) {
   try {
     const incoming = normalize(JSON.parse(await file.text()));
@@ -1396,7 +2238,7 @@ async function importFile(file, merge) {
 
 function loadSample() {
   const fy = fyOf(today());
-  const T = (o) => Object.assign({ id: uid(), category: "", months: [], day: "", everyN: 1, baseYear: fy, leadDays: "", durationDays: "", hours: "",
+  const T = (o) => Object.assign({ id: uid(), role: curRole(), category: "", months: [], day: "", everyN: 1, baseYear: fy, leadDays: "", durationDays: "", hours: "",
     purpose: "", steps: "", tips: "", related: "", archived: false, createdAt: new Date().toISOString() }, o);
   const tasks = [
     T({ title: "月例報告の作成・提出", category: "報告", months: [1,2,3,4,5,6,7,8,9,10,11,12], day: 10, leadDays: 5, durationDays: 2, hours: 3,
@@ -1413,7 +2255,7 @@ function loadSample() {
     T({ title: "外部監査への対応", category: "予算・会計", months: [], leadDays: 0 })
   ];
   const recs = [];
-  const R = (task, date, o) => recs.push(Object.assign({ id: uid(), taskId: task ? task.id : "", title: "", date, endDate: "", hours: "",
+  const R = (task, date, o) => recs.push(Object.assign({ id: uid(), role: curRole(), taskId: task ? task.id : "", title: "", date, endDate: "", hours: "",
     occ: task ? date.slice(0, 7) : "", content: "", notes: "", partial: false, createdAt: new Date().toISOString() }, o || {}));
   const y0 = fy - 1;
   // 前年度の初めから先月までの月例報告
@@ -1433,12 +2275,48 @@ function loadSample() {
   R(null, `${y0}-08-20`, { title: "庁舎の空調故障対応", hours: 2, content: "業者に修理依頼、見積取得。", notes: "保守契約先は〇〇設備（連絡先は契約書参照）。" });
   data.tasks.push(...tasks);
   data.records.push(...recs);
-  if (!data.settings.role) data.settings.role = "（サンプル）庶務係長";
   save();
   render();
 }
 
 /* ===================== イベント ===================== */
+
+document.getElementById("roleLabel").addEventListener("change", e => {
+  if (e.target.id !== "roleSelect") return;
+  data.settings.currentRole = e.target.value;
+  ui.manualTask = ""; ui.journalTask = "";
+  save(); render();
+});
+
+recordForm.addEventListener("click", e => {
+  const b = e.target.closest("[data-day]");
+  if (!b) return;
+  const f = recordForm.elements;
+  f.date.value = toYmd(addDays(today(), Number(b.dataset.day)));
+  if (f.taskId.value && !f.id.value) f.occ.value = f.date.value.slice(0, 7);
+});
+
+const importDialog = document.getElementById("importDialog");
+importDialog.addEventListener("change", e => {
+  const i = e.target.dataset.i;
+  if (i == null) return;
+  const c = importCandidates[i];
+  c[e.target.dataset.f] = e.target.type === "checkbox" ? e.target.checked : e.target.value;
+  if (e.target.dataset.f !== "title") renderImportRows();
+});
+importDialog.addEventListener("click", e => {
+  const b = e.target.closest("[data-imp]");
+  if (!b) return;
+  const m = b.dataset.imp;
+  importCandidates.forEach(c => {
+    if (m === "all") c.checked = true;
+    else if (m === "none") c.checked = false;
+    else if (m === "task") c.kind = "task";
+    else if (m === "record" && c.date) c.kind = "record";
+  });
+  renderImportRows();
+});
+document.getElementById("importApply").addEventListener("click", applyImport);
 
 document.getElementById("nav").addEventListener("click", e => {
   const b = e.target.closest("button[data-view]");
@@ -1456,6 +2334,7 @@ document.getElementById("main").addEventListener("click", async e => {
     case "addTask": openTaskDialog(null); break;
     case "editTask": openTaskDialog(taskById(el.dataset.id)); break;
     case "addRecord": openRecordDialog(null, { taskId: el.dataset.task || "", occ: el.dataset.occ || "" }); break;
+    case "addRecordOn": openRecordDialog(null, { date: el.dataset.date }); break;
     case "editRecord": openRecordDialog(data.records.find(r => r.id === el.dataset.id)); break;
     case "taskFromRecord": {
       const r = data.records.find(x => x.id === el.dataset.id);
@@ -1485,6 +2364,9 @@ document.getElementById("main").addEventListener("click", async e => {
     case "jClear": ui.journalMonth = ""; ui.journalTask = ""; ui.journalQuery = ""; render(); break;
     case "print": window.print(); break;
     case "exportMd": exportMd(); break;
+    case "exportDocx": exportDocx(ui.view === "manual" ? ui.manualTask : ""); break;
+    case "exportXlsx": exportXlsx("all"); break;
+    case "exportXlsxJournal": exportXlsx("journal"); break;
     case "exportJson": exportJson(); break;
     case "exportCsv": exportCsv(); break;
     case "createFile": await createDataFile(); break;
@@ -1494,7 +2376,15 @@ document.getElementById("main").addEventListener("click", async e => {
     case "loadSample": loadSample(); break;
     case "saveSettings":
       data.settings.org = document.getElementById("sOrg").value.trim();
-      data.settings.role = document.getElementById("sRole").value.trim();
+      {
+        const renames = [...document.querySelectorAll(".roleName")].map(el => [el.dataset.old, el.value.trim()]).filter(([o, n]) => n && o !== n);
+        if (renames.some(([, n]) => data.settings.roles.includes(n))) { alert("同じ名前の役職がすでにあります。"); break; }
+        renames.forEach(([o, n]) => {
+          data.settings.roles = data.settings.roles.map(r => r === o ? n : r);
+          [...data.tasks, ...data.records].forEach(x => { if (x.role === o) x.role = n; });
+          if (data.settings.currentRole === o) data.settings.currentRole = n;
+        });
+      }
       data.settings.fyStart = Number(document.getElementById("sFy").value);
       data.settings.remindEnabled = document.getElementById("sRemind").checked;
       data.settings.remindTime = document.getElementById("sRemindTime").value || "16:00";
@@ -1508,6 +2398,17 @@ document.getElementById("main").addEventListener("click", async e => {
     case "remindDismiss": stopRemind(true); render(); break;
     case "remindTest": fireRemind(); break;
     case "notifyPermission": await Notification.requestPermission(); render(); break;
+    case "addRole": {
+      const n = document.getElementById("newRole").value.trim();
+      if (!n) break;
+      if (data.settings.roles.includes(n)) { alert("同じ名前の役職がすでにあります。"); break; }
+      data.settings.roles.push(n); save(); render(); break;
+    }
+    case "deleteRole":
+      data.settings.roles = data.settings.roles.filter(r => r !== el.dataset.role);
+      if (!data.settings.roles.includes(curRole())) data.settings.currentRole = data.settings.roles[0];
+      save(); render(); break;
+    case "exportTemplate": exportTemplate(); break;
     case "clearAll":
       if (confirm("すべての業務と記録を削除します。元に戻せません。先にバックアップを書き出しましたか？") &&
           confirm("本当に削除しますか？")) {
@@ -1524,6 +2425,11 @@ document.getElementById("main").addEventListener("change", e => {
   if (id === "jMonth") { ui.journalMonth = e.target.value; render(); }
   else if (id === "jTask") { ui.journalTask = e.target.value; render(); }
   else if (id === "mTask") { ui.manualTask = e.target.value; render(); }
+  else if (e.target.classList.contains("importOffice")) {
+    const file = e.target.files[0];
+    if (file) importOffice(file);
+    e.target.value = "";
+  }
   else if (id === "importReplace" || id === "importMerge") {
     const file = e.target.files[0];
     if (file) importFile(file, id === "importMerge");
