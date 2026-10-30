@@ -393,7 +393,7 @@ const MONTH_NAMES = ["1月","2月","3月","4月","5月","6月","7月","8月","9�
 function emptyData() {
   return {
     version: 1,
-    settings: { roles: ["園長", "課長", "入所サビ管", "そよかぜ"], rolesAdded: ["そよかぜ"], currentRole: "園長", org: "", fyStart: 4, remindEnabled: true, remindTime: "16:00", remindWeekdaysOnly: true },
+    settings: { roles: ["園長", "課長", "入所サビ管", "そよかぜ"], rolesAdded: ["そよかぜ"], roleMembers: { "園長": "工藤", "課長": "鈴木", "入所サビ管": "木村 忍", "そよかぜ": "佐藤 恭成" }, currentRole: "園長", org: "", fyStart: 4, remindEnabled: true, remindTime: "16:00", remindWeekdaysOnly: true },
     tasks: [],
     records: [],
     imports: [],
@@ -439,6 +439,11 @@ function normalize(d) {
   if (!Array.isArray(st.roles) || !st.roles.length) st.roles = emptyData().settings.roles;
   if (st.role && !st.roles.includes(st.role)) st.roles.push(st.role);
   // あとから既定の選択肢に加えた役職を、以前のデータにも 1 度だけ追加する
+  // 予定表の担当者名と役職の対応（以前のデータには既定の対応を入れる）
+  if (!st.roleMembers || typeof st.roleMembers !== "object") st.roleMembers = {};
+  if (!(d && d.settings && d.settings.roleMembers)) {
+    Object.entries(emptyData().settings.roleMembers).forEach(([r, n]) => { if (st.roles.includes(r) || r === "そよかぜ") st.roleMembers[r] = st.roleMembers[r] || n; });
+  }
   st.rolesAdded = d && d.settings ? (Array.isArray(d.settings.rolesAdded) ? [...d.settings.rolesAdded] : []) : st.rolesAdded;
   ["そよかぜ"].forEach(r => { if (!st.rolesAdded.includes(r)) { if (!st.roles.includes(r)) st.roles.push(r); st.rolesAdded.push(r); } });
   const fallbackRole = st.role || st.currentRole || st.roles[0];
@@ -1165,13 +1170,17 @@ function viewData() {
       </div>
       <h3 style="margin-top:8px">役職</h3>
       <p class="muted">業務と記録は役職ごとに分かれます。画面上部の役職名から切り替えられます。名前を書き換えて「設定を保存」すると、その役職の業務・記録もそのまま引き継がれます。</p>
-      <ul class="items" style="max-width:520px">${s.roles.map((r, i) => {
+      <div class="muted" style="display:flex;gap:8px;max-width:760px"><span style="flex:1">役職名</span><span style="flex:1">担当者の名前（予定表の取り込みで使います。複数は「、」区切り）</span><span style="width:150px"></span></div>
+      <ul class="items" style="max-width:760px">${s.roles.map((r, i) => {
         const n = data.tasks.filter(t => t.role === r).length + data.records.filter(x => x.role === r).length;
         return `<li><input type="text" class="roleName" data-old="${esc(r)}" value="${esc(r)}" style="flex:1">
+          <input type="text" class="roleMember" data-old="${esc(r)}" value="${esc((s.roleMembers || {})[r] || "")}" placeholder="担当者の名前" style="flex:1" title="予定表を取り込むとき、この名前の予定をこの役職に入れます">
           <span class="muted" style="width:90px">${n ? n + " 件" : "データなし"}</span>
           <button class="btn small danger" data-action="deleteRole" data-role="${esc(r)}" ${n || s.roles.length === 1 ? "disabled" : ""}>削除</button></li>`;
       }).join("")}</ul>
-      <div class="toolbar"><input type="text" id="newRole" placeholder="役職を追加（例: 主任）"><button class="btn" data-action="addRole">追加</button></div>
+      <div class="toolbar"><input type="text" id="newRole" placeholder="役職を追加（例: 主任）"><button class="btn" data-action="addRole">追加</button>
+        <span class="spacer"></span>
+        <button class="btn" data-action="reassignRoles" title="取り込んだ予定表の記録を、担当者の名前に合わせて役職へ振り分け直します">取り込んだ予定を担当者の役職へ振り分け直す</button></div>
       <h3 style="margin-top:8px">記録のお知らせ</h3>
       <div class="form-row"><label style="font-weight:normal"><input type="checkbox" id="sRemind" ${s.remindEnabled ? "checked" : ""}>
         毎日決まった時刻に、その日の記録がまだなければ入力を促す</label></div>
@@ -2091,7 +2100,7 @@ function candidatesFromSheet(sheet) {
         const text = c.replace(/\u3000/g, " ").replace(/[ \t]+/g, " ").trim();
         const ds = colDate[i];
         add({ kind: ds <= todayYmd() ? "record" : "task", date: ds, title: text.split("\n")[0].slice(0, 60), content: text,
-          person: label ? label.trim() : "", role: curRole() });
+          person: label ? label.trim() : "", role: roleOfPerson(label) || curRole() });
       });
     });
     return out;
@@ -2154,6 +2163,21 @@ function candidatesFromSheet(sheet) {
 }
 
 let importCandidates = [];
+/** 予定表の担当者名（「恭成」「忍」など下の名前だけでも可）から役職を探す */
+function roleOfPerson(label) {
+  const p = String(label || "").replace(/[\s　]/g, "");
+  if (!p) return "";
+  const members = data.settings.roleMembers || {};
+  for (const role of data.settings.roles) {
+    const names = String(members[role] || "").split(/[、,，\/／]/).map(x => x.trim()).filter(Boolean);
+    for (const n of names) {
+      const full = n.replace(/[\s　]/g, "");
+      const parts = n.split(/[\s　]+/).filter(Boolean);
+      if (p === full || parts.includes(p) || (p.length >= 2 && full.includes(p)) || (full.length >= 2 && p.includes(full))) return role;
+    }
+  }
+  return "";
+}
 let importFileName = "";
 /** 取り込む担当者（前回選んだものを覚えておく） */
 function importPersons() {
@@ -2174,9 +2198,11 @@ async function importOffice(file) {
       seen.add(k);
       return true;
     }).slice(0, 1000);
+    // 役職に名前が登録されている担当者がいれば、その人の分だけを選んでおく
+    const mapped = importCandidates.some(c => c.person && roleOfPerson(c.person));
     const picked = importPersons().filter(p => importCandidates.some(c => c.person === p));
     importCandidates.forEach(c => {
-      c.checked = !picked.length || !c.person || picked.includes(c.person);
+      c.checked = mapped ? !c.person || !!roleOfPerson(c.person) : !picked.length || !c.person || picked.includes(c.person);
       // すでに登録済みのものは最初から外しておく
       if (c.kind === "record" && data.records.some(r => r.role === c.role && r.date === c.date && recordTitle(r) === c.title)) c.checked = false;
     });
@@ -2251,7 +2277,7 @@ function applyImport() {
         if (c.structured && c.everyN) t.everyN = c.everyN;
         updT++;
       } else {
-        data.tasks.push({ id: uid(), importId, role: c.role, title, category: c.category || "取り込み", months, day: day || "", everyN: c.everyN || 1,
+        data.tasks.push({ id: uid(), importId, person: c.person || "", role: c.role, title, category: c.category || "取り込み", months, day: day || "", everyN: c.everyN || 1,
           baseYear: c.baseYear || fyOf(c.date ? parseYmd(c.date) : today()), leadDays: c.leadDays || "", durationDays: c.durationDays || "",
           hours: c.structured ? c.hours || "" : "", purpose: c.purpose || (!c.structured && c.content !== title ? c.content || "" : ""),
           steps: c.steps || "", tips: c.tips || "", related: c.related || "", archived: false, createdAt: now });
@@ -2535,13 +2561,17 @@ document.getElementById("main").addEventListener("click", async e => {
     case "saveSettings":
       data.settings.org = document.getElementById("sOrg").value.trim();
       {
+        const members = {};
+        document.querySelectorAll(".roleMember").forEach(el => { members[el.dataset.old] = el.value.trim(); });
         const renames = [...document.querySelectorAll(".roleName")].map(el => [el.dataset.old, el.value.trim()]).filter(([o, n]) => n && o !== n);
         if (renames.some(([, n]) => data.settings.roles.includes(n))) { alert("同じ名前の役職がすでにあります。"); break; }
         renames.forEach(([o, n]) => {
           data.settings.roles = data.settings.roles.map(r => r === o ? n : r);
           [...data.tasks, ...data.records].forEach(x => { if (x.role === o) x.role = n; });
           if (data.settings.currentRole === o) data.settings.currentRole = n;
+          members[n] = members[o]; delete members[o];
         });
+        data.settings.roleMembers = members;
       }
       data.settings.fyStart = Number(document.getElementById("sFy").value);
       data.settings.remindEnabled = document.getElementById("sRemind").checked;
@@ -2567,6 +2597,36 @@ document.getElementById("main").addEventListener("click", async e => {
       if (!data.settings.roles.includes(curRole())) data.settings.currentRole = data.settings.roles[0];
       save(); render(); break;
     case "exportTemplate": exportTemplate(); break;
+    case "reassignRoles": {
+      // 記録は「（予定表の担当: ◯◯）」、業務は取り込み時の担当者名から役職を決め直す
+      const moves = [];
+      data.records.forEach(r => {
+        const m = String(r.content || "").match(/（予定表の担当: (.+?)）/);
+        const role = m && roleOfPerson(m[1]);
+        if (role && role !== r.role) moves.push([r, role]);
+      });
+      data.tasks.forEach(t => { const role = t.person && roleOfPerson(t.person); if (role && role !== t.role) moves.push([t, role]); });
+      const others = data.records.filter(r => { const m = String(r.content || "").match(/（予定表の担当: (.+?)）/); return m && !roleOfPerson(m[1]); }).length;
+      if (!moves.length) { alert("振り分け直すものはありませんでした。" + (others ? `\n（担当者が役職に当てはまらない記録が ${others} 件あります）` : "")); break; }
+      const byRole = {};
+      moves.forEach(([, role]) => byRole[role] = (byRole[role] || 0) + 1);
+      if (!confirm(`次のとおり役職を振り分け直します。よろしいですか？\n` + Object.entries(byRole).map(([r, n]) => `・${r}: ${n} 件`).join("\n") +
+        (others ? `\n\n※「その他」など、役職に当てはまらない担当者の記録 ${others} 件は今の役職のままです（不要なら業務日誌でまとめて削除できます）。` : ""))) break;
+      moves.forEach(([x, role]) => {
+        x.role = role;
+        // 記録が別の役職の業務に紐付いていたら、移った先の同じ名前の業務に付け替える
+        if (x.taskId !== undefined && x.taskId) {
+          const t = taskById(x.taskId);
+          if (t && t.role !== role) {
+            const same = data.tasks.find(y => y.role === role && y.title === t.title);
+            if (same) x.taskId = same.id; else { x.title = x.title || t.title; x.taskId = ""; x.occ = ""; }
+          }
+        }
+      });
+      save(); render();
+      alert("振り分け直しました。画面上部で役職を切り替えて確認してください。");
+      break;
+    }
     case "clearAll":
       if (confirm("すべての業務と記録を削除します。元に戻せません。先にバックアップを書き出しましたか？") &&
           confirm("本当に削除しますか？")) {
