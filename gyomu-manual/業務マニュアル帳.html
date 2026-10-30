@@ -2121,6 +2121,10 @@ function candidatesFromSheet(sheet) {
 }
 
 let importCandidates = [];
+/** 取り込む担当者（前回選んだものを覚えておく） */
+function importPersons() {
+  try { return JSON.parse(localStorage.getItem("gyomu-manual-import-persons") || "[]"); } catch (e) { return []; }
+}
 
 async function importOffice(file) {
   try {
@@ -2136,8 +2140,9 @@ async function importOffice(file) {
       seen.add(k);
       return true;
     }).slice(0, 1000);
+    const picked = importPersons().filter(p => importCandidates.some(c => c.person === p));
     importCandidates.forEach(c => {
-      c.checked = true;
+      c.checked = !picked.length || !c.person || picked.includes(c.person);
       // すでに登録済みのものは最初から外しておく
       if (c.kind === "record" && data.records.some(r => r.role === c.role && r.date === c.date && recordTitle(r) === c.title)) c.checked = false;
     });
@@ -2179,8 +2184,10 @@ function renderImportRows() {
       <td class="muted">${esc(c.source)}</td></tr>`;
   }).join("");
   const persons = [...new Set(importCandidates.map(c => c.person).filter(Boolean))];
-  document.getElementById("importFilters").innerHTML = (persons.length ? `<label>担当者で絞る <select id="impPerson">
-      <option value="">（すべて）</option>${persons.map(p => `<option ${p === ui.impPerson ? "selected" : ""}>${esc(p)}</option>`).join("")}</select></label>` : "") +
+  const picked = importPersons();
+  document.getElementById("importFilters").innerHTML = (persons.length ? `<span>担当者で絞る：</span>${persons.map(p =>
+      `<label style="font-weight:normal"><input type="checkbox" class="impPerson" value="${esc(p)}" ${picked.includes(p) ? "checked" : ""}> ${esc(p)}</label>`).join(" ")}
+      <span class="muted">（チェックなし＝全員）</span><br>` : "") +
     `<label>期間 <input type="date" id="impFrom" value="${esc(ui.impFrom || "")}"> 〜 <input type="date" id="impTo" value="${esc(ui.impTo || "")}"></label>
      <button type="button" class="btn small" data-imp="filter">この条件のものだけ選択</button>
      <span class="spacer"></span>
@@ -2349,12 +2356,13 @@ importDialog.addEventListener("click", e => {
   const b = e.target.closest("[data-imp]");
   if (!b) return;
   const m = b.dataset.imp;
-  ui.impPerson = (document.getElementById("impPerson") || {}).value || "";
+  const persons = [...document.querySelectorAll(".impPerson:checked")].map(x => x.value);
+  if (document.querySelector(".impPerson")) { try { localStorage.setItem("gyomu-manual-import-persons", JSON.stringify(persons)); } catch (e) {} }
   ui.impFrom = document.getElementById("impFrom").value;
   ui.impTo = document.getElementById("impTo").value;
   const role = document.getElementById("impRole").value;
   importCandidates.forEach(c => {
-    if (m === "filter") c.checked = (!ui.impPerson || c.person === ui.impPerson) && (!ui.impFrom || (c.date && c.date >= ui.impFrom)) && (!ui.impTo || (c.date && c.date <= ui.impTo));
+    if (m === "filter") c.checked = (!persons.length || persons.includes(c.person)) && (!ui.impFrom || (c.date && c.date >= ui.impFrom)) && (!ui.impTo || (c.date && c.date <= ui.impTo));
     if (m === "role" && c.checked) c.role = role;
     if (m === "all") c.checked = true;
     else if (m === "none") c.checked = false;
