@@ -74,8 +74,17 @@
   .whoami-box input {
     width: 100%;
   }
-  .whoami-custom {
-    display: none;
+  .whoami-row {
+    display: flex;
+    gap: 0.4rem;
+  }
+  .whoami-row select {
+    flex: 1;
+    min-width: 0;
+  }
+  .whoami-row button {
+    flex-shrink: 0;
+    padding: 0.5rem 0.7rem;
   }
   .thread-list {
     flex: 1;
@@ -173,9 +182,48 @@
     justify-content: space-between;
     gap: 0.5rem;
   }
-  .chat-sub-row #trash-toggle-btn {
+  .chat-sub-row #trash-toggle-btn,
+  .chat-sub-row #thread-pw-toggle-btn {
     font-size: 0.72rem;
     padding: 0.25rem 0.55rem;
+  }
+  .chat-sub-row {
+    flex-wrap: wrap;
+    gap: 0.4rem 0.5rem;
+  }
+  .thread-lock-badge {
+    margin-right: 0.3rem;
+  }
+  .thread-pw-panel {
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+  .thread-pw-panel form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    max-width: 360px;
+  }
+  .thread-pw-panel label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-size: 0.85rem;
+  }
+  .thread-pw-panel input[type="password"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 0.5rem 0.6rem;
+  }
+  .thread-lock-pane {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
   }
   .msg.trashed {
     opacity: 0.75;
@@ -348,33 +396,19 @@
   .password-actions button {
     flex: 1;
   }
-  .lock-bar {
-    position: fixed;
-    top: 0.6rem;
-    right: 0.6rem;
-    display: flex;
-    gap: 0.5rem;
-    z-index: 10;
-  }
-  .lock-bar button {
-    font-size: 0.78rem;
-    padding: 0.35rem 0.6rem;
-  }
 </style>
 </head>
 <body>
 <div id="app-root"></div>
-<div id="lock-bar"></div>
 <script>
 (function () {
   'use strict';
   const root = document.getElementById('app-root');
-  const lockBarEl = document.getElementById('lock-bar');
   const PRESET_NAMES = ['田巻', '羽田', '咲香', '智恵'];
   const THREADS_KEY = 'renraku-note-threads-v1';
   const CURRENT_KEY = 'renraku-note-current-thread-v1';
   const NAME_KEY = 'renraku-note-whoami-v1';
-  const PASSWORD_HASH_KEY = 'renraku-note-password-hash-v1';
+  const MEMBERS_KEY = 'renraku-note-members-v1';
   const MIN_PW_LENGTH = 4;
   const TRASH_DAYS = 10;
   const TRASH_MS = TRASH_DAYS * 24 * 60 * 60 * 1000;
@@ -423,6 +457,25 @@
   function saveWhoAmI(name) {
     try { localStorage.setItem(NAME_KEY, name); } catch (e) {}
   }
+  function loadMembers() {
+    try {
+      const raw = localStorage.getItem(MEMBERS_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(parsed) && parsed.length) return parsed;
+    } catch (e) {}
+    return PRESET_NAMES.slice();
+  }
+  function saveMembers(list) {
+    try { localStorage.setItem(MEMBERS_KEY, JSON.stringify(list)); } catch (e) {}
+  }
+  function addMember(name) {
+    name = (name || '').trim();
+    if (!name) return false;
+    if (members.indexOf(name) !== -1) return false;
+    members.push(name);
+    saveMembers(members);
+    return true;
+  }
 
   let threads = loadThreads();
   purgeOldTrash();
@@ -432,8 +485,11 @@
     currentId = firstActive ? firstActive.id : null;
   }
   let whoAmI = loadWhoAmI();
+  let members = loadMembers();
   let showTrash = false;
   let showThreadTrash = false;
+  let threadPwMode = null;
+  const unlockedThreadIds = new Set();
 
   function purgeOldTrash() {
     const threshold = Date.now() - TRASH_MS;
@@ -525,6 +581,7 @@
   function selectThread(id) {
     currentId = id;
     showTrash = false;
+    threadPwMode = null;
     saveCurrentId(currentId);
     render();
   }
@@ -582,18 +639,18 @@
   }
 
   function whoAmIBoxHtml() {
-    const isPreset = PRESET_NAMES.indexOf(whoAmI) !== -1;
     return (
       '<div class="whoami-box">' +
         '<label>あなたの名前</label>' +
-        '<select id="whoami-select">' +
-          '<option value="">(選択してください)</option>' +
-          PRESET_NAMES.map(function (n) {
-            return '<option value="' + esc(n) + '"' + (n === whoAmI ? ' selected' : '') + '>' + esc(n) + '</option>';
-          }).join('') +
-          '<option value="__custom__"' + (whoAmI && !isPreset ? ' selected' : '') + '>その他</option>' +
-        '</select>' +
-        '<input type="text" id="whoami-custom" class="whoami-custom" placeholder="名前を入力" value="' + (!isPreset ? esc(whoAmI) : '') + '" style="display:' + (!isPreset && whoAmI ? 'block' : 'none') + ';" />' +
+        '<div class="whoami-row">' +
+          '<select id="whoami-select">' +
+            '<option value="">(選択してください)</option>' +
+            members.map(function (n) {
+              return '<option value="' + esc(n) + '"' + (n === whoAmI ? ' selected' : '') + '>' + esc(n) + '</option>';
+            }).join('') +
+          '</select>' +
+          '<button type="button" id="add-member-btn" title="メンバーを追加">+</button>' +
+        '</div>' +
       '</div>'
     );
   }
@@ -608,10 +665,11 @@
       .sort(function (a, b) { return b.createdAt - a.createdAt; })
       .map(function (t) {
         const active = t.id === currentId ? ' active' : '';
+        const lockBadge = t.passwordHash ? '<span class="thread-lock-badge">🔒</span>' : '';
         return (
           '<div class="thread-item' + active + '" data-thread-id="' + t.id + '">' +
             '<div class="thread-item-main">' +
-              '<span class="thread-name">' + esc(t.name) + '</span>' +
+              '<span class="thread-name">' + lockBadge + esc(t.name) + '</span>' +
               '<span class="thread-creator">' + esc(t.createdBy) + 'さんが作成</span>' +
             '</div>' +
             '<button class="thread-del" data-del-thread="' + t.id + '" title="削除(作成者のみ)">✕</button>' +
@@ -696,6 +754,52 @@
       .join('');
   }
 
+  function threadPwPanelHtml(t) {
+    if (threadPwMode === 'set') {
+      return (
+        '<div class="thread-pw-panel"><form id="thread-pw-form" data-mode="set">' +
+          '<p class="password-note">このスレッドにパスワードを設定します。知っている人だけがこのスレッドを見られるようになります。</p>' +
+          '<label>パスワード(' + MIN_PW_LENGTH + '文字以上)<input type="password" id="tpw-new" autofocus /></label>' +
+          '<label>パスワード(確認)<input type="password" id="tpw-confirm" /></label>' +
+          '<div id="tpw-error"></div>' +
+          '<div class="password-actions">' +
+            '<button type="submit" class="primary">設定する</button>' +
+            '<button type="button" id="tpw-cancel">キャンセル</button>' +
+          '</div>' +
+        '</form></div>'
+      );
+    }
+    if (threadPwMode === 'change') {
+      return (
+        '<div class="thread-pw-panel"><form id="thread-pw-form" data-mode="change">' +
+          '<p class="password-note">現在のパスワードを入力してください。</p>' +
+          '<label>現在のパスワード<input type="password" id="tpw-current" autofocus /></label>' +
+          '<label>新しいパスワード(変更する場合のみ入力)<input type="password" id="tpw-new" /></label>' +
+          '<label>新しいパスワード(確認)<input type="password" id="tpw-confirm" /></label>' +
+          '<div id="tpw-error"></div>' +
+          '<div class="password-actions">' +
+            '<button type="submit" class="primary">変更する</button>' +
+            '<button type="button" id="tpw-remove">パスワードを解除する</button>' +
+            '<button type="button" id="tpw-cancel">キャンセル</button>' +
+          '</div>' +
+        '</form></div>'
+      );
+    }
+    return '';
+  }
+
+  function threadUnlockHtml(t) {
+    return (
+      '<div class="thread-lock-pane"><form class="password-card" id="thread-unlock-form">' +
+        '<h2>🔒 「' + esc(t.name) + '」にはパスワードが設定されています</h2>' +
+        '<label>パスワード<input type="password" id="tpw-unlock" autofocus /></label>' +
+        '<div id="tpw-unlock-error"></div>' +
+        '<button type="submit" class="primary">開く</button>' +
+        '<p class="password-note">パスワードを忘れた場合は、設定した本人に直接聞いてください。</p>' +
+      '</form></div>'
+    );
+  }
+
   function render() {
     const t = currentThread();
     const deletedThreadCount = threads.filter(function (x) { return !!x.deletedAt; }).length;
@@ -721,6 +825,15 @@
       '<div class="chat-pane">' +
         (t
           ? (function () {
+              const locked = !!t.passwordHash && !unlockedThreadIds.has(t.id);
+              if (locked) {
+                return (
+                  '<div class="chat-header">' +
+                    '<div class="chat-title"><span>🔒 ' + esc(t.name) + '</span></div>' +
+                  '</div>' +
+                  threadUnlockHtml(t)
+                );
+              }
               const activeCount = t.messages.filter(function (m) { return !m.deletedAt; }).length;
               const trashCount = t.messages.filter(function (m) { return !!m.deletedAt; }).length;
               return (
@@ -731,9 +844,11 @@
                   '</div>' +
                   '<div class="chat-sub-row">' +
                     '<span class="chat-sub">作成者: ' + esc(t.createdBy) + '(削除できるのは本人のみ)</span>' +
+                    '<button id="thread-pw-toggle-btn">' + (t.passwordHash ? '🔑 パスワード変更/解除' : '🔒 パスワードを設定') + '</button>' +
                     '<button id="trash-toggle-btn">' + (showTrash ? '← 戻る' : '🗑 ゴミ箱(' + trashCount + ')') + '</button>' +
                   '</div>' +
                 '</div>' +
+                threadPwPanelHtml(t) +
                 '<div class="chat-messages">' + (showTrash ? trashHtml(t) : messagesHtml(t)) + '</div>' +
                 (showTrash
                   ? ''
@@ -753,25 +868,20 @@
     scrollMessagesToBottom();
 
     const whoamiSelect = document.getElementById('whoami-select');
-    const whoamiCustom = document.getElementById('whoami-custom');
     whoamiSelect.addEventListener('change', function () {
-      if (whoamiSelect.value === '__custom__') {
-        whoamiCustom.style.display = 'block';
-        whoamiCustom.focus();
-      } else {
-        whoamiCustom.style.display = 'none';
-        whoAmI = whoamiSelect.value;
-        saveWhoAmI(whoAmI);
-        render();
-      }
-    });
-    whoamiCustom.addEventListener('change', function () {
-      whoAmI = whoamiCustom.value.trim();
+      whoAmI = whoamiSelect.value;
       saveWhoAmI(whoAmI);
+      render();
     });
-    whoamiCustom.addEventListener('blur', function () {
-      whoAmI = whoamiCustom.value.trim();
+    document.getElementById('add-member-btn').addEventListener('click', function () {
+      const name = prompt('追加するメンバーの名前を入力してください');
+      if (name === null) return;
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      if (!addMember(trimmed)) { alert('その名前は既に登録されています。'); return; }
+      whoAmI = trimmed;
       saveWhoAmI(whoAmI);
+      render();
     });
 
     root.querySelectorAll('[data-thread-id]').forEach(function (el) {
@@ -807,6 +917,95 @@
       trashToggleBtn.addEventListener('click', toggleTrash);
     }
 
+    const threadPwToggleBtn = document.getElementById('thread-pw-toggle-btn');
+    if (threadPwToggleBtn) {
+      threadPwToggleBtn.addEventListener('click', function () {
+        const cur = currentThread();
+        threadPwMode = cur && cur.passwordHash ? 'change' : 'set';
+        render();
+      });
+    }
+    const threadPwForm = document.getElementById('thread-pw-form');
+    if (threadPwForm) {
+      threadPwForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const cur = currentThread();
+        if (!cur) return;
+        const mode = threadPwForm.getAttribute('data-mode');
+        const errEl = document.getElementById('tpw-error');
+        if (mode === 'change') {
+          const current = document.getElementById('tpw-current').value;
+          const currentHash = await sha256Hex(current);
+          if (currentHash !== cur.passwordHash) {
+            errEl.innerHTML = '<p class="password-error">現在のパスワードが違います。</p>';
+            return;
+          }
+        }
+        const pw = document.getElementById('tpw-new').value;
+        const confirmPw = document.getElementById('tpw-confirm').value;
+        if (mode === 'change' && !pw && !confirmPw) {
+          threadPwMode = null;
+          render();
+          return;
+        }
+        if (pw.length < MIN_PW_LENGTH) {
+          errEl.innerHTML = '<p class="password-error">パスワードは' + MIN_PW_LENGTH + '文字以上で設定してください。</p>';
+          return;
+        }
+        if (pw !== confirmPw) {
+          errEl.innerHTML = '<p class="password-error">2つのパスワードが一致しません。</p>';
+          return;
+        }
+        cur.passwordHash = await sha256Hex(pw);
+        saveThreads(threads);
+        unlockedThreadIds.add(cur.id);
+        threadPwMode = null;
+        render();
+      });
+    }
+    const tpwRemoveBtn = document.getElementById('tpw-remove');
+    if (tpwRemoveBtn) {
+      tpwRemoveBtn.addEventListener('click', async function () {
+        const cur = currentThread();
+        if (!cur) return;
+        const current = document.getElementById('tpw-current').value;
+        const currentHash = await sha256Hex(current);
+        const errEl = document.getElementById('tpw-error');
+        if (currentHash !== cur.passwordHash) {
+          errEl.innerHTML = '<p class="password-error">現在のパスワードが違います。</p>';
+          return;
+        }
+        delete cur.passwordHash;
+        saveThreads(threads);
+        unlockedThreadIds.delete(cur.id);
+        threadPwMode = null;
+        render();
+      });
+    }
+    const tpwCancelBtn = document.getElementById('tpw-cancel');
+    if (tpwCancelBtn) {
+      tpwCancelBtn.addEventListener('click', function () {
+        threadPwMode = null;
+        render();
+      });
+    }
+    const threadUnlockForm = document.getElementById('thread-unlock-form');
+    if (threadUnlockForm) {
+      threadUnlockForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const cur = currentThread();
+        if (!cur) return;
+        const pw = document.getElementById('tpw-unlock').value;
+        const hash = await sha256Hex(pw);
+        if (hash === cur.passwordHash) {
+          unlockedThreadIds.add(cur.id);
+          render();
+        } else {
+          document.getElementById('tpw-unlock-error').innerHTML = '<p class="password-error">パスワードが違います。</p>';
+        }
+      });
+    }
+
     const newThreadInput = document.getElementById('new-thread-input');
     const newThreadBtn = document.getElementById('new-thread-btn');
     if (newThreadBtn) {
@@ -836,113 +1035,7 @@
     }
   }
 
-  // ---------------- password gate ----------------
-
-  function enterApp() {
-    lockBarEl.innerHTML =
-      '<button type="button" id="lock-change-btn">パスワードを変更</button>' +
-      '<button type="button" id="lock-lock-btn">🔒 ロックする</button>';
-    document.getElementById('lock-change-btn').addEventListener('click', renderChangePassword);
-    document.getElementById('lock-lock-btn').addEventListener('click', renderUnlock);
-    render();
-  }
-
-  function renderCreatePassword() {
-    lockBarEl.innerHTML = '';
-    root.innerHTML =
-      '<div class="password-gate"><form class="password-card" id="pw-form">' +
-        '<h2>🔒 パスワードを設定してください</h2>' +
-        '<p class="password-note">このパソコンで初めて使うときに、パスワードを1つ決めてください。以降、開くたびにこのパスワードの入力が必要になります(4人で共有してお使いください)。</p>' +
-        '<label>パスワード(' + MIN_PW_LENGTH + '文字以上)<input type="password" id="pw-new" autofocus /></label>' +
-        '<label>パスワード(確認)<input type="password" id="pw-confirm" /></label>' +
-        '<div id="pw-error"></div>' +
-        '<button type="submit" class="primary">設定する</button>' +
-      '</form></div>';
-    document.getElementById('pw-form').addEventListener('submit', async function (e) {
-      e.preventDefault();
-      const pw = document.getElementById('pw-new').value;
-      const confirmPw = document.getElementById('pw-confirm').value;
-      const errEl = document.getElementById('pw-error');
-      if (pw.length < MIN_PW_LENGTH) {
-        errEl.innerHTML = '<p class="password-error">パスワードは' + MIN_PW_LENGTH + '文字以上で設定してください。</p>';
-        return;
-      }
-      if (pw !== confirmPw) {
-        errEl.innerHTML = '<p class="password-error">2つのパスワードが一致しません。</p>';
-        return;
-      }
-      const hash = await sha256Hex(pw);
-      localStorage.setItem(PASSWORD_HASH_KEY, hash);
-      enterApp();
-    });
-  }
-
-  function renderUnlock() {
-    lockBarEl.innerHTML = '';
-    root.innerHTML =
-      '<div class="password-gate"><form class="password-card" id="pw-form">' +
-        '<h2>🔒 パスワードを入力してください</h2>' +
-        '<label>パスワード<input type="password" id="pw-input" autofocus /></label>' +
-        '<div id="pw-error"></div>' +
-        '<button type="submit" class="primary">ロック解除</button>' +
-        '<p class="password-note">パスワードを忘れた場合は、ブラウザの設定でこのファイルのサイトデータを削除してください(スレッドの内容もすべて消えます)。</p>' +
-      '</form></div>';
-    document.getElementById('pw-form').addEventListener('submit', async function (e) {
-      e.preventDefault();
-      const pw = document.getElementById('pw-input').value;
-      const hash = await sha256Hex(pw);
-      if (hash === localStorage.getItem(PASSWORD_HASH_KEY)) {
-        enterApp();
-      } else {
-        document.getElementById('pw-error').innerHTML = '<p class="password-error">パスワードが違います。</p>';
-      }
-    });
-  }
-
-  function renderChangePassword() {
-    root.innerHTML =
-      '<div class="password-gate"><form class="password-card" id="pw-form">' +
-        '<h2>パスワードを変更</h2>' +
-        '<label>現在のパスワード<input type="password" id="pw-current" autofocus /></label>' +
-        '<label>新しいパスワード<input type="password" id="pw-new" /></label>' +
-        '<label>新しいパスワード(確認)<input type="password" id="pw-confirm" /></label>' +
-        '<div id="pw-error"></div>' +
-        '<div class="password-actions">' +
-          '<button type="submit" class="primary">変更する</button>' +
-          '<button type="button" id="pw-cancel">キャンセル</button>' +
-        '</div>' +
-      '</form></div>';
-    document.getElementById('pw-cancel').addEventListener('click', enterApp);
-    document.getElementById('pw-form').addEventListener('submit', async function (e) {
-      e.preventDefault();
-      const current = document.getElementById('pw-current').value;
-      const pw = document.getElementById('pw-new').value;
-      const confirmPw = document.getElementById('pw-confirm').value;
-      const errEl = document.getElementById('pw-error');
-      const currentHash = await sha256Hex(current);
-      if (currentHash !== localStorage.getItem(PASSWORD_HASH_KEY)) {
-        errEl.innerHTML = '<p class="password-error">現在のパスワードが違います。</p>';
-        return;
-      }
-      if (pw.length < MIN_PW_LENGTH) {
-        errEl.innerHTML = '<p class="password-error">新しいパスワードは' + MIN_PW_LENGTH + '文字以上で設定してください。</p>';
-        return;
-      }
-      if (pw !== confirmPw) {
-        errEl.innerHTML = '<p class="password-error">2つのパスワードが一致しません。</p>';
-        return;
-      }
-      const newHash = await sha256Hex(pw);
-      localStorage.setItem(PASSWORD_HASH_KEY, newHash);
-      enterApp();
-    });
-  }
-
-  if (localStorage.getItem(PASSWORD_HASH_KEY)) {
-    renderUnlock();
-  } else {
-    renderCreatePassword();
-  }
+  render();
 })();
 </script>
 </body>
